@@ -5,9 +5,9 @@
     {
       "tool": {
         "driver": {
-          "name": "skill-guard",
+          "name": "surfaceguard",
           "version": "1.2.3",
-          "informationUri": "https://github.com/SVGreg/skill-guard",
+          "informationUri": "https://github.com/SVGreg/surfaceguard",
           "rules": []
         }
       },

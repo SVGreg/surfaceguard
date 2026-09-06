@@ -1,4 +1,4 @@
-// Package attest implements skill-guard provenance: the SGMT-1 Merkle root over
+// Package attest implements surfaceguard provenance: the SGMT-1 Merkle root over
 // a bundle, DSSE Ed25519 signing, the attestation statement, and USF manifest
 // fields. This is the interop core specified in design §7.
 package attest
@@ -11,7 +11,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/SVGreg/skill-guard/pkg/skill"
+	"github.com/SVGreg/surfaceguard/pkg/skill"
 )
 
 // Domain-separation prefixes (RFC 6962-style, design §7.1).

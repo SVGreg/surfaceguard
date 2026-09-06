@@ -9,8 +9,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/SVGreg/skill-guard/pkg/attest"
-	"github.com/SVGreg/skill-guard/pkg/skill"
+	"github.com/SVGreg/surfaceguard/pkg/attest"
+	"github.com/SVGreg/surfaceguard/pkg/skill"
 )
 
 // Manifest verification per OMS §8.4–§8.5.

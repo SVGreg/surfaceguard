@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/SVGreg/skill-guard/pkg/model"
+	"github.com/SVGreg/surfaceguard/pkg/model"
 	"gopkg.in/yaml.v3"
 )
 

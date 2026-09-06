@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/SVGreg/skill-guard/pkg/skill"
+	"github.com/SVGreg/surfaceguard/pkg/skill"
 )
 
 // TestIDTokenPrecedence: an explicit token wins, then a file, then CI. The

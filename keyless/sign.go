@@ -9,14 +9,14 @@ import (
 	"github.com/sigstore/sigstore-go/pkg/bundle"
 	"github.com/sigstore/sigstore-go/pkg/sign"
 
-	"github.com/SVGreg/skill-guard/pkg/attest/oms"
-	"github.com/SVGreg/skill-guard/pkg/skill"
+	"github.com/SVGreg/surfaceguard/pkg/attest/oms"
+	"github.com/SVGreg/surfaceguard/pkg/skill"
 )
 
 // Public Sigstore infrastructure. They are defaults, not constants baked into
 // the trust model: --fulcio-url and --rekor-url point the signer at a private
 // deployment, and verification trusts only the roots the *consumer* pins. No
-// vendor root is compiled into skill-guard anywhere.
+// vendor root is compiled into surfaceguard anywhere.
 const (
 	DefaultFulcioURL = "https://fulcio.sigstore.dev"
 	DefaultRekorURL  = "https://rekor.sigstore.dev"
@@ -35,7 +35,7 @@ type Options struct {
 // SignBundle produces an OMS-conformant Sigstore bundle for a skill directory.
 //
 // The signed payload is built by the *core* module — the same enumeration,
-// canonicalization, manifest and root digest that `skill-guard sign --oms`
+// canonicalization, manifest and root digest that `surfaceguard sign --oms`
 // uses — so a keyless signature and a key-signed one attest byte-identical
 // statements about the same tree. Only the verification material differs.
 func SignBundle(ctx context.Context, b *skill.Bundle, opt Options) ([]byte, error) {
@@ -96,11 +96,11 @@ func SignBundle(ctx context.Context, b *skill.Bundle, opt Options) ([]byte, erro
 
 	// Round-trip through the core module's parser before writing. sigstore-go
 	// produces a Sigstore bundle; whether it is a *conformant OMS* bundle is
-	// our claim to make, and one skill-guard verify must accept. Failing here
+	// our claim to make, and one surfaceguard verify must accept. Failing here
 	// beats shipping a file that only looks signed.
 	parsed, err := oms.ParseBundle(data)
 	if err != nil {
-		return nil, fmt.Errorf("keyless: produced a bundle skill-guard cannot read: %w", err)
+		return nil, fmt.Errorf("keyless: produced a bundle surfaceguard cannot read: %w", err)
 	}
 	if _, err := parsed.Statement(); err != nil {
 		return nil, fmt.Errorf("keyless: produced a bundle with an unusable statement: %w", err)

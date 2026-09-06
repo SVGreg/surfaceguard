@@ -10,10 +10,10 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/SVGreg/skill-guard/pkg/attest/oms"
-	"github.com/SVGreg/skill-guard/pkg/model"
-	"github.com/SVGreg/skill-guard/pkg/policy"
-	"github.com/SVGreg/skill-guard/pkg/skill"
+	"github.com/SVGreg/surfaceguard/pkg/attest/oms"
+	"github.com/SVGreg/surfaceguard/pkg/model"
+	"github.com/SVGreg/surfaceguard/pkg/policy"
+	"github.com/SVGreg/surfaceguard/pkg/skill"
 )
 
 // VerifyOMS checks an OpenSSF Model Signing bundle against the skill on disk
@@ -44,7 +44,7 @@ func VerifyOMSAt(b *skill.Bundle, data []byte, roster policy.Trust, policyDir st
 		res.Findings = append(res.Findings, prv("SG-PRV-001", model.SevMedium,
 			"No OMS signature present",
 			"The bundle has no skill.oms.sig; OMS verifiers cannot check it.",
-			"Sign with an EC key: skill-guard sign <path> --key oms.key --oms."))
+			"Sign with an EC key: surfaceguard sign <path> --key oms.key --oms."))
 		return res
 	}
 	res.Present = true
@@ -53,7 +53,7 @@ func VerifyOMSAt(b *skill.Bundle, data []byte, roster policy.Trust, policyDir st
 	if err != nil {
 		res.Findings = append(res.Findings, prv("SG-PRV-002", model.SevCritical,
 			"Malformed OMS bundle", err.Error(),
-			"Re-sign the bundle: skill-guard sign <path> --oms."))
+			"Re-sign the bundle: surfaceguard sign <path> --oms."))
 		return res
 	}
 	st, err := bundle.Statement()
@@ -195,7 +195,7 @@ func verifyKeyBound(res *Result, pae []byte, sigs [][]byte, roster policy.Trust)
 // trust.identities.
 //
 // Nothing here is trusted by default. With no trust.roots configured the
-// signature is reported as unverifiable rather than valid — skill-guard ships
+// signature is reported as unverifiable rather than valid — surfaceguard ships
 // no CA, and inventing a fallback would be exactly the vendor-anchored trust
 // this project exists to avoid.
 func verifyCertBound(res *Result, bundle *oms.Bundle, pae []byte, sigs [][]byte, roster policy.Trust, policyDir string) {

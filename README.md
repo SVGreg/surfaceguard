@@ -1,21 +1,31 @@
-# skill-guard
+# SurfaceGuard
 
-**Security, signing & provenance toolchain for Agent Skills (`SKILL.md`).**
+**Know what you're letting in.** Security, signing and provenance for everything
+an agent loads.
 
-`skill-guard` scans, signs, and verifies [Agent Skills](https://owasp.org/www-project-agentic-skills-top-10/)
-against the **OWASP Agentic Skills Top 10**. It catches prompt-injection,
-jailbreak, data-exfiltration, unsafe-execution, secret, and metadata risks in a
-skill *before* an agent loads it — and lets publishers cryptographically sign a
-skill so consumers can verify its integrity and provenance.
+An agent's attack surface is whatever you allow into its context. SurfaceGuard
+scans, signs and verifies those artifacts — today [Agent
+Skills](https://owasp.org/www-project-agentic-skills-top-10/) (`SKILL.md`
+bundles) against the **OWASP Agentic Skills Top 10**, with plugins, MCP servers
+and other agent-facing sources on the roadmap. It catches prompt-injection,
+jailbreak, data-exfiltration, unsafe-execution, secret and metadata risks
+*before* the model sees them, and lets publishers cryptographically sign an
+artifact so consumers can verify its integrity and provenance.
 
-Use it as a **CLI** in CI or a pre-load gate, or as a **Go library** embedded
-into an agent loop (e.g. before a skill is handed to the model).
+Use it as a **CLI** (`surfaceguard`) in CI or as a pre-load gate, or as a **Go
+library** embedded in an agent loop.
+
+> **Renamed from `skill-guard` in v0.4.0.** The scope outgrew "skills", and two
+> unrelated projects already used the old name. Rule ids (`SG-*`), the SGMT-1
+> Merkle format, `.skillsig` attestations and every emitted schema id are
+> **unchanged** — existing signatures and SARIF logs stay valid. See
+> [`docs/rename-migration.md`](docs/rename-migration.md).
 
 > Status: five milestones are implemented and runnable — **scan** (rule packs,
 > policy, risk score), **sign/verify** (SGMT-1 + DSSE), **SARIF/CI**,
 > **OMS + Sigstore keyless interop**, and the **load-time / install-time gate**
 > with verifiable skill cards. Next up is the taint-analysis engine. See
-> [`docs/skill-guard-design.md`](docs/skill-guard-design.md) for the full design
+> [`docs/surfaceguard-design.md`](docs/surfaceguard-design.md) for the full design
 > and [`docs/v1-dev-plan.md`](docs/v1-dev-plan.md) for what is tracked to v1.
 
 ---
@@ -31,7 +41,7 @@ into an agent loop (e.g. before a skill is handed to the model).
   - [`verify`](#verify)
   - [`guard`](#guard)
 - [Input & output formats](#input--output-formats)
-- [Policy file (`.skillguard.yaml`)](#policy-file-skillguardyaml)
+- [Policy file (`.surfaceguard.yaml`)](#policy-file-skillguardyaml)
 - [Signature formats: SGMT-1 and OMS](#signature-formats-sgmt-1-and-oms)
 - [Publisher identity & trust (`SG-PRV-005`)](#publisher-identity--trust-sg-prv-005)
 - [Exit codes](#exit-codes)
@@ -47,13 +57,13 @@ into an agent loop (e.g. before a skill is handed to the model).
 ### Prebuilt binary (no Go required)
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/SVGreg/skill-guard/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/SVGreg/surfaceguard/main/install.sh | sh
 ```
 
 The script detects your OS/architecture (macOS/Linux, amd64/arm64), verifies the release
 checksum, and installs to `/usr/local/bin` (override with `INSTALL_DIR`; pin a release with
 `VERSION=v0.3.0`). On Windows, download the `.zip` from the
-[releases page](https://github.com/SVGreg/skill-guard/releases) and put `skill-guard.exe`
+[releases page](https://github.com/SVGreg/surfaceguard/releases) and put `surfaceguard.exe`
 on your `PATH`.
 
 ### From source
@@ -62,20 +72,20 @@ Requires **Go 1.26+**.
 
 ```sh
 # from a checkout
-go build -o skill-guard ./cmd/skill-guard
+go build -o surfaceguard ./cmd/surfaceguard
 
 # or install into $GOBIN
-go install github.com/SVGreg/skill-guard/cmd/skill-guard@latest
+go install github.com/SVGreg/surfaceguard/cmd/surfaceguard@latest
 ```
 
 Check it works:
 
 ```sh
-skill-guard version
+surfaceguard version
 ```
 
 ```
-skill-guard 0.1.0-dev
+surfaceguard 0.1.0-dev
   rulepack core-exec@1.0.0 (5 rules)
   rulepack core-injection@1.0.0 (5 rules)
   rulepack core-metadata@1.0.0 (2 rules)
@@ -89,19 +99,19 @@ skill-guard 0.1.0-dev
 
 ```sh
 # 1. Scan a skill for risks
-skill-guard scan ./my-skill
+surfaceguard scan ./my-skill
 
 # 2. Create a signing key (keep the .key file secret)
-skill-guard keygen --out publisher.key
+surfaceguard keygen --out publisher.key
 
 # 3. Sign the skill (writes ./my-skill/SKILL.md.skillsig)
-skill-guard sign ./my-skill --key publisher.key --identity oidc:you@example.com
+surfaceguard sign ./my-skill --key publisher.key --identity oidc:you@example.com
 
 # 4. Verify signature + integrity + trust
-skill-guard verify ./my-skill --policy .skillguard.yaml
+surfaceguard verify ./my-skill --policy .surfaceguard.yaml
 
 # 5. Or ask for one decision — scan + verify + policy — before loading it
-skill-guard guard ./my-skill            # allow / warn / deny
+surfaceguard guard ./my-skill            # allow / warn / deny
 ```
 
 A **skill path** is either a **bundle directory** containing a `SKILL.md`
@@ -116,7 +126,7 @@ A **skill path** is either a **bundle directory** containing a `SKILL.md`
 Scan a skill against the static ruleset and print findings.
 
 ```sh
-skill-guard scan ./my-skill
+surfaceguard scan ./my-skill
 ```
 
 On a malicious skill:
@@ -157,11 +167,11 @@ verdict: pass   risk score: 0/100 (L0)   [crit 0, high 0, med 0, low 0, info 0]
 **Common options:**
 
 ```sh
-skill-guard scan ./my-skill --verbose                 # show rationale + suggested fix per finding
-skill-guard scan ./my-skill --format json --out report.json
-skill-guard scan ./my-skill --format sarif --out results.sarif   # GitHub code scanning
-skill-guard scan ./my-skill --policy .skillguard.yaml --fail-on critical
-skill-guard scan ./my-skill --rulepack ./extra-rules.yaml   # add rules (repeatable)
+surfaceguard scan ./my-skill --verbose                 # show rationale + suggested fix per finding
+surfaceguard scan ./my-skill --format json --out report.json
+surfaceguard scan ./my-skill --format sarif --out results.sarif   # GitHub code scanning
+surfaceguard scan ./my-skill --policy .surfaceguard.yaml --fail-on critical
+surfaceguard scan ./my-skill --rulepack ./extra-rules.yaml   # add rules (repeatable)
 ```
 
 | Flag | Description |
@@ -182,12 +192,12 @@ Generate a signing key pair. Two files are written:
 - `<name>.pub` — the **public** key (mode `0644`); safe to share, commit, or publish.
 
 ```sh
-skill-guard keygen --out publisher.key                 # ed25519 (default)
-skill-guard keygen --out oms.key --type ecdsa-p256     # OMS-compatible
+surfaceguard keygen --out publisher.key                 # ed25519 (default)
+surfaceguard keygen --out oms.key --type ecdsa-p256     # OMS-compatible
 ```
 
 **`--type`** picks the algorithm. `ed25519` is the default and is what
-skill-guard's own SGMT-1 attestations use. `ecdsa-p256` exists because
+surfaceguard's own SGMT-1 attestations use. `ecdsa-p256` exists because
 [OpenSSF Model Signing](docs/oms-notes.md) mandates EC P-256/384/521 for its
 key and certificate signing methods and does not include Ed25519 — so a key
 that must verify with OMS tooling has to be an EC key. Both types sign and
@@ -216,7 +226,7 @@ straight into a [trust roster](#publisher-identity--trust-sg-prv-005):
 
 | Flag | Description |
 |------|-------------|
-| `--out` | private key file path (default `skill-guard.key`) |
+| `--out` | private key file path (default `surfaceguard.key`) |
 | `--pub` | public key file path (default `<name>.pub`) |
 | `--no-pub` | do not write the `.pub` file |
 | `--keyid` | key identifier recorded in signatures (default derived from public key) |
@@ -233,7 +243,7 @@ key, to `SKILL.md.skillsig` next to the skill. By default it also embeds the
 result of a scan.
 
 ```sh
-skill-guard sign ./my-skill --key publisher.key --identity oidc:you@example.com
+surfaceguard sign ./my-skill --key publisher.key --identity oidc:you@example.com
 ```
 
 ```
@@ -255,13 +265,13 @@ wrote my-skill/SKILL.md.skillsig
 
 `--oms` additionally writes **`skill.oms.sig`**, an
 [OpenSSF Model Signing](https://github.com/ossf/model-signing-spec) v1.0 bundle
-covering the whole directory tree, so verifiers outside skill-guard can check
+covering the whole directory tree, so verifiers outside surfaceguard can check
 the skill. It is written **alongside** `SKILL.md.skillsig`, never instead of it:
-SGMT-1 remains skill-guard's own format and its local trust model.
+SGMT-1 remains surfaceguard's own format and its local trust model.
 
 ```sh
-skill-guard keygen --out oms.key --type ecdsa-p256
-skill-guard sign ./my-skill --key oms.key --oms
+surfaceguard keygen --out oms.key --type ecdsa-p256
+surfaceguard sign ./my-skill --key oms.key --oms
 ```
 
 ```
@@ -290,7 +300,7 @@ signing key is trusted.
 **Both signature formats are detected automatically.** `verify` reports each one
 it finds, so you can see which trust path produced the verdict:
 
-- `SKILL.md.skillsig` — skill-guard's SGMT-1 attestation: Merkle root, publisher
+- `SKILL.md.skillsig` — surfaceguard's SGMT-1 attestation: Merkle root, publisher
   identity, expiry, and the scan verdict recorded at signing time.
 - `skill.oms.sig` — the OMS bundle: per-file digests only. It carries no scan
   result and no expiry, which `verify` states rather than leaving you to assume.
@@ -311,7 +321,7 @@ files present in the bundle that the signature does not cover — a payload adde
 after signing is caught even though every signed file still matches.
 
 ```sh
-skill-guard verify ./my-skill --policy .skillguard.yaml
+surfaceguard verify ./my-skill --policy .surfaceguard.yaml
 ```
 
 ```
@@ -348,7 +358,7 @@ answer a caller actually needs. An agent loop, a `PreToolUse` hook, or an
 install wrapper acts on the outcome without re-deriving one from a report.
 
 ```sh
-skill-guard guard ./my-skill
+surfaceguard guard ./my-skill
 ```
 
 ```
@@ -357,7 +367,7 @@ deny  scan verdict: fail (critical findings, risk 100/100)
   signature: none
   SG-NET-007  critical  Rendered-image/link data exfiltration
   SG-INJ-002  critical  Hidden or obfuscated instructions
-  … and 60 more — run `skill-guard scan` for the full report
+  … and 60 more — run `surfaceguard scan` for the full report
 ```
 
 | Outcome | Meaning | Exit |
@@ -423,7 +433,7 @@ and allocate 366 KB instead of 17.5 MB.
 
 The distinction that matters when reading them: a **long-lived host** — an agent
 loop, a server, anything calling `guard.Guard` more than once — pays the ~108 ms
-on its first decision and never again. A **one-shot CLI run** (`skill-guard scan
+on its first decision and never again. A **one-shot CLI run** (`surfaceguard scan
 ./skill` from a shell) still pays it, because the process exits. For a host that
 wants even the first call cheap, pass `Options.Rules`/`Options.Contexts` from a
 set you compiled at startup.
@@ -438,7 +448,7 @@ agent's work on a skill the operator already accepted. **Whatever `load` denies,
 `install` denies too**; there is a test asserting the modes never invert.
 
 ```sh
-skill-guard guard ./downloaded-skill --mode install
+surfaceguard guard ./downloaded-skill --mode install
 ```
 
 ```
@@ -455,7 +465,7 @@ place until the gate says so:
 ```sh
 install_skill() {
   tmp=$(mktemp -d) && git clone --depth 1 "$1" "$tmp/skill" &&
-  skill-guard guard "$tmp/skill" --mode install --policy .skillguard.yaml &&
+  surfaceguard guard "$tmp/skill" --mode install --policy .surfaceguard.yaml &&
   cp -r "$tmp/skill" ~/.claude/skills/"$2"
 }
 ```
@@ -472,7 +482,7 @@ skill name to a local bundle, runs `guard --format json`, and reads the
 lands in the transcript:
 
 ```
-skill-guard blocked skill 'evil-skill': scan verdict: fail (critical findings, risk 100/100)
+surfaceguard blocked skill 'evil-skill': scan verdict: fail (critical findings, risk 100/100)
 ```
 
 Three enforcement modes — `log` (audit only), `block-invalid` (block denials),
@@ -500,8 +510,8 @@ under a millisecond. Setup and the full mode table:
 | `sarif` | SARIF 2.1.0 — GitHub code scanning, or any SARIF viewer |
 
 ```sh
-skill-guard scan ./my-skill --format json
-skill-guard scan ./my-skill --format sarif --out results.sarif
+surfaceguard scan ./my-skill --format json
+surfaceguard scan ./my-skill --format sarif --out results.sarif
 ```
 
 SARIF output is deterministic (no timestamps), and each result carries a stable
@@ -532,8 +542,8 @@ it describes, so it cannot be detached from a clean skill and re-presented over 
 modified one:
 
 ```sh
-skill-guard scan ./my-skill --format skill-card --out card.json
-skill-guard verify ./my-skill --card card.json    # exit 0 match, 2 mismatch
+surfaceguard scan ./my-skill --format skill-card --out card.json
+surfaceguard verify ./my-skill --card card.json    # exit 0 match, 2 mismatch
 ```
 
 A one-byte change anywhere in the bundle fails the check with `SG-PRV-007`. Note
@@ -575,7 +585,7 @@ semantics are in
 
 ---
 
-## Policy file (`.skillguard.yaml`)
+## Policy file (`.surfaceguard.yaml`)
 
 A policy sets gating thresholds, waivers, allowlists, and the **trust roster**.
 Pass it with `--policy`. Without one, the default gates fail on `high`+ findings.
@@ -665,7 +675,7 @@ manifest: MATCH
 Two properties worth knowing:
 
 - **With no `trust.roots`, a keyless signature is reported as unverifiable, never
-  as valid.** skill-guard ships no CA and will not fall back to one.
+  as valid.** surfaceguard ships no CA and will not fall back to one.
 - **Validity is anchored on the transparency-log timestamp, not on the clock.**
   Fulcio certificates live for minutes, so asking "is this certificate valid
   now?" would reject every keyless signature within the hour. A bundle with no
@@ -698,8 +708,8 @@ Signing keylessly *does* need a Sigstore client, so it lives in a **separate Go
 module**, [`keyless/`](keyless/), shipped as its own binary:
 
 ```sh
-cd keyless && go build -o skill-guard-keyless ./cmd/skill-guard-keyless
-skill-guard-keyless sign ./my-skill
+cd keyless && go build -o surfaceguard-keyless ./cmd/surfaceguard-keyless
+surfaceguard-keyless sign ./my-skill
 ```
 
 ```
@@ -715,32 +725,32 @@ the credential:
 ```yaml
 jobs:
   sign:
-    uses: SVGreg/skill-guard/.github/workflows/keyless-sign.yml@main
+    uses: SVGreg/surfaceguard/.github/workflows/keyless-sign.yml@main
     with:
       path: ./my-skill
 ```
 
 **Why a separate module:** the Sigstore client pulls in ~370 modules.
-skill-guard's core has **two** dependencies, and that is a property people
-choose it for, so the graph stays out of it — `go install …/cmd/skill-guard`
+surfaceguard's core has **two** dependencies, and that is a property people
+choose it for, so the graph stays out of it — `go install …/cmd/surfaceguard`
 downloads two dependencies whether or not you ever sign keylessly. CI asserts
 it: a job fails if the core module gains a direct dependency or if the
-`skill-guard` binary ever links Sigstore or protobuf code. Details in
+`surfaceguard` binary ever links Sigstore or protobuf code. Details in
 [`keyless/README.md`](keyless/README.md).
 
-**This is the only part of skill-guard that needs network access.** Scanning and
+**This is the only part of surfaceguard that needs network access.** Scanning and
 verifying never do.
 
 ---
 
 ## Signature formats: SGMT-1 and OMS
 
-skill-guard writes two detached signatures over the same skill, answering
+surfaceguard writes two detached signatures over the same skill, answering
 different questions:
 
 | | `SKILL.md.skillsig` (SGMT-1) | `skill.oms.sig` (OMS v1.0) |
 |---|---|---|
-| Spec | skill-guard's own | [OpenSSF Model Signing](https://github.com/ossf/model-signing-spec) |
+| Spec | surfaceguard's own | [OpenSSF Model Signing](https://github.com/ossf/model-signing-spec) |
 | Attests a **scan verdict** | yes | no |
 | Carries an expiry | yes | no |
 | Verifiable by other tools | no | **yes** |
@@ -750,13 +760,13 @@ different questions:
 new capability lands in OMS.** It attests something OMS deliberately does not
 ("this bundle was clean when I signed it"), which is why it stays. What it
 cannot do is be checked by anyone else's tooling, and a signature only
-skill-guard can verify is a private note rather than provenance.
+surfaceguard can verify is a private note rather than provenance.
 
 Emitting both costs one flag, and `verify` reports each with the trust path it
 used:
 
 ```sh
-skill-guard sign ./my-skill --key oms.key --oms
+surfaceguard sign ./my-skill --key oms.key --oms
 ```
 
 Full comparison, the two trust models, and migration guidance:
@@ -778,14 +788,14 @@ verifier has no public key to check it against.
 
 ### There is no global identity authority — trust is local
 
-skill-guard uses a **local, decentralized trust model**. It does **not** contact
+surfaceguard uses a **local, decentralized trust model**. It does **not** contact
 any public key server, identity provider, or registry, and the `--identity` value
 you pass to `sign` (e.g. `oidc:you@example.com`) is a **self-asserted label**
 recorded in the attestation — it is *not* independently verified against OIDC,
 Sigstore, or anything else. Anyone can sign a skill claiming any identity.
 
 Trust is established by the **verifier** deciding to trust a specific public key
-and binding it to an identity **in their own `.skillguard.yaml`**. The identity
+and binding it to an identity **in their own `.surfaceguard.yaml`**. The identity
 shown after a successful `verify` is the one *the verifier wrote next to the key
 in their roster* — not the publisher's self-claim. So "verified" means *"this was
 signed by a key I have chosen to trust,"* nothing more (and, deliberately, not
@@ -807,10 +817,10 @@ job is to make that easy and safe.
 ```sh
 # 1. Create a signing key ONCE and reuse it (a stable key = a stable identity).
 #    Writes publisher.key (private, secret) and publisher.pub (public, shareable).
-skill-guard keygen --out publisher.key
+surfaceguard keygen --out publisher.key
 
 # 2. Sign each release with the private key.
-skill-guard sign ./my-skill --key publisher.key --identity oidc:you@example.com
+surfaceguard sign ./my-skill --key publisher.key --identity oidc:you@example.com
 ```
 
 Then **publish `publisher.pub`** so consumers can trust it — commit it to your
@@ -825,7 +835,7 @@ roster (and you should add the old `keyid` to `revoked`).
 Add the publisher's key to the trust roster in the policy you verify with:
 
 ```yaml
-# .skillguard.yaml
+# .surfaceguard.yaml
 trust:
   keys:
     - keyid: sg-8f7164b591be                                   # from the publisher
@@ -836,7 +846,7 @@ trust:
 ```
 
 ```sh
-skill-guard verify ./my-skill --policy .skillguard.yaml
+surfaceguard verify ./my-skill --policy .surfaceguard.yaml
 # attestation: present, signature VALID (trusted key)
 # merkle root: MATCH
 # publisher: oidc:you@example.com
@@ -869,7 +879,7 @@ is checked against a CA and a transparency log rather than a hand-managed list.
 
 That is implemented: see
 [Keyless (certificate-bound) signatures](#keyless-certificate-bound-signatures).
-It does **not** introduce a global authority — skill-guard pins no CA and no
+It does **not** introduce a global authority — surfaceguard pins no CA and no
 log, so the anchors are still ones you chose. What changes is that you pin an
 *issuer* once instead of a key per publisher.
 
@@ -932,12 +942,12 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/SVGreg/skill-guard/pkg/guard"
-	"github.com/SVGreg/skill-guard/pkg/policy"
+	"github.com/SVGreg/surfaceguard/pkg/guard"
+	"github.com/SVGreg/surfaceguard/pkg/policy"
 )
 
 func main() {
-	pol, err := policy.Load(".skillguard.yaml") // "" for the built-in defaults
+	pol, err := policy.Load(".surfaceguard.yaml") // "" for the built-in defaults
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -1003,7 +1013,7 @@ Key packages:
 | `pkg/skill` | parse a `SKILL.md` bundle into an inert model (nothing is executed) |
 | `pkg/rules` | rule-pack schema, matcher primitives, confidence math |
 | `pkg/scan` | orchestrate rules → findings, verdict, risk score, skill-card |
-| `pkg/policy` | `.skillguard.yaml` model, thresholds, waivers, trust roster |
+| `pkg/policy` | `.surfaceguard.yaml` model, thresholds, waivers, trust roster |
 | `pkg/attest` | SGMT-1 Merkle root, DSSE signing, Ed25519/ECDSA keys, OMS bundles |
 | `pkg/verify` | verify attestation, Merkle integrity, trust, and skill cards |
 | `pkg/report` | text / JSON / SARIF / skill-card formatters |
@@ -1015,8 +1025,8 @@ Key packages:
 Fail the build when a skill trips the fail threshold:
 
 ```yaml
-# .github/workflows/skill-guard.yml
-name: skill-guard
+# .github/workflows/surfaceguard.yml
+name: surfaceguard
 on: [push, pull_request]
 jobs:
   scan:
@@ -1025,8 +1035,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with: { go-version: "1.26" }
-      - run: go install github.com/SVGreg/skill-guard/cmd/skill-guard@latest
-      - run: skill-guard scan ./my-skill --format json --out skill-guard.json
+      - run: go install github.com/SVGreg/surfaceguard/cmd/surfaceguard@latest
+      - run: surfaceguard scan ./my-skill --format json --out surfaceguard.json
       # exit 1 here fails the job when the verdict is "fail"
 ```
 
@@ -1037,8 +1047,8 @@ uploads the SARIF to the **Security** tab — findings land as code-scanning
 alerts with their OWASP references attached:
 
 ```yaml
-# .github/workflows/skill-guard.yml
-name: skill-guard
+# .github/workflows/surfaceguard.yml
+name: surfaceguard
 on: [push, pull_request]
 permissions:
   contents: read
@@ -1048,22 +1058,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4      # the action scans the workspace
-      - uses: SVGreg/skill-guard@v0    # or @v0.3.0 to pin exactly
+      - uses: SVGreg/surfaceguard@v0    # or @v0.3.0 to pin exactly
         with:
           path: ./my-skill
 ```
 
 **Pinning.** `@v0` follows the newest `0.x` release; `@v0.3.0` pins exactly. Either
-way the action installs **the skill-guard release matching its own ref**, so a
+way the action installs **the surfaceguard release matching its own ref**, so a
 pinned workflow keeps running the binary it was tested against — set
 `version: latest` to opt out of that, or `version: preinstalled` to use a
-`skill-guard` you put on `PATH` yourself.
+`surfaceguard` you put on `PATH` yourself.
 
 **On the marketplace** the action is listed as **Agent Skill Security Scan** — the listing name
-has to be unique across GitHub and `skill-guard` belongs to an unrelated project. The `uses:` line,
+has to be unique across GitHub and `surfaceguard` belongs to an unrelated project. The `uses:` line,
 the binary, and everything else keep the name you already know.
 
-**Runners.** `ubuntu-*` and `macos-*`. Windows runners must install skill-guard
+**Runners.** `ubuntu-*` and `macos-*`. Windows runners must install surfaceguard
 themselves and pass `version: preinstalled`; the action says so rather than
 failing obscurely.
 
@@ -1071,12 +1081,12 @@ failing obscurely.
 |-------|---------|-------------|
 | `path` | `.` | bundle directory or a single `SKILL.md` |
 | `format` | `sarif` | `sarif`, `json`, `text`, `skill-card` |
-| `output` | `skill-guard.sarif` | file the scan output is written to |
-| `policy` | – | path to a `.skillguard.yaml` |
+| `output` | `surfaceguard.sarif` | file the scan output is written to |
+| `policy` | – | path to a `.surfaceguard.yaml` |
 | `fail-on` | – | override the fail threshold |
 | `rulepack` | – | extra rule-pack YAML (one path per line) |
 | `version` | *the action's own ref* | release to install, `latest`, or `preinstalled` |
-| `category` | `skill-guard:<path>` | code-scanning category — **set this per scan when a workflow scans several skills** |
+| `category` | `surfaceguard:<path>` | code-scanning category — **set this per scan when a workflow scans several skills** |
 | `upload-sarif` | `true` | upload to code scanning |
 | `fail-on-verdict` | `true` | fail the job on a `fail` verdict |
 | `token` | `${{ github.token }}` | only used to raise the API rate limit when resolving a release |
@@ -1107,11 +1117,11 @@ jobs:
         skill: [skills/pdf-tools, skills/db-helper, skills/deploy]
     steps:
       - uses: actions/checkout@v4
-      - uses: SVGreg/skill-guard@v0
+      - uses: SVGreg/surfaceguard@v0
         with:
           path: ${{ matrix.skill }}
           output: ${{ matrix.skill }}.sarif
-          category: skill-guard:${{ matrix.skill }}
+          category: surfaceguard:${{ matrix.skill }}
 ```
 
 The default `category` is derived from `path`, so the matrix above works even if
@@ -1121,10 +1131,10 @@ usually needs it.
 To wire it up by hand instead, emit SARIF and call the uploader yourself:
 
 ```yaml
-      - run: skill-guard scan ./my-skill --format sarif --out skill-guard.sarif
+      - run: surfaceguard scan ./my-skill --format sarif --out surfaceguard.sarif
         continue-on-error: true
       - uses: github/codeql-action/upload-sarif@v3
-        with: { sarif_file: skill-guard.sarif }
+        with: { sarif_file: surfaceguard.sarif }
 ```
 
 ---
@@ -1138,8 +1148,8 @@ gofmt -l .            # formatting check
 go vet ./...          # static checks
 
 # end-to-end smoke test against the fixtures
-go run ./cmd/skill-guard scan testdata/malicious   # verdict: fail, exit 1
-go run ./cmd/skill-guard scan testdata/benign      # verdict: pass, exit 0
+go run ./cmd/surfaceguard scan testdata/malicious   # verdict: fail, exit 1
+go run ./cmd/surfaceguard scan testdata/benign      # verdict: pass, exit 0
 
 # the keyless signer is a separate module — build and test it in its own tree
 cd keyless && go build ./... && go test ./...

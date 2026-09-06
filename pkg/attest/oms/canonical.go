@@ -8,7 +8,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/SVGreg/skill-guard/pkg/skill"
+	"github.com/SVGreg/surfaceguard/pkg/skill"
 )
 
 // Path canonicalization and file enumeration per OMS v1.0 §6.1–§6.2.
@@ -23,7 +23,7 @@ import (
 // but never `subdir/.git` (§6.2.1).
 var DefaultIgnorePaths = []string{".git", ".gitattributes", ".github", ".gitignore"}
 
-// SignatureFileNames are skill-guard's own signature outputs, which §6.2
+// SignatureFileNames are surfaceguard's own signature outputs, which §6.2
 // requires be excluded from their own manifest. The OMS spec does not mandate a
 // filename — it asks only for a `.sig` extension beside the tree (§9) — so
 // these are our choice, and are documented as such.
@@ -84,7 +84,7 @@ type EnumFile struct {
 	Content []byte
 }
 
-// EnumOptions tunes enumeration. The zero value is what skill-guard signs with.
+// EnumOptions tunes enumeration. The zero value is what surfaceguard signs with.
 type EnumOptions struct {
 	// SingleFile makes the resource name the basename only (§6.1.2 rule 5).
 	SingleFile bool
@@ -100,7 +100,7 @@ type EnumOptions struct {
 // produced, which is what lets a verifier reproduce it (§5.2.2).
 //
 // Symlinks need no handling here: the bundle loader refuses to follow them at
-// all (`cmd/skill-guard/ux.go`), which is exactly the spec's default
+// all (`cmd/surfaceguard/ux.go`), which is exactly the spec's default
 // `allow_symlinks: false` — and the spec expects that mode to become the only
 // one.
 func Enumerate(b *skill.Bundle, opt EnumOptions) ([]EnumFile, Serialization, error) {
@@ -148,7 +148,7 @@ func Enumerate(b *skill.Bundle, opt EnumOptions) ([]EnumFile, Serialization, err
 	}, nil
 }
 
-// ignoreSet merges the mandatory exclusions, skill-guard's signature files, and
+// ignoreSet merges the mandatory exclusions, surfaceguard's signature files, and
 // any user entries into the sorted list recorded in serialization.ignore_paths.
 func ignoreSet(extra []string) ([]string, error) {
 	set := map[string]bool{}

@@ -45,12 +45,12 @@ jobs:
 
       - name: Build the signers
         run: |
-          go build -o "$RUNNER_TEMP/skill-guard" ./cmd/skill-guard
-          cd keyless && go build -o "$RUNNER_TEMP/skill-guard-keyless" ./cmd/skill-guard-keyless
+          go build -o "$RUNNER_TEMP/surfaceguard" ./cmd/surfaceguard
+          cd keyless && go build -o "$RUNNER_TEMP/surfaceguard-keyless" ./cmd/surfaceguard-keyless
 
       - name: Sign keylessly
         run: |
-          "$RUNNER_TEMP/skill-guard-keyless" sign "${{ inputs.path }}"
+          "$RUNNER_TEMP/surfaceguard-keyless" sign "${{ inputs.path }}"
 
       # Proof the signature is usable, not merely produced: the same file is
       # read back by the core binary, which shares no code path with the
@@ -59,7 +59,7 @@ jobs:
         run: |
           sig="${{ inputs.path }}/skill.oms.sig"
           test -s "$sig"
-          "$RUNNER_TEMP/skill-guard" verify "${{ inputs.path }}" | tee out.txt
+          "$RUNNER_TEMP/surfaceguard" verify "${{ inputs.path }}" | tee out.txt
           grep -q "certificate identity:" out.txt
           grep -q "signed at:" out.txt
           # No roots are pinned here, so trust is correctly withheld; pinning

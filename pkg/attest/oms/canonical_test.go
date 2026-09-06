@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/SVGreg/skill-guard/pkg/skill"
+	"github.com/SVGreg/surfaceguard/pkg/skill"
 )
 
 // TestCanonicalPath walks every rule in OMS §6.1.2, including the ones that

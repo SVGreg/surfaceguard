@@ -64,8 +64,8 @@ Spec §6.1.2, and it is stricter than the roadmap assumed:
 
 **Symlinks** (§6.1.1): default `allow_symlinks: false`, links must not be
 followed and should be an error; `allow_symlinks: true` is documented as headed
-for removal in a future version. skill-guard already refuses to follow symlinks
-(`cmd/skill-guard/ux.go`), so `false` is both the spec default and our existing
+for removal in a future version. surfaceguard already refuses to follow symlinks
+(`cmd/surfaceguard/ux.go`), so `false` is both the spec default and our existing
 behavior — no decision needed.
 
 **Empty directories** simply never appear: only regular files are enumerated, so
@@ -81,7 +81,7 @@ itself SHOULD be excluded from its own scope (§9).
 |---|---|---|
 | The signature file is `skill.oms.sig` | §9: the bundle SHOULD use a **`.sig` extension** and sit alongside the model. No name is mandated. | Free choice; `skill.oms.sig` is conformant. Keep it, and document that the name is ours, not the spec's. |
 | "Directory-tree canonicalization must be exactly compatible … symlink and empty-dir handling" | Fully specified in §6.1.1/§6.1.2, and empty dirs cannot occur | M4-02 is **smaller than feared** — it is implementing a written spec, not reverse-engineering one. |
-| (unstated) Any signing key would do | Algorithm registry: `key`/`certificate` methods **MUST support EC P-256/P-384/P-521**. Ed25519 is not in the required set. | **This is the real finding.** skill-guard's SGMT-1 signs with **Ed25519**. An OMS bundle other tools verify needs an **ECDSA P-256** key, so `keygen`/`sign` must grow an EC path. Ed25519 stays for SGMT-1. |
+| (unstated) Any signing key would do | Algorithm registry: `key`/`certificate` methods **MUST support EC P-256/P-384/P-521**. Ed25519 is not in the required set. | **This is the real finding.** surfaceguard's SGMT-1 signs with **Ed25519**. An OMS bundle other tools verify needs an **ECDSA P-256** key, so `keygen`/`sign` must grow an EC path. Ed25519 stays for SGMT-1. |
 
 ## 4. Sigstore in Go
 
@@ -90,7 +90,7 @@ itself SHOULD be excluded from its own scope (§9).
 - **Dependency weight measured, not guessed:** a throwaway module requiring only
   `sigstore-go` resolves to **90 modules**, pulling in `protobuf-specs`, `rekor`,
   `rekor-tiles`, `certificate-transparency-go`, `go-containerregistry`, and the
-  protobuf runtime. skill-guard currently has **two** direct dependencies.
+  protobuf runtime. surfaceguard currently has **two** direct dependencies.
   → The roadmap's "keep it behind a build tag or isolated package" is not
   optional. Recommended split: the **bundle format** (JSON + DSSE + in-toto,
   buildable with stdlib) in the default build, and **Fulcio/Rekor** behind a

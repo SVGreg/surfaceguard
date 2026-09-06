@@ -10,8 +10,8 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/SVGreg/skill-guard/pkg/model"
-	"github.com/SVGreg/skill-guard/pkg/policy"
+	"github.com/SVGreg/surfaceguard/pkg/model"
+	"github.com/SVGreg/surfaceguard/pkg/policy"
 )
 
 // Verdict caching for the load-time path.
@@ -122,14 +122,14 @@ type FileCache struct {
 }
 
 // NewFileCache prepares a cache directory, creating it if needed. Pass an empty
-// path to use the user cache dir (os.UserCacheDir + /skill-guard/verdicts).
+// path to use the user cache dir (os.UserCacheDir + /surfaceguard/verdicts).
 func NewFileCache(dir string) (*FileCache, error) {
 	if dir == "" {
 		base, err := os.UserCacheDir()
 		if err != nil {
 			return nil, fmt.Errorf("guard: no cache directory available: %w", err)
 		}
-		dir = filepath.Join(base, "skill-guard", "verdicts")
+		dir = filepath.Join(base, "surfaceguard", "verdicts")
 	}
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return nil, fmt.Errorf("guard: cannot create cache directory: %w", err)

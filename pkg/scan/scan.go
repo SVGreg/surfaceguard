@@ -6,10 +6,10 @@ package scan
 import (
 	"sort"
 
-	"github.com/SVGreg/skill-guard/pkg/model"
-	"github.com/SVGreg/skill-guard/pkg/policy"
-	"github.com/SVGreg/skill-guard/pkg/rules"
-	"github.com/SVGreg/skill-guard/pkg/skill"
+	"github.com/SVGreg/surfaceguard/pkg/model"
+	"github.com/SVGreg/surfaceguard/pkg/policy"
+	"github.com/SVGreg/surfaceguard/pkg/rules"
+	"github.com/SVGreg/surfaceguard/pkg/skill"
 )
 
 // Report is the result of scanning a bundle.
@@ -68,7 +68,7 @@ func (s *Scanner) Scan(b *skill.Bundle) *Report {
 	// Reference docs are instruction surface, not inert assets: progressive
 	// disclosure means SKILL.md stays short and tells the agent to read and
 	// follow `references/*.md`, so those files reach the model exactly like the
-	// body. Leaving them unscanned made the surface skill-guard checks a strict
+	// body. Leaving them unscanned made the surface surfaceguard checks a strict
 	// subset of the real one — a payload in references/guide.md scanned clean
 	// (issue #13). Rules that declare `body` apply here too; see rules.AppliesTo.
 	for _, dc := range b.Docs {

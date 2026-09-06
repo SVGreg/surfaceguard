@@ -1,4 +1,4 @@
-# skill-guard — Development Roadmap (v0.2 → v1.0)
+# surfaceguard — Development Roadmap (v0.2 → v1.0)
 
 > **Purpose of this document.** This is a machine-and-human readable roadmap intended to be
 > handed to an agentic coding tool (Claude Code) as the source of truth for planning
@@ -6,7 +6,7 @@
 > *how to know a milestone is done*. It deliberately does not prescribe internal code
 > structure beyond existing package boundaries — the implementing agent should propose that.
 
-**Repo:** `github.com/SVGreg/skill-guard`
+**Repo:** `github.com/SVGreg/surfaceguard`
 **Language:** Go (1.26+)
 **Current state:** `scan`, `keygen`, `sign`, `verify` implemented. Rule packs
 (`core-injection`, `core-network`, `core-exec`, `core-secret`, `core-metadata`) mapped to
@@ -18,7 +18,7 @@ GoReleaser + release-please in place.
 
 ## 0. Strategic framing (read this before planning)
 
-skill-guard competes in two sub-markets with very different dynamics:
+surfaceguard competes in two sub-markets with very different dynamics:
 
 | Sub-market | Competitive reality | Our stance |
 |---|---|---|
@@ -76,7 +76,7 @@ is table stakes for CI adoption and is the single cheapest unlock available.
 
 ### Scope
 - `--format sarif` on `scan`, emitting SARIF 2.1.0.
-- Correct mapping of skill-guard concepts onto SARIF: rules → `rules[]` with `id`,
+- Correct mapping of surfaceguard concepts onto SARIF: rules → `rules[]` with `id`,
   `shortDescription`, `helpUri`; findings → `results[]` with `ruleId`, `level`,
   `message`, `locations` (file + line/region where determinable), `partialFingerprints`
   for stable dedup across runs.
@@ -84,18 +84,18 @@ is table stakes for CI adoption and is the single cheapest unlock available.
   OWASP taxonomy survives the export.
 - Severity mapping: internal severity → SARIF `level` (`error` / `warning` / `note`) with the
   raw score preserved in `properties`.
-- Respect existing policy config (`.skillguard.yaml` thresholds, waivers, allowlists) —
+- Respect existing policy config (`.surfaceguard.yaml` thresholds, waivers, allowlists) —
   suppressed findings should be emitted as SARIF `suppressions`, not silently dropped.
 - Exit-code semantics documented and stable for CI gating.
 
 ### Deliverables
 - SARIF emitter + golden-file tests validated against the SARIF 2.1.0 schema.
-- A published **GitHub Action** (`skill-guard-action`) that runs a scan and uploads SARIF via
+- A published **GitHub Action** (`surfaceguard-action`) that runs a scan and uploads SARIF via
   `github/codeql-action/upload-sarif`.
 - README/docs section: "Use in CI" with a copy-pasteable workflow.
 
 ### Done when
-A public demo repo shows skill-guard findings rendered in the GitHub Security tab, with AST
+A public demo repo shows surfaceguard findings rendered in the GitHub Security tab, with AST
 references visible on each finding, and waivers correctly shown as suppressed.
 
 ---
@@ -106,7 +106,7 @@ references visible on each finding, and waivers correctly shown as suppressed.
 ### Why
 The market converged on **OpenSSF Model Signing (OMS)** — a Sigstore-bundle-derived, detached
 signature format covering a directory tree (`skill.oms.sig`) — as the de-facto skill signing
-format. Today a skill-guard signature cannot be verified by OMS tooling and vice versa. That
+format. Today a surfaceguard signature cannot be verified by OMS tooling and vice versa. That
 isolation is the project's biggest strategic risk. Meanwhile the prominent OMS implementation
 is anchored to a vendor root of trust; a **vendor-neutral** one is genuinely missing.
 
@@ -125,7 +125,7 @@ is anchored to a vendor root of trust; a **vendor-neutral** one is genuinely mis
 3. **Trust model upgrade**
    - Keep the local trust roster for teams that want it.
    - Add identity-based trust policy: accept signatures from `repo:org/*` style OIDC
-     identities, configured in `.skillguard.yaml`.
+     identities, configured in `.surfaceguard.yaml`.
    - Multiple roots of trust configurable; **no hard-coded vendor root**.
 4. **Migration/compat**
    - `verify` auto-detects signature type (SGMT-1 vs OMS) and reports which trust path was used.
@@ -139,8 +139,8 @@ is anchored to a vendor root of trust; a **vendor-neutral** one is genuinely mis
 - Rekor availability must never be a hard requirement for `scan`.
 
 ### Done when
-- A skill signed by skill-guard verifies with an independent OMS verifier, and an
-  OMS-signed skill verifies with `skill-guard verify`.
+- A skill signed by surfaceguard verifies with an independent OMS verifier, and an
+  OMS-signed skill verifies with `surfaceguard verify`.
 - A GitHub Actions workflow signs a skill keylessly with zero stored secrets.
 - Verification succeeds offline against a pinned trust bundle.
 

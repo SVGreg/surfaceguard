@@ -39,7 +39,7 @@ MAX_PER_REPO = int(os.environ.get("MAX_PER_REPO", "5"))
 SORT = os.environ.get("SORT", "recent")
 SKIP_DIRS = [d for d in os.environ.get("SKIP_DIRS", "").split(",") if d]
 
-UA = "Mozilla/5.0 (X11; Linux x86_64) skill-guard-eval/0.1"
+UA = "Mozilla/5.0 (X11; Linux x86_64) surfaceguard-eval/0.1"
 
 
 def api_page(page, limit=50):

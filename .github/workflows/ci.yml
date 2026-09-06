@@ -36,9 +36,9 @@ jobs:
 
       - name: smoke test (exit-code contract)
         run: |
-          go build -o skill-guard ./cmd/skill-guard
-          ./skill-guard scan testdata/malicious && exit 1 || [ $? -eq 1 ]
-          ./skill-guard scan testdata/benign
+          go build -o surfaceguard ./cmd/surfaceguard
+          ./surfaceguard scan testdata/malicious && exit 1 || [ $? -eq 1 ]
+          ./surfaceguard scan testdata/benign
 
   keyless:
     # The keyless signing module is built and tested separately because it is a
@@ -76,10 +76,10 @@ jobs:
         # core go.mod, the core stops being a two-dependency offline tool and
         # the README stops being true — so it is asserted, not assumed.
         run: |
-          direct=$(go list -m -f '{{if not .Indirect}}{{.Path}}{{end}}' all | grep -v '^github.com/SVGreg/skill-guard$' | grep -c . || true)
+          direct=$(go list -m -f '{{if not .Indirect}}{{.Path}}{{end}}' all | grep -v '^github.com/SVGreg/surfaceguard$' | grep -c . || true)
           echo "core direct dependencies: $direct"
           [ "$direct" -le 2 ] || { echo "core module gained dependencies"; go list -m all; exit 1; }
-          if go list -deps ./cmd/skill-guard | grep -q 'sigstore\|protobuf'; then
-            echo "the skill-guard binary now links Sigstore or protobuf code"
+          if go list -deps ./cmd/surfaceguard | grep -q 'sigstore\|protobuf'; then
+            echo "the surfaceguard binary now links Sigstore or protobuf code"
             exit 1
           fi

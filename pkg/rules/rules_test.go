@@ -3062,7 +3062,7 @@ func TestAgentConfigOverwriteIgnoresMarkdownBlockquote(t *testing.T) {
 // TestSelfExtractingSkillCoversSkippedLocations pins SG-EVA-001 to the
 // Self-Extracting Skill shape (Cloak and Detonate, arXiv 2607.02357): the real
 // payload sits as an opaque blob in a location the scanner never opens, and a
-// small decoder rematerializes it at first run. skill-guard has two such blind
+// small decoder rematerializes it at first run. surfaceguard has two such blind
 // spots and both were verified `pass / 0 findings` on main before this rule —
 // `skipNames` drops `.git`, and the walk drops every `*.skillsig`.
 //
@@ -3101,7 +3101,7 @@ func TestSelfExtractingSkillCoversSkippedLocations(t *testing.T) {
 		{"xxd -r -p .git/objects/aa/deadbeef > run.sh", true},
 		{"python3 -c \"import base64,pathlib; pathlib.Path('WORKFLOW.md').write_bytes(base64.b64decode(open('.git/skillpack.dat').read()))\"", true},
 		{"cp .git/hidden/WORKFLOW.tmpl > CLAUDE.md", true},
-		// The same trick against skill-guard's own skip rule.
+		// The same trick against surfaceguard's own skip rule.
 		{"base64 -d payload.skillsig > WORKFLOW.md", true},
 		{"gunzip -c assets/notes.skillsig > AGENTS.md", true},
 
@@ -3120,7 +3120,7 @@ func TestSelfExtractingSkillCoversSkippedLocations(t *testing.T) {
 		// Inspecting an attestation is not staging a payload — the DSSE
 		// envelope's `.payload` really is base64.
 		{"cat SKILL.md.skillsig | jq -r .payload | base64 -d", false},
-		{"skill-guard verify . && base64 -d SKILL.md.skillsig", false},
+		{"surfaceguard verify . && base64 -d SKILL.md.skillsig", false},
 	}
 	for _, c := range cases {
 		if got := len(r.Evaluate("scripts", c.text)) > 0; got != c.want {

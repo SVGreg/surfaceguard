@@ -7,14 +7,14 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/SVGreg/skill-guard/pkg/attest"
-	"github.com/SVGreg/skill-guard/pkg/attest/oms"
-	"github.com/SVGreg/skill-guard/pkg/model"
-	"github.com/SVGreg/skill-guard/pkg/policy"
-	"github.com/SVGreg/skill-guard/pkg/report"
-	"github.com/SVGreg/skill-guard/pkg/rules"
-	"github.com/SVGreg/skill-guard/pkg/scan"
-	sgverify "github.com/SVGreg/skill-guard/pkg/verify"
+	"github.com/SVGreg/surfaceguard/pkg/attest"
+	"github.com/SVGreg/surfaceguard/pkg/attest/oms"
+	"github.com/SVGreg/surfaceguard/pkg/model"
+	"github.com/SVGreg/surfaceguard/pkg/policy"
+	"github.com/SVGreg/surfaceguard/pkg/report"
+	"github.com/SVGreg/surfaceguard/pkg/rules"
+	"github.com/SVGreg/surfaceguard/pkg/scan"
+	sgverify "github.com/SVGreg/surfaceguard/pkg/verify"
 	"github.com/spf13/cobra"
 )
 
@@ -62,14 +62,14 @@ OUTPUT (--format):
   • skill-card   signed-summary card + attestation envelope (JSON)
   • sarif       SARIF 2.1.0 for GitHub code scanning / any SARIF viewer
 
-POLICY (--policy .skillguard.yaml): sets fail_on/warn_on thresholds, waivers,
+POLICY (--policy .surfaceguard.yaml): sets fail_on/warn_on thresholds, waivers,
 allowlists, and the trust roster. Without one, the default gates fail on high+.
 
 EXIT CODES: 0 pass/warn · 1 fail · 3 usage error · 4 internal error.`,
-		Example: `  skill-guard scan ./my-skill
-  skill-guard scan ./my-skill/SKILL.md --verbose
-  skill-guard scan ./my-skill --format json --out report.json
-  skill-guard scan ./my-skill --policy .skillguard.yaml --fail-on critical`,
+		Example: `  surfaceguard scan ./my-skill
+  surfaceguard scan ./my-skill/SKILL.md --verbose
+  surfaceguard scan ./my-skill --format json --out report.json
+  surfaceguard scan ./my-skill --policy .surfaceguard.yaml --fail-on critical`,
 		Args: bundlePathArg,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validateFormat(format); err != nil {
@@ -84,7 +84,7 @@ EXIT CODES: 0 pass/warn · 1 fail · 3 usage error · 4 internal error.`,
 			}
 			pol, err := policy.Load(policyPath)
 			if err != nil {
-				return fail(3, "cannot use policy %q: %v\n  expected a valid .skillguard.yaml file (see 'skill-guard scan --help').", policyPath, err)
+				return fail(3, "cannot use policy %q: %v\n  expected a valid .surfaceguard.yaml file (see 'surfaceguard scan --help').", policyPath, err)
 			}
 			if failOn != "" {
 				pol.FailOn = failOn
@@ -123,7 +123,7 @@ EXIT CODES: 0 pass/warn · 1 fail · 3 usage error · 4 internal error.`,
 	f := cmd.Flags()
 	f.StringVar(&format, "format", "text", "output format: text | json | skill-card | sarif")
 	f.StringVar(&out, "out", "", "write output to this file instead of stdout")
-	f.StringVar(&policyPath, "policy", "", "policy file (.skillguard.yaml) with thresholds, waivers, and trust roster")
+	f.StringVar(&policyPath, "policy", "", "policy file (.surfaceguard.yaml) with thresholds, waivers, and trust roster")
 	f.StringVar(&failOn, "fail-on", "", "override fail threshold: critical | high | medium | low")
 	f.StringArrayVar(&rulepacks, "rulepack", nil, "extra rule-pack YAML file to load (repeatable)")
 	f.BoolVarP(&verbose, "verbose", "v", false, "show rationale and suggested fix per finding")
@@ -146,11 +146,11 @@ the skill as SKILL.md.skillsig and, by default, embeds the result of a scan.
 
 INPUT <path>: a bundle directory or a single SKILL.md file (as with 'scan').
 
-KEY (--key): a key file created by 'skill-guard keygen'. Keep it secret;
+KEY (--key): a key file created by 'surfaceguard keygen'. Keep it secret;
 publishers add the matching public key to a verifier's trust roster.
 
 OMS (--oms): additionally write skill.oms.sig, an OpenSSF Model Signing v1.0
-bundle covering the whole directory tree, for verifiers outside skill-guard.
+bundle covering the whole directory tree, for verifiers outside surfaceguard.
 It is written alongside SKILL.md.skillsig, never instead of it, and requires an
 --type ecdsa-p256 key: the OMS algorithm registry does not include Ed25519.
 
@@ -164,23 +164,23 @@ IDENTITY (--identity): a free-form publisher claim recorded in the attestation,
 e.g. oidc:you@example.com, email:you@example.com, or a URL.
 
 EXIT CODES: 0 success · 3 usage error · 4 internal error.`,
-		Example: `  skill-guard keygen --out publisher.key
-  skill-guard sign ./my-skill --key publisher.key --identity oidc:you@example.com
-  skill-guard sign ./my-skill --key publisher.key --no-scan          # integrity-only
-  skill-guard sign ./my-skill --key publisher.key --emit-manifest-fields
-  skill-guard sign ./my-skill --key oms.key --oms   # also write skill.oms.sig`,
+		Example: `  surfaceguard keygen --out publisher.key
+  surfaceguard sign ./my-skill --key publisher.key --identity oidc:you@example.com
+  surfaceguard sign ./my-skill --key publisher.key --no-scan          # integrity-only
+  surfaceguard sign ./my-skill --key publisher.key --emit-manifest-fields
+  surfaceguard sign ./my-skill --key oms.key --oms   # also write skill.oms.sig`,
 		Args: bundlePathArg,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if keyPath == "" {
 				return fail(3, "missing --key\n"+
 					"  signing needs an Ed25519 key file. Create one with:\n"+
-					"    skill-guard keygen --out publisher.key\n"+
-					"  then: skill-guard sign %s --key publisher.key", args[0])
+					"    surfaceguard keygen --out publisher.key\n"+
+					"  then: surfaceguard sign %s --key publisher.key", args[0])
 			}
 			signer, err := attest.LoadKey(keyPath)
 			if err != nil {
 				return fail(3, "cannot load key %q: %v\n"+
-					"  the key must be one produced by 'skill-guard keygen'.", keyPath, err)
+					"  the key must be one produced by 'surfaceguard keygen'.", keyPath, err)
 			}
 			b, err := loadBundleFriendly(args[0])
 			if err != nil {
@@ -196,7 +196,7 @@ EXIT CODES: 0 success · 3 usage error · 4 internal error.`,
 				}
 				if signer.Algorithm() != attest.AlgECDSAP256 {
 					return fail(3, "%v\n"+
-						"  create one with: skill-guard keygen --out oms.key --type ecdsa-p256",
+						"  create one with: surfaceguard keygen --out oms.key --type ecdsa-p256",
 						fmt.Errorf("%w (this key is %s)", oms.ErrNotECDSA, signer.Algorithm()))
 				}
 			}
@@ -284,10 +284,10 @@ drift), and — with a trust roster — that the signing key is trusted.
 
 INPUT <path>: a bundle directory or a single SKILL.md file. verify reads
 whichever signatures are present next to it and reports each: SKILL.md.skillsig
-(skill-guard's own SGMT-1 attestation) and skill.oms.sig (an OpenSSF Model
+(surfaceguard's own SGMT-1 attestation) and skill.oms.sig (an OpenSSF Model
 Signing v1.0 bundle, written by 'sign --oms'). A failure in either exits 2.
 
-TRUST (--policy .skillguard.yaml): without a trust roster the signature cannot
+TRUST (--policy .surfaceguard.yaml): without a trust roster the signature cannot
 be cryptographically checked, so the publisher is reported as UNVERIFIED. Add
 the publisher's public key under trust.keys to establish trust — or, for
 keyless (certificate-bound) signatures, pin the issuing CA under trust.roots
@@ -307,9 +307,9 @@ from its subject, edited, and re-presented. A mismatch exits 2. See
 docs/skill-card-schema.md.
 
 EXIT CODES: 0 ok · 2 verification failed (bad signature / tampered) · 3 usage.`,
-		Example: `  skill-guard verify ./my-skill
-  skill-guard verify ./my-skill --policy .skillguard.yaml
-  skill-guard verify ./my-skill --card card.json`,
+		Example: `  surfaceguard verify ./my-skill
+  surfaceguard verify ./my-skill --policy .surfaceguard.yaml
+  surfaceguard verify ./my-skill --card card.json`,
 		Args: bundlePathArg,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			b, err := loadBundleFriendly(args[0])
@@ -325,7 +325,7 @@ EXIT CODES: 0 ok · 2 verification failed (bad signature / tampered) · 3 usage.
 			}
 			pol, err := policy.Load(policyPath)
 			if err != nil {
-				return fail(3, "cannot use policy %q: %v\n  expected a valid .skillguard.yaml file with a trust roster.", policyPath, err)
+				return fail(3, "cannot use policy %q: %v\n  expected a valid .surfaceguard.yaml file with a trust roster.", policyPath, err)
 			}
 			sigPath := attest.SigPath(args[0])
 			omsPath := oms.SigPath(b.Root)
@@ -341,7 +341,7 @@ EXIT CODES: 0 ok · 2 verification failed (bad signature / tampered) · 3 usage.
 			// what reading SKILL.md.skillsig alone would have reported.
 			env, err := attest.ReadEnvelope(sigPath)
 			if err != nil && !hasOMS {
-				return fail(3, "cannot read attestation %q: %v\n  re-create it with: skill-guard sign %s --key <key>", sigPath, err, args[0])
+				return fail(3, "cannot read attestation %q: %v\n  re-create it with: surfaceguard sign %s --key <key>", sigPath, err, args[0])
 			}
 
 			noColorOut := noColor || report.ColorDisabled(os.Stdout)
@@ -375,7 +375,7 @@ EXIT CODES: 0 ok · 2 verification failed (bad signature / tampered) · 3 usage.
 		},
 	}
 	f := cmd.Flags()
-	f.StringVar(&policyPath, "policy", "", "policy file (.skillguard.yaml) providing the trust roster")
+	f.StringVar(&policyPath, "policy", "", "policy file (.surfaceguard.yaml) providing the trust roster")
 	f.StringVar(&format, "format", "text", "output format: text (json planned)")
 	f.StringVar(&cardPath, "card", "", "check this skill card against the bundle instead of checking signatures")
 	f.BoolVar(&noColor, "no-color", false, "disable ANSI color in output")
@@ -395,10 +395,10 @@ func keygenCmd() *cobra.Command {
 
 The .key is self-contained (signing needs only it); the .pub is a convenience
 you hand to consumers so they can add you to their policy trust roster
-(trust.keys). Use the .key with 'skill-guard sign'.
+(trust.keys). Use the .key with 'surfaceguard sign'.
 
 ALGORITHM (--type):
-  • ed25519      default; used by skill-guard's own SGMT-1 attestations.
+  • ed25519      default; used by surfaceguard's own SGMT-1 attestations.
   • ecdsa-p256   required by OpenSSF Model Signing (OMS), whose algorithm
                  registry mandates EC P-256/384/521 and does not include
                  Ed25519. Use this for keys that must verify with OMS tooling.
@@ -407,10 +407,10 @@ NOTE: the .key is currently stored unencrypted; protect it with filesystem
 permissions. At-rest encryption is planned.
 
 EXIT CODES: 0 success · 4 internal error.`,
-		Example: `  skill-guard keygen --out publisher.key            # writes publisher.key + publisher.pub
-  skill-guard keygen --out publisher.key --keyid team-release-2026
-  skill-guard keygen --out publisher.key --no-pub   # private key only
-  skill-guard keygen --out oms.key --type ecdsa-p256   # OMS-compatible key`,
+		Example: `  surfaceguard keygen --out publisher.key            # writes publisher.key + publisher.pub
+  surfaceguard keygen --out publisher.key --keyid team-release-2026
+  surfaceguard keygen --out publisher.key --no-pub   # private key only
+  surfaceguard keygen --out oms.key --type ecdsa-p256   # OMS-compatible key`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validateKeyType(keyType); err != nil {
@@ -421,7 +421,7 @@ EXIT CODES: 0 success · 4 internal error.`,
 				return fail(4, "%v", err)
 			}
 			if out == "" {
-				out = "skill-guard.key"
+				out = "surfaceguard.key"
 			}
 			if pubOut == "" {
 				pubOut = attest.PubPath(out)
@@ -458,7 +458,7 @@ EXIT CODES: 0 success · 4 internal error.`,
 		},
 	}
 	f := cmd.Flags()
-	f.StringVar(&out, "out", "", "output private key file path (default skill-guard.key)")
+	f.StringVar(&out, "out", "", "output private key file path (default surfaceguard.key)")
 	f.StringVar(&keyID, "keyid", "", "key identifier recorded in signatures (default derived from public key)")
 	f.StringVar(&keyType, "type", attest.AlgEd25519, "key algorithm: ed25519 | ecdsa-p256 (ecdsa-p256 for OMS compatibility)")
 	f.StringVar(&pubOut, "pub", "", "output public key file path (default <name>.pub)")
@@ -472,7 +472,7 @@ func versionCmd() *cobra.Command {
 		Use:   "version",
 		Short: "Print version and built-in rule-pack versions",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			fmt.Printf("skill-guard %s\n", Version)
+			fmt.Printf("surfaceguard %s\n", Version)
 			packs, err := rules.Builtin()
 			if err != nil {
 				return fail(4, "%v", err)

@@ -11,7 +11,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/SVGreg/skill-guard/pkg/model"
+	"github.com/SVGreg/surfaceguard/pkg/model"
 )
 
 // EmitThreshold is the minimum confidence (after context modifiers) for a

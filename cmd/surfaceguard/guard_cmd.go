@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/SVGreg/skill-guard/pkg/guard"
-	"github.com/SVGreg/skill-guard/pkg/policy"
-	"github.com/SVGreg/skill-guard/pkg/report"
+	"github.com/SVGreg/surfaceguard/pkg/guard"
+	"github.com/SVGreg/surfaceguard/pkg/policy"
+	"github.com/SVGreg/surfaceguard/pkg/report"
 	"github.com/spf13/cobra"
 )
 
@@ -48,10 +48,10 @@ policy, and whether scanning was skipped, so one changed byte or one changed
 setting is a miss. Off unless asked for.
 
 EXIT CODES: 0 allow or warn · 1 deny · 3 usage error · 4 internal error.`,
-		Example: `  skill-guard guard ./my-skill
-  skill-guard guard ./my-skill --format json
-  skill-guard guard ./my-skill --policy .skillguard.yaml --cache-dir ~/.cache/skill-guard
-  skill-guard guard ./downloaded-skill --mode install   # before adding it to a machine`,
+		Example: `  surfaceguard guard ./my-skill
+  surfaceguard guard ./my-skill --format json
+  surfaceguard guard ./my-skill --policy .surfaceguard.yaml --cache-dir ~/.cache/surfaceguard
+  surfaceguard guard ./downloaded-skill --mode install   # before adding it to a machine`,
 		Args: bundlePathArg,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if format != "text" && format != "json" {
@@ -59,7 +59,7 @@ EXIT CODES: 0 allow or warn · 1 deny · 3 usage error · 4 internal error.`,
 			}
 			pol, err := policy.Load(policyPath)
 			if err != nil {
-				return fail(3, "cannot use policy %q: %v\n  expected a valid .skillguard.yaml file.", policyPath, err)
+				return fail(3, "cannot use policy %q: %v\n  expected a valid .surfaceguard.yaml file.", policyPath, err)
 			}
 
 			switch gateMode {
@@ -112,7 +112,7 @@ EXIT CODES: 0 allow or warn · 1 deny · 3 usage error · 4 internal error.`,
 		},
 	}
 	f := cmd.Flags()
-	f.StringVar(&policyPath, "policy", "", "policy file (.skillguard.yaml) with thresholds and the trust roster")
+	f.StringVar(&policyPath, "policy", "", "policy file (.surfaceguard.yaml) with thresholds and the trust roster")
 	f.StringVar(&format, "format", "text", "output format: text | json")
 	f.StringVar(&gateMode, "mode", string(guard.ModeLoad), "gate mode: load | install (install is stricter about provenance)")
 	f.StringVar(&cacheDir, "cache-dir", "", "cache decisions in this directory (\"-\" for the user cache dir)")
@@ -177,7 +177,7 @@ func printDecision(d *guard.Decision, noColor bool) {
 	const maxShown = 5
 	for i, f := range d.Findings {
 		if i == maxShown {
-			fmt.Printf("  %s… and %d more — run `skill-guard scan` for the full report%s\n",
+			fmt.Printf("  %s… and %d more — run `surfaceguard scan` for the full report%s\n",
 				c(gray), len(d.Findings)-maxShown, c(reset))
 			break
 		}

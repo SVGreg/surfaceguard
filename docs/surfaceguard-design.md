@@ -1,4 +1,4 @@
-# skill-guard — Technical Design Document
+# surfaceguard — Technical Design Document
 
 > Security, signing & provenance toolchain for the Agent Skills (`SKILL.md`) standard.
 > **Status:** Design v2 — ready for implementation. Supersedes v1 (fixes: signing byte-level spec, Merkle spec, rule-pack trust model, unified verdict model, OWASP-pivoted use cases).
@@ -8,7 +8,7 @@
 
 ## 1. Purpose & scope
 
-`skill-guard` is vendor-neutral trust infrastructure for the Agent Skills standard. The `SKILL.md` standard ships with **no signing, provenance, integrity-hash, or publisher-verification mechanism**; marketplaces perform zero security review; Snyk's ToxicSkills study found ~13.4% of scanned skills carry a critical issue. OWASP's Agentic Skills Top 10 prescribes the mitigations (ed25519 signing, `content_hash`, Merkle-root registry verification, registry scanning) but — by its own admission — does not specify the canonicalization or byte-level procedure. `skill-guard` implements those mitigations and **precisely specifies what OWASP leaves open**, so independent implementations interoperate.
+`surfaceguard` is vendor-neutral trust infrastructure for the Agent Skills standard. The `SKILL.md` standard ships with **no signing, provenance, integrity-hash, or publisher-verification mechanism**; marketplaces perform zero security review; Snyk's ToxicSkills study found ~13.4% of scanned skills carry a critical issue. OWASP's Agentic Skills Top 10 prescribes the mitigations (ed25519 signing, `content_hash`, Merkle-root registry verification, registry scanning) but — by its own admission — does not specify the canonicalization or byte-level procedure. `surfaceguard` implements those mitigations and **precisely specifies what OWASP leaves open**, so independent implementations interoperate.
 
 It does three things:
 
@@ -18,7 +18,7 @@ It does three things:
 
 **What signing means (and does not).** An attestation proves **integrity** (bundle unchanged since signing) and **identity** (who signed). It does **not** prove safety — an attacker can sign their own malware. Safety comes from the scan verdict; trust comes from *whose* key signed. Consumers MUST treat `attestation.verified: true` as "authentic and untampered," never as "safe." Tooling output and docs repeat this distinction wherever the two appear together.
 
-**Non-goals (v1):** not a runtime sandbox, not a network proxy, not a marketplace, not an LLM-as-judge service (LLM semantic analysis is an optional pluggable engine, off by default). `skill-guard` composes with those layers.
+**Non-goals (v1):** not a runtime sandbox, not a network proxy, not a marketplace, not an LLM-as-judge service (LLM semantic analysis is an optional pluggable engine, off by default). `surfaceguard` composes with those layers.
 
 ---
 
@@ -61,7 +61,7 @@ Authoritative, license-checked sources the ruleset, use cases, and attestation f
 
 | Resource | URL | License | Decision |
 |---|---|---|---|
-| Snyk **ToxicSkills** (`toxicskills-goof`) | https://github.com/snyk-labs/toxicskills-goof | **⚠️ No LICENSE file** | **Do NOT vendor** (no license = all rights reserved; repo says "educational only"). Reference only. `skill-guard corpus pull toxicskills` performs an opt-in clone into the user's own cache, **stored defanged** (§10.7): payload files zipped with a non-skill extension inside a `DO-NOT-LOAD.quarantine/` directory plus a marker file, so local agents' skill discovery and AV don't ingest live samples. Never redistributed in our repo or binary. Revisit if Snyk adds a permissive license. |
+| Snyk **ToxicSkills** (`toxicskills-goof`) | https://github.com/snyk-labs/toxicskills-goof | **⚠️ No LICENSE file** | **Do NOT vendor** (no license = all rights reserved; repo says "educational only"). Reference only. `surfaceguard corpus pull toxicskills` performs an opt-in clone into the user's own cache, **stored defanged** (§10.7): payload files zipped with a non-skill extension inside a `DO-NOT-LOAD.quarantine/` directory plus a marker file, so local agents' skill discovery and AV don't ingest live samples. Never redistributed in our repo or binary. Revisit if Snyk adds a permissive license. |
 | Our own **fixtures** | `testdata/` (this repo) | Apache-2.0 | Synthetic malicious + benign skills; the primary CI regression corpus. |
 
 **Supporting evidence in rationale** (not code dependencies): Snyk ToxicSkills study (https://snyk.io/blog/toxicskills-malicious-ai-agent-skills-clawhub/), SkillSieve triage framework (https://arxiv.org/html/2604.06550v1).
@@ -74,42 +74,42 @@ Pivoted on the OWASP Skill Scanner Integration guide's personas and scenarios. E
 
 ### 3.1 Persona map (per OWASP integration guide)
 
-| Persona | Integration point | skill-guard surface |
+| Persona | Integration point | surfaceguard surface |
 |---|---|---|
 | **Skill author / developer** | Local dev, pre-commit hook | `scan`, `sign`, pre-commit hook |
 | **CI/CD pipeline** | GitHub Actions / GitLab CI on PR & push | `scan --format sarif`, exit codes, GitHub Action |
 | **Registry operator** | Publish-time webhook gate | daemon (`serve`) or CLI in webhook; `card`; `.skillsig` storage; transparency log |
 | **Agent runtime / SDK integrator** | Pre-load guard before skill enters context | library `Guard()`, bindings, daemon |
-| **Security lead / org admin** | Policy, trust roster, fleet inventory, multi-scanner review | `.skillguard.yaml` policy, `trust`, SARIF merge, skill-card inventory |
-| **End user** (e.g., Claude Code user installing a marketplace skill) | Pre-install check | `skill-guard scan <git-url>` one-liner |
+| **Security lead / org admin** | Policy, trust roster, fleet inventory, multi-scanner review | `.surfaceguard.yaml` policy, `trust`, SARIF merge, skill-card inventory |
+| **End user** (e.g., Claude Code user installing a marketplace skill) | Pre-install check | `surfaceguard scan <git-url>` one-liner |
 
 ### 3.2 Flow A — Skill author: develop → scan → fix → sign → publish
 
 ```console
-$ skill-guard scan ./my-skill
+$ surfaceguard scan ./my-skill
   SKILL.md:12  SG-INJ-001  high  Imperative override phrase ("ignore previous instructions")
   scripts/setup.sh:3  SG-NET-002  critical  curl piped to bash
   verdict: fail (fail-on: high)   risk score: 78/100 (L3)
 $ ... fix findings ...
-$ skill-guard scan ./my-skill
+$ surfaceguard scan ./my-skill
   verdict: pass   risk score: 4/100 (L0)
-$ skill-guard keygen --out ~/.config/skill-guard/author.key       # once
-$ skill-guard sign ./my-skill --key ~/.config/skill-guard/author.key
+$ surfaceguard keygen --out ~/.config/surfaceguard/author.key       # once
+$ surfaceguard sign ./my-skill --key ~/.config/surfaceguard/author.key
   wrote my-skill.skillsig  (merkle_root sha256:9f2b…, scan attached: pass @ core-packs 1.4.0)
-$ skill-guard sign ./my-skill --key … --emit-manifest-fields      # optional USF compat (§7.5)
+$ surfaceguard sign ./my-skill --key … --emit-manifest-fields      # optional USF compat (§7.5)
   updated my-skill/SKILL.md front-matter: content_hash, signature
 $ git commit && publish to registry (bundle + .skillsig)
 ```
 
 - `sign` **runs the default scan automatically** and embeds the result in the attestation; `--no-scan` produces an integrity-only attestation with `"scan": null` (explicitly rendered as "UNSCANNED" on verify). This resolves the sign↔scan ordering: sign never *requires* a prior scan, and signing a failing skill is allowed (signature ≠ safety, §1) but the failing verdict is recorded in the attestation and surfaces on every verify.
-- Pre-commit hook (mirrors OWASP's pre-commit scenario): `repo: skill-guard`, `entry: skill-guard scan --fail-on high`, targeting `SKILL.md`, `*.md`, `*.yaml`, `*.json`, scripts.
+- Pre-commit hook (mirrors OWASP's pre-commit scenario): `repo: surfaceguard`, `entry: surfaceguard scan --fail-on high`, targeting `SKILL.md`, `*.md`, `*.yaml`, `*.json`, scripts.
 
 ### 3.3 Flow B — CI/CD: PR gate with SARIF (GitHub Actions / GitLab CI)
 
 Per OWASP's approval-gate workflow: scan on PR → SARIF to code scanning → block merge over threshold.
 
 ```yaml
-# .github/workflows/skill-guard.yml (shipped as a reusable action)
+# .github/workflows/surfaceguard.yml (shipped as a reusable action)
 on:
   pull_request: { paths: ["skills/**"] }
 jobs:
@@ -117,10 +117,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: skill-guard/action@v1          # installs pinned skill-guard binary
-        with: { path: skills/, fail-on: high, format: sarif, output: skill-guard.sarif }
+      - uses: surfaceguard/action@v1          # installs pinned surfaceguard binary
+        with: { path: skills/, fail-on: high, format: sarif, output: surfaceguard.sarif }
       - uses: github/codeql-action/upload-sarif@v3
-        with: { sarif_file: skill-guard.sarif }
+        with: { sarif_file: surfaceguard.sarif }
 ```
 
 - SARIF `ruleId` = `SG-*` rule ID; each result carries `properties.ast: ["AST01",…]` and `properties.layer` (§3.6); artifacts carry `hashes["sha-256"]` so multi-scanner reports join per OWASP's composition convention.
@@ -132,7 +132,7 @@ jobs:
 Mirrors OWASP's Node.js webhook pattern, replacing ad-hoc scanning with a daemon call:
 
 ```
-publish request ──► registry webhook ──► skill-guard daemon: Guard(bundle)
+publish request ──► registry webhook ──► surfaceguard daemon: Guard(bundle)
                                           │  verdict fail/critical ──► reject upload (show findings to author)
                                           │  verdict pass/warn ──► accept; store: bundle, .skillsig, skill-card
                                           └► append (merkle_root, keyid, card digest) to transparency log
@@ -159,18 +159,18 @@ on every session start / skill reload: recompute merkle_root; root changed ⇒ c
 
 ### 3.6 Flow E — Security lead: org policy, trust roster, fleet inventory, multi-scanner review
 
-- **One policy file** (`.skillguard.yaml`, §10.4) distributed org-wide (repo, MDM, or `--policy https://…` pinned by hash): thresholds, waivers with expiry+justification, allowlists, and the **trust roster** (`trust:` section — accepted keys/identities, revocations). Policy and trust ship in one document to avoid the two-file confusion; `trust:` may alternatively `include:` a separate file.
+- **One policy file** (`.surfaceguard.yaml`, §10.4) distributed org-wide (repo, MDM, or `--policy https://…` pinned by hash): thresholds, waivers with expiry+justification, allowlists, and the **trust roster** (`trust:` section — accepted keys/identities, revocations). Policy and trust ship in one document to avoid the two-file confusion; `trust:` may alternatively `include:` a separate file.
 - **Fleet inventory (AST09):** every guard/scan appends a JSONL audit record (skill name, merkle_root, verdict, policy version, timestamp, host) to a configurable sink; skill-cards aggregate into a central index — skill ID, version, hash, install date, installer identity, risk tier — satisfying the OWASP AST09 checklist fields.
-- **Multi-scanner composition (AST08, per OWASP conventions):** `skill-guard report merge a.sarif b.sarif` joins runs by `artifacts[].hashes["sha-256"]`, partitions by `properties.layer` (`content` = instruction-layer findings, `code` = script findings, `provenance` = signature/hash findings, `drift` = change-detection), and preserves `run.tool.driver.name`+version per finding. SkillSpector/mcp-scan SARIF imports cleanly.
+- **Multi-scanner composition (AST08, per OWASP conventions):** `surfaceguard report merge a.sarif b.sarif` joins runs by `artifacts[].hashes["sha-256"]`, partitions by `properties.layer` (`content` = instruction-layer findings, `code` = script findings, `provenance` = signature/hash findings, `drift` = change-detection), and preserves `run.tool.driver.name`+version per finding. SkillSpector/mcp-scan SARIF imports cleanly.
 
 ### 3.7 Flow F — End user: pre-install spot check
 
 ```console
-$ skill-guard scan https://github.com/someone/cool-skill
+$ surfaceguard scan https://github.com/someone/cool-skill
   verdict: warn   risk score: 31/100 (L1)
   SKILL.md:44  SG-REF-002  medium  External reference not pinned to content hash
   1 medium, 2 low. Run with -v for details.
-$ skill-guard verify https://github.com/someone/cool-skill
+$ surfaceguard verify https://github.com/someone/cool-skill
   attestation: present, signature VALID (key not in your trust roster — identity unverified)
   merkle root: MATCH   scan-at-signing: pass (core-packs 1.3.x)
 ```
@@ -183,7 +183,7 @@ Human-first output: verdict and score on line one, findings as `file:line id sev
 
 ```
                          ┌───────────────────────────────────────────────┐
-                         │              skill-guard core (Go)            │
+                         │              surfaceguard core (Go)            │
                          │                                               │
   SKILL.md bundle ──►    │  skill ──► scan ──► findings ──► report       │ ──► text / JSON / SARIF
   (dir, archive, git,    │   │         ▲          │            │         │ ──► skill-card.json
@@ -195,7 +195,7 @@ Human-first output: verdict and score on line one, findings as `file:line id sev
                          └───────────┬───────────────┬───────────────────┘
                                      │               │
              ┌───────────────────────┴─────┐   ┌─────┴────────────────────────────┐
-             │  cmd/skill-guard (CLI)      │   │  embedding surfaces              │
+             │  cmd/surfaceguard (CLI)      │   │  embedding surfaces              │
              │  scan sign verify card ...  │   │  Go API · C-ABI · Py · TS · Rust │
              └─────────────────────────────┘   │  daemon: gRPC + JSON-RPC/stdio   │
                                                └──────────────────────────────────┘
@@ -318,15 +318,15 @@ Connect **sources** (env, credential reads, conversation, clipboard, network inp
 | AST09 | No Governance | audit JSONL + card inventory fields (§3.6), SG-PRV-005 |
 | AST10 | Cross-Platform Reuse | manifest normalization, card `platforms[]`, cross-registry hash sharing |
 
-AST06/AST09/AST10 are partly runtime/organizational: `skill-guard` supplies the artifacts (attestation, card, audit records, normalized manifest) those layers consume, and flags what static analysis can see.
+AST06/AST09/AST10 are partly runtime/organizational: `surfaceguard` supplies the artifacts (attestation, card, audit records, normalized manifest) those layers consume, and flags what static analysis can see.
 
 ---
 
 ## 6. Module design (Go packages)
 
 ```
-skill-guard/
-  cmd/skill-guard/           # CLI entrypoint (cobra)
+surfaceguard/
+  cmd/surfaceguard/           # CLI entrypoint (cobra)
   pkg/
     skill/                   # SKILL.md + bundle model, parsing, normalization
     rules/                   # rule-pack loader, engine registry, matching
@@ -335,7 +335,7 @@ skill-guard/
     attest/                  # Merkle (§7.1), DSSE (§7.3), USF fields (§7.5), signers
     verify/                  # attestation + trust verification
     trust/                   # trust roster (from policy), revocation, transparency-log client
-    policy/                  # .skillguard.yaml: thresholds, waivers, allowlists, trust section
+    policy/                  # .surfaceguard.yaml: thresholds, waivers, allowlists, trust section
     card/                    # skill-card generation (§9)
     report/                  # formatters: text, json, sarif, skill-card; sarif merge
     engine/
@@ -447,7 +447,7 @@ The signed payload is a JSON **statement** (no signature material inside):
   "predicate": {
     "issued_at": "2026-07-16T00:00:00Z",
     "expires_at": "2027-07-16T00:00:00Z",
-    "builder": "skill-guard@1.0.0",
+    "builder": "surfaceguard@1.0.0",
     "reproducible": true
   },
   "publisher": { "identity": "oidc:author@example.com", "keyid": "author-2026" }
@@ -491,7 +491,7 @@ type TrustRoster interface {
     Revoked(ctx context.Context, keyid string) bool
 }
 ```
-Implementations: local encrypted keyfile (default; `skill-guard keygen`), AWS KMS, PKCS#11, Sigstore keyless (Fulcio cert → OIDC identity; Rekor entry recorded in `predicate`).
+Implementations: local encrypted keyfile (default; `surfaceguard keygen`), AWS KMS, PKCS#11, Sigstore keyless (Fulcio cert → OIDC identity; Rekor entry recorded in `predicate`).
 
 ### 7.5 OWASP Universal Skill Format in-manifest fields (compat emitter)
 
@@ -542,7 +542,7 @@ rules:
 
 Matcher primitives (`static`): `regex` (RE2 only — no backtracking ReDoS), `substring`, `glob`, `unicode_category`, `bidi_control`, `homoglyph_ratio`, `entropy` (delegates to `secret`), `ast_call` (language-aware call match), `yaml_tag`, `json_path`, `url_host`, `dep_unpinned`; combinable via `any`/`all`/`not`. Later packs may `disable:` or re-`severity:` inherited rule IDs; policy waivers are separate and audited.
 
-**Versioning (`version:`) — normative.** Each pack carries its own semver, independent of the binary version and of every other pack. It is what `skill-guard version` reports and (once `card.rulepacks[]` lands) what a scan record pins, so it is the consumer's only answer to *"which detections did this scan run?"*. It MUST be bumped in the **same commit** as the change it describes — never batched, never deferred to release time — and exactly once per PR. Pick the level by the direction the change moves detection surface:
+**Versioning (`version:`) — normative.** Each pack carries its own semver, independent of the binary version and of every other pack. It is what `surfaceguard version` reports and (once `card.rulepacks[]` lands) what a scan record pins, so it is the consumer's only answer to *"which detections did this scan run?"*. It MUST be bumped in the **same commit** as the change it describes — never batched, never deferred to release time — and exactly once per PR. Pick the level by the direction the change moves detection surface:
 
 | Bump | The change can produce… | Examples |
 |---|---|---|
@@ -558,12 +558,12 @@ A PR that both widens and narrows (the normal `sg-rule-polish` shape) takes the 
 
 | Pack source | Signature requirement | Behavior |
 |---|---|---|
-| **Built-in** (`go:embed`) | Signed by the skill-guard project key (embedded) | Verified at startup; mismatch ⇒ hard error (binary tamper). |
+| **Built-in** (`go:embed`) | Signed by the surfaceguard project key (embedded) | Verified at startup; mismatch ⇒ hard error (binary tamper). |
 | **Explicit flag** (`--rulepack PATH`) | None required | Loaded; if unsigned or key unknown, a startup notice names the pack and `provenance: unsigned` is recorded in the card. The explicit flag *is* the user's authorization. |
 | **Auto-discovered** (`--rulepack-dir`, system/user dirs) | MUST be signed by a key in the trust roster | Unsigned/unknown-key packs in auto-load paths are **skipped with a warning** (fail-closed: a writable drop-in dir must not silently add rules — or silently *disable* them). |
 | **Remote** (`--rulepack https://…`) | MUST be signed by a roster key AND pinned (`#sha256=` fragment) | Otherwise rejected. |
 
-Third parties therefore ship packs by (a) telling users to pass `--rulepack`, or (b) publishing their signing key for users to add to their roster (`skill-guard trust add-pack-key …`). Pack signature = DSSE over the pack bytes, same §7.3 crypto.
+Third parties therefore ship packs by (a) telling users to pass `--rulepack`, or (b) publishing their signing key for users to add to their roster (`surfaceguard trust add-pack-key …`). Pack signature = DSSE over the pack bytes, same §7.3 crypto.
 
 ---
 
@@ -657,7 +657,7 @@ Serialized verdict values are lowercase strings: **`pass` | `warn` | `fail`** (G
 - `warn` — no fail, and (≥1 finding ≥ `warn_on` (default **medium**), or attestation absent/untrusted while `policy.attestation.required: false` but `warn_if_missing: true` (default)).
 - `pass` — otherwise.
 
-### 10.4 Policy file (`.skillguard.yaml`) — one file, includes trust
+### 10.4 Policy file (`.surfaceguard.yaml`) — one file, includes trust
 
 ```yaml
 apiVersion: skillguard.net/policy.v1
@@ -698,7 +698,7 @@ trust:                           # the roster — same file, no --trust-store fl
 - Version tracking: every output embeds binary + rule-pack versions (OWASP: "version tracking of scanner and rule updates").
 
 ### 10.7 Corpus quarantine
-`corpus pull` writes to `~/.cache/skill-guard/corpus/<name>.quarantine/`: samples stored inside a single zip with extension `.sgquar` (not extracted), plus `DO-NOT-LOAD.md` marker. Scans read members through the zip reader — live `SKILL.md` files never sit on disk where an agent's skill discovery or a backup/indexer could pick them up. Loud red warning on pull.
+`corpus pull` writes to `~/.cache/surfaceguard/corpus/<name>.quarantine/`: samples stored inside a single zip with extension `.sgquar` (not extracted), plus `DO-NOT-LOAD.md` marker. Scans read members through the zip reader — live `SKILL.md` files never sit on disk where an agent's skill discovery or a backup/indexer could pick them up. Loud red warning on pull.
 
 ---
 
@@ -753,28 +753,28 @@ def stage_safe_skills(src: pathlib.Path, dst: pathlib.Path, policy: str) -> None
     for skill_dir in src.iterdir():
         r = guard(skill_dir, policy=policy)          # verdict cached by merkle_root
         if r.verdict == "fail":
-            log.warning("skill-guard blocked %s: %s", skill_dir.name, r.findings[:3])
+            log.warning("surfaceguard blocked %s: %s", skill_dir.name, r.findings[:3])
             continue
         shutil.copytree(skill_dir, dst / skill_dir.name, dirs_exist_ok=True)
 
-stage_safe_skills(Path("skills-inbox"), Path("skills"), "org.skillguard.yaml")
+stage_safe_skills(Path("skills-inbox"), Path("skills"), "org.surfaceguard.yaml")
 # then point the agent/SDK at "skills" as its skills directory
 ```
 
-**(b) Harness hook (e.g., Claude Code `PreToolUse`/session-start hook):** shell out to `skill-guard guard "$SKILL_DIR" --format json`; block on exit code 1/2.
+**(b) Harness hook (e.g., Claude Code `PreToolUse`/session-start hook):** shell out to `surfaceguard guard "$SKILL_DIR" --format json`; block on exit code 1/2.
 
 **(c) Custom loader wrap:** runtimes that own their skill loader call `Guard()` inline (TypeScript shown):
 
 ```ts
-import { guard } from "@skillguard/node";
-const r = await guard(skillPath, { policy: "org.skillguard.yaml" });
+import { guard } from "@surfaceguard/node";
+const r = await guard(skillPath, { policy: "org.surfaceguard.yaml" });
 if (r.verdict === "fail") { audit.block(skillPath, r); return; }
 loadSkill(skillPath);
 ```
 
 **Rug-pull protection in all three:** the verdict cache is keyed by `merkle_root` (§3.5); any content change forces re-guard, satisfying AST07 continuously rather than only at install.
 
-### 11.3 Daemon (`skill-guard serve`) — language-agnostic, secure by default
+### 11.3 Daemon (`surfaceguard serve`) — language-agnostic, secure by default
 
 - **gRPC** (`proto/skillguard.proto`): `Scan`, `Sign`, `Verify`, `Card`, `Guard`.
 - **JSON-RPC over stdio** (`serve --stdio`): MCP-style framing, zero FFI for any host that can spawn a subprocess.
@@ -790,7 +790,7 @@ loadSkill(skillPath);
 
 Rationale: duplicating rule evaluation per language multiplies attack surface and drift; one audited Go core with thin bindings is the trust-correct split. **Verify-only** is additionally specified for pure per-language reimplementation (§7 is self-contained) so load-time verification can be dependency-free where FFI is unacceptable.
 
-Packaging: GoReleaser (CLI + shared libs, linux/macos/windows × amd64/arm64), PyPI `skill-guard`, npm `@skillguard/node`, crates.io `skillguard`, GitHub Action `skill-guard/action@v1`, pre-commit hook repo.
+Packaging: GoReleaser (CLI + shared libs, linux/macos/windows × amd64/arm64), PyPI `surfaceguard`, npm `@surfaceguard/node`, crates.io `skillguard`, GitHub Action `surfaceguard/action@v1`, pre-commit hook repo.
 
 ---
 
@@ -814,7 +814,7 @@ Packaging: GoReleaser (CLI + shared libs, linux/macos/windows × amd64/arm64), P
 - **Fuzzing:** `go test -fuzz` on front-matter parser, archive extractor, DSSE/USF parsers.
 - **Interop:** SARIF schema validation; SkillSpector + mcp-scan SARIF merge fixtures (§3.6 join/partition conventions).
 - **Cross-language:** Python/Node/Rust wrappers + daemon must return findings byte-identical to the Go core on shared fixtures; verify-only reimplementation conformance via SGMT-1 vectors.
-- **Self-test:** the repo's own examples and the daemon config pass `skill-guard scan` (dogfood; guards §11.3's promise).
+- **Self-test:** the repo's own examples and the daemon config pass `surfaceguard scan` (dogfood; guards §11.3's promise).
 
 ---
 

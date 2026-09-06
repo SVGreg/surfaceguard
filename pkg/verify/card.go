@@ -5,18 +5,18 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/SVGreg/skill-guard/pkg/attest"
-	"github.com/SVGreg/skill-guard/pkg/model"
-	"github.com/SVGreg/skill-guard/pkg/scan"
-	"github.com/SVGreg/skill-guard/pkg/skill"
+	"github.com/SVGreg/surfaceguard/pkg/attest"
+	"github.com/SVGreg/surfaceguard/pkg/model"
+	"github.com/SVGreg/surfaceguard/pkg/scan"
+	"github.com/SVGreg/surfaceguard/pkg/skill"
 )
 
 // Errors a card document can fail with before it can be checked against
 // anything. These are malformed *input*, not a failed verification: a file that
-// is not a skill-guard card cannot make a false claim about a bundle, so the
+// is not a surfaceguard card cannot make a false claim about a bundle, so the
 // caller reports them as usage errors rather than as tampering.
 var (
-	ErrNotACard          = errors.New("not a skill-guard skill card")
+	ErrNotACard          = errors.New("not a surfaceguard skill card")
 	ErrUnsupportedSchema = errors.New("unsupported skill-card schema version")
 	ErrNoContentHash     = errors.New("card has no content_hash (emitted before v1 gained one)")
 )
@@ -46,7 +46,7 @@ type cardEnvelope struct {
 
 // ParseCard reads a card document, accepting either the emitted envelope or a
 // bare card body. It validates only what must hold for the card to be checkable
-// at all: it is a skill-guard card, of a version this build understands, and it
+// at all: it is a surfaceguard card, of a version this build understands, and it
 // carries a content hash.
 func ParseCard(data []byte) (*scan.Card, error) {
 	var env cardEnvelope
@@ -94,7 +94,7 @@ func VerifyCard(b *skill.Bundle, card *scan.Card) *CardResult {
 			fmt.Sprintf("The card claims content_hash %s; the bundle hashes to %s. The card was either "+
 				"emitted for a different skill, or the skill changed after the card was written.",
 				res.CardHash, res.BundleHash),
-			"Re-emit the card for this bundle: skill-guard scan <path> --format skill-card --out card.json.")
+			"Re-emit the card for this bundle: surfaceguard scan <path> --format skill-card --out card.json.")
 		f.File = "<skill-card>"
 		res.Findings = append(res.Findings, f)
 	}

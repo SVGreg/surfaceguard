@@ -1,6 +1,6 @@
 ---
 name: sg-develop
-description: Run one skill-guard development cycle — reconcile the plan with merged PRs, pick the next ready task from docs/v1-dev-plan.md, implement it end-to-end with tests and docs, and open one PR. Progress is tracked in the plan file so consecutive sessions resume without context. Use when asked to continue development, implement the next roadmap task, work on a milestone, or when the development loop fires on a schedule.
+description: Run one surfaceguard development cycle — reconcile the plan with merged PRs, pick the next ready task from docs/v1-dev-plan.md, implement it end-to-end with tests and docs, and open one PR. Progress is tracked in the plan file so consecutive sessions resume without context. Use when asked to continue development, implement the next roadmap task, work on a milestone, or when the development loop fires on a schedule.
 ---
 
 # Run one development cycle
@@ -87,7 +87,7 @@ Mark the chosen row `in-progress` as you start, so a concurrent cycle does not g
 ## 3. Implement it
 
 - Re-read the task card **and** the source section of `docs/v1-dev-roadmap.md` it came from, plus
-  the design authority for the area: `docs/skill-guard-design.md` for architecture,
+  the design authority for the area: `docs/surfaceguard-design.md` for architecture,
   `docs/rule-verification.md` for what an `SG-` id means, `CLAUDE.md` for invariants.
 - **Match the surrounding code.** Package responsibilities in `CLAUDE.md` are the map: parsing in
   `pkg/skill`, matching in `pkg/rules`, orchestration in `pkg/scan`, output in `pkg/report`,
@@ -121,7 +121,7 @@ Beyond it, this cycle owes:
 2. The cross-cutting checklist in `docs/v1-dev-plan.md §2`, ticked honestly.
 3. If the change can move findings — any rule pack, matcher, scoring, or target change —
    regenerate evaluation and confirm no unexplained movement in the corpus counts:
-   `go build -o skill-guard ./cmd/skill-guard && evaluation/scripts/run_scans.sh && python3 evaluation/scripts/aggregate.py`
+   `go build -o surfaceguard ./cmd/surfaceguard && evaluation/scripts/run_scans.sh && python3 evaluation/scripts/aggregate.py`
    — **mind the parallelism cap in `CLAUDE.md`**; never pass more than the machine's core count.
 4. If the change touches performance-sensitive paths, confirm the budget: `scan` well under a
    second on a typical bundle, cached `verify` in single-digit ms.

@@ -1,7 +1,7 @@
 package rules
 
 import (
-	"github.com/SVGreg/skill-guard/pkg/model"
+	"github.com/SVGreg/surfaceguard/pkg/model"
 )
 
 // ContextRule caps the severity of findings anchored in its span instead of

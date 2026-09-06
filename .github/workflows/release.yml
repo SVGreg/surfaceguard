@@ -50,7 +50,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # The composite action in this repo is consumed as `uses: SVGreg/skill-guard@v0`,
+  # The composite action in this repo is consumed as `uses: SVGreg/surfaceguard@v0`,
   # the floating major tag every marketplace action is expected to publish. It is
   # moved only after goreleaser has attached the binaries: the action installs the
   # release matching its own ref, so a major tag pointing at a release with no

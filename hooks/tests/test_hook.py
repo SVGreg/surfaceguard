@@ -1,4 +1,4 @@
-"""Unit tests for the pure decision logic in skillguard_hook.
+"""Unit tests for the pure decision logic in surfaceguard_hook.
 
 Run: python3 -m unittest discover -s hooks/tests
 (Stdlib only — no pytest required.)
@@ -11,11 +11,11 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import skillguard_hook as hook  # noqa: E402
+import surfaceguard_hook as hook  # noqa: E402
 
 
 def decision_json(outcome, **extra):
-    """A `skill-guard guard --format json` document, trimmed to what we read."""
+    """A `surfaceguard guard --format json` document, trimmed to what we read."""
     doc = {
         "outcome": outcome,
         "reason": "because",
@@ -103,7 +103,7 @@ class TestDecide(unittest.TestCase):
 
 class TestGuardCommand(unittest.TestCase):
     def test_asks_for_a_json_decision_at_load(self):
-        cmd = hook.guard_command({"skill_guard_bin": "skill-guard", "policy": "",
+        cmd = hook.guard_command({"surfaceguard_bin": "surfaceguard", "policy": "",
                                   "cache_dir": ""}, "/b/skill")
         self.assertIn("guard", cmd)
         self.assertEqual(cmd[cmd.index("--format") + 1], "json")
@@ -111,7 +111,7 @@ class TestGuardCommand(unittest.TestCase):
         self.assertNotIn("--cache-dir", cmd)
 
     def test_cache_dir_is_passed_through(self):
-        cmd = hook.guard_command({"skill_guard_bin": "skill-guard", "policy": "",
+        cmd = hook.guard_command({"surfaceguard_bin": "surfaceguard", "policy": "",
                                   "cache_dir": "-"}, "/b/skill")
         self.assertEqual(cmd[cmd.index("--cache-dir") + 1], "-")
 
@@ -127,6 +127,52 @@ class TestTimeout(unittest.TestCase):
 
     def test_default(self):
         self.assertEqual(hook._timeout({}), 20)
+
+
+class TestLegacyNames(unittest.TestCase):
+    """The project was called skill-guard through v0.3.0. An installed hook keeps
+    its old spellings, and silently ignoring them would drop a working security
+    configuration — so each one is pinned."""
+
+    def test_legacy_config_key_is_adopted(self):
+        cfg = hook._adopt_legacy_keys({"skill_guard_bin": "/opt/bin/skill-guard"})
+        self.assertEqual(cfg.get("surfaceguard_bin"), "/opt/bin/skill-guard")
+        self.assertNotIn("skill_guard_bin", cfg)
+
+    def test_current_key_wins_when_both_present(self):
+        cfg = hook._adopt_legacy_keys({"surfaceguard_bin": "new", "skill_guard_bin": "old"})
+        self.assertEqual(cfg["surfaceguard_bin"], "new")
+
+    def test_legacy_config_file_is_searched(self):
+        cands = hook._config_candidates()
+        self.assertTrue(any(c.endswith("skillguard-hook.config.json") for c in cands))
+        self.assertTrue(any(c.endswith("surfaceguard-hook.config.json") for c in cands))
+        # The current name must be preferred over the legacy one at each scope.
+        proj_new = next(i for i, c in enumerate(cands) if c.endswith(".claude/surfaceguard-hook.config.json"))
+        proj_old = next(i for i, c in enumerate(cands) if c.endswith(".claude/skillguard-hook.config.json"))
+        self.assertLess(proj_new, proj_old)
+
+    def test_legacy_policy_filename_is_found(self):
+        import tempfile
+        d = tempfile.mkdtemp()
+        os.environ["CLAUDE_PROJECT_DIR"] = d
+        legacy = os.path.join(d, ".skillguard.yaml")
+        open(legacy, "w").close()
+        # Default policy path (.surfaceguard.yaml) is absent, so the pre-rename
+        # file must still be picked up rather than the scan running unpoliced.
+        self.assertEqual(hook._resolve_policy(dict(hook.DEFAULT_CONFIG)), legacy)
+
+        current = os.path.join(d, ".surfaceguard.yaml")
+        open(current, "w").close()
+        self.assertEqual(hook._resolve_policy(dict(hook.DEFAULT_CONFIG)), current)
+
+    def test_an_explicit_policy_does_not_fall_back(self):
+        import tempfile
+        d = tempfile.mkdtemp()
+        os.environ["CLAUDE_PROJECT_DIR"] = d
+        open(os.path.join(d, ".skillguard.yaml"), "w").close()
+        # The caller named a file; guessing a different one would be surprising.
+        self.assertEqual(hook._resolve_policy({"policy": "custom.yaml"}), "")
 
 
 class TestExpand(unittest.TestCase):

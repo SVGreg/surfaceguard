@@ -43,7 +43,7 @@ steps. If it's docs/tooling, scope it accordingly. If the ask is genuinely ambig
 - Make the change on a feature branch, matching surrounding style.
 - Add/extend tests that fail before and pass after.
 - Preflight is `sg-maintain` §Ship it step 1.
-- If a rule pack changed: bump its `version:` in the same commit (`docs/skill-guard-design.md §8.1`),
+- If a rule pack changed: bump its `version:` in the same commit (`docs/surfaceguard-design.md §8.1`),
   then regenerate evaluation and cross-check (see `sg-rule-polish` §7).
 
 ## 4. Open the PR and link back

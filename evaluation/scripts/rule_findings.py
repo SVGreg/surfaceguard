@@ -40,7 +40,7 @@ def load(raw_dir):
     if not d.is_dir():
         sys.exit(
             f"no raw reports at {d}\n"
-            "  run: go build -o skill-guard ./cmd/skill-guard && "
+            "  run: go build -o surfaceguard ./cmd/surfaceguard && "
             "evaluation/scripts/run_scans.sh 8"
         )
     files = sorted(d.glob("*.json"))

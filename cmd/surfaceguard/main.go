@@ -1,4 +1,4 @@
-// Command skill-guard is the CLI over the skill-guard library (design §10).
+// Command surfaceguard is the CLI over the surfaceguard library (design §10).
 package main
 
 import (
@@ -13,9 +13,9 @@ var Version = "0.1.0-dev"
 
 func main() {
 	root := &cobra.Command{
-		Use:   "skill-guard <command> <path>",
+		Use:   "surfaceguard <command> <path>",
 		Short: "Security, signing & provenance toolchain for Agent Skills (SKILL.md)",
-		Long: `skill-guard scans, signs, and verifies Agent Skills (SKILL.md bundles)
+		Long: `surfaceguard scans, signs, and verifies Agent Skills (SKILL.md bundles)
 against the OWASP Agentic Skills Top 10.
 
 A skill <path> is either:
@@ -30,14 +30,14 @@ COMMANDS:
   keygen   create an Ed25519 signing key
   version  print version and built-in rule-pack versions
 
-Run 'skill-guard <command> --help' for input formats, flags, and examples.
+Run 'surfaceguard <command> --help' for input formats, flags, and examples.
 
 EXIT CODES: 0 ok · 1 scan verdict fail · 2 verification failed · 3 usage · 4 internal.`,
-		Example: `  skill-guard scan ./my-skill
-  skill-guard keygen --out publisher.key
-  skill-guard sign ./my-skill --key publisher.key --identity oidc:you@example.com
-  skill-guard verify ./my-skill --policy .skillguard.yaml
-  skill-guard guard ./my-skill --format json`,
+		Example: `  surfaceguard scan ./my-skill
+  surfaceguard keygen --out publisher.key
+  surfaceguard sign ./my-skill --key publisher.key --identity oidc:you@example.com
+  surfaceguard verify ./my-skill --policy .surfaceguard.yaml
+  surfaceguard guard ./my-skill --format json`,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}

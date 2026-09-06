@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/SVGreg/skill-guard/pkg/skill"
+	"github.com/SVGreg/surfaceguard/pkg/skill"
 )
 
 // USFPayloadType is the DSSE payloadType for the USF manifest-field signature.

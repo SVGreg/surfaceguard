@@ -2,7 +2,7 @@
 
 **Status:** proposed · **Scope:** `pkg/rules`, `pkg/scan`, `pkg/policy` · **Date:** 2026-08-05
 
-How skill-guard should express *"this matched, and it is lower risk than the rule's
+How surfaceguard should express *"this matched, and it is lower risk than the rule's
 severity implies"* — today the only available answer is *"this did not match."*
 
 ---
@@ -93,7 +93,7 @@ quotation, or file-copy away from being just the payload. The annotation has no 
 guarantee, and an attacker can write it deliberately: `❌ do not run: <payload>` is a
 one-line evasion of any rule that trusts the frame.
 
-**It is intent inference, which the design rejects.** skill-guard flags *capability and
+**It is intent inference, which the design rejects.** surfaceguard flags *capability and
 pattern, not confirmed intent* (CLAUDE.md; report methodology section). Deciding a match is
 safe because the surrounding prose looks defensive is precisely the inference the tool
 declines to make everywhere else.
@@ -235,7 +235,7 @@ schema work.
 ## 6a. Shipped — what the implementation decided
 
 Implemented from §4 only. §5 (bundle-scoped waivers) stays a separate backlog row, and the
-SARIF mapping stays open because skill-guard emits no SARIF yet.
+SARIF mapping stays open because surfaceguard emits no SARIF yet.
 
 **Schema.** `kind: context` in any pack, with `scope: line|file` and `effect.max_severity`.
 Context rules compile into `Pack.Contexts`, separate from `Pack.Rules`, because they are a

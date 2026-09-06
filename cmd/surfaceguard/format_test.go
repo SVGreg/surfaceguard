@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/SVGreg/skill-guard/pkg/model"
-	"github.com/SVGreg/skill-guard/pkg/report"
-	"github.com/SVGreg/skill-guard/pkg/scan"
+	"github.com/SVGreg/surfaceguard/pkg/model"
+	"github.com/SVGreg/surfaceguard/pkg/report"
+	"github.com/SVGreg/surfaceguard/pkg/scan"
 )
 
 // TestValidateFormatAcceptsEveryEmittedFormat keeps the flag validator and the

@@ -14,7 +14,7 @@ import (
 //
 // An empty roster returns (nil, nil): no roots configured means keyless
 // signatures cannot be verified, which is a reportable state, not an error.
-// skill-guard has no fallback root to quietly substitute.
+// surfaceguard has no fallback root to quietly substitute.
 func (t Trust) CertPool(baseDir string) (*x509.CertPool, error) {
 	if len(t.Roots) == 0 {
 		return nil, nil

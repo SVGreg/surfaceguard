@@ -13,8 +13,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/SVGreg/skill-guard/pkg/model"
-	"github.com/SVGreg/skill-guard/pkg/scan"
+	"github.com/SVGreg/surfaceguard/pkg/model"
+	"github.com/SVGreg/surfaceguard/pkg/scan"
 )
 
 const (
@@ -23,8 +23,8 @@ const (
 	// document says what it was validated against. (The older
 	// master/Schemata/… path is the pre-rename location of this same file.)
 	sarifSchema = "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json"
-	toolName    = "skill-guard"
-	toolInfoURI = "https://github.com/SVGreg/skill-guard"
+	toolName    = "surfaceguard"
+	toolInfoURI = "https://github.com/SVGreg/surfaceguard"
 
 	// srcRoot names the base every artifact URI is relative to. Findings carry
 	// bundle-relative paths ("SKILL.md", "scripts/setup.sh"), not
@@ -145,7 +145,7 @@ type sarifText struct {
 
 // sarifSuppression records that policy suppressed a result. kind "external"
 // is the SARIF value for "suppressed outside the tool's own configuration",
-// which is what a .skillguard.yaml waiver is.
+// which is what a .surfaceguard.yaml waiver is.
 type sarifSuppression struct {
 	Kind          string `json:"kind"`
 	Justification string `json:"justification,omitempty"`
@@ -438,7 +438,7 @@ func normalizeExcerpt(s string) string {
 	return strings.Join(strings.Fields(s), " ")
 }
 
-// helpURI points at the OWASP page for the finding's first AST id. skill-guard
+// helpURI points at the OWASP page for the finding's first AST id. surfaceguard
 // rules have no per-rule page of their own yet; the taxonomy link is the most
 // useful destination a reviewer can be given from an alert.
 func helpURI(f model.Finding) string {
@@ -459,7 +459,7 @@ func ruleSeverity(f model.Finding) model.Severity {
 	return f.Severity
 }
 
-// sarifLevel maps skill-guard severity onto SARIF's three-value level. critical
+// sarifLevel maps surfaceguard severity onto SARIF's three-value level. critical
 // and high both become "error" because SARIF has no fourth level; the raw
 // severity is preserved in properties so nothing is lost.
 func sarifLevel(s model.Severity) string {

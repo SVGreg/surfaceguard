@@ -1,6 +1,6 @@
 ---
 name: sg-rule-polish
-description: Polish one existing skill-guard detection rule — pick the least-recently-tuned rule, audit its real false positives against the evaluation corpus, generate realistic real-world attack test cases for its threat class, then widen the match tree where it misses and narrow it where it over-matches. Opens a PR. Use when asked to polish, harden, tune, improve coverage of, or reduce false positives on an existing rule, or when the maintenance loop selects rule polishing.
+description: Polish one existing surfaceguard detection rule — pick the least-recently-tuned rule, audit its real false positives against the evaluation corpus, generate realistic real-world attack test cases for its threat class, then widen the match tree where it misses and narrow it where it over-matches. Opens a PR. Use when asked to polish, harden, tune, improve coverage of, or reduce false positives on an existing rule, or when the maintenance loop selects rule polishing.
 ---
 
 # Polish one detection rule
@@ -51,7 +51,7 @@ Make sure the raw reports reflect current `main` (they are git-ignored, so they 
 absent). Regenerate only if needed — a full run takes several minutes:
 
 ```sh
-go build -o skill-guard ./cmd/skill-guard
+go build -o surfaceguard ./cmd/surfaceguard
 CORPUS_DIRS="clawhub anthropic orgs skillsmp" evaluation/scripts/run_scans.sh
 python3 evaluation/scripts/aggregate.py
 ```
@@ -74,7 +74,7 @@ Read the output for three things:
   confidence modifiers already treat those registers differently (`docs/rule-verification.md §1.2`).
 
 Now judge each hit — **true positive**, **false positive**, or **ambiguous** — and write the tally
-into your working notes. Be honest about ambiguity: skill-guard's stated reading is "capability and
+into your working notes. Be honest about ambiguity: surfaceguard's stated reading is "capability and
 pattern, not confirmed intent", so a skill that really does ship a pipe-to-shell installer is a
 true positive even if its author meant well. A false positive is a match on something that is *not*
 the pattern — a license phrase, a variable name, prose describing the attack rather than
@@ -154,7 +154,7 @@ If a realistic payload slips through, extend the rule's `match` tree in the pack
 - **Bump the pack's `version:` (line 3) in the same commit**: **minor** if you widened anything
   (new branch/leaf/target, raised severity or confidence), **patch** if the cycle was precision-only
   (`suppress`, tightened regex, lowered confidence). A cycle that does both takes the minor. Levels:
-  `docs/skill-guard-design.md §8.1`.
+  `docs/surfaceguard-design.md §8.1`.
 
 If step 3 found false positives, apply the narrowing you proposed there in the **same** edit, so
 the widening and the tightening are measured together rather than one masking the other.
@@ -174,7 +174,7 @@ Standard preflight is `sg-maintain` §Ship it step 1. This cycle owes two things
   have the step-3 numbers as your before; save them first so the comparison is real:
   ```sh
   cp evaluation/reports/stats.json /tmp/stats_before.json
-  go build -o skill-guard ./cmd/skill-guard
+  go build -o surfaceguard ./cmd/surfaceguard
   CORPUS_DIRS="clawhub anthropic orgs skillsmp" evaluation/scripts/run_scans.sh
   python3 evaluation/scripts/aggregate.py
   evaluation/scripts/rule_findings.py <RULE-ID> --all      # what survives

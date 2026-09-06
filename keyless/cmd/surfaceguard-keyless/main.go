@@ -1,10 +1,10 @@
-// Command skill-guard-keyless signs a skill bundle with Sigstore, producing an
+// Command surfaceguard-keyless signs a skill bundle with Sigstore, producing an
 // OMS signature (skill.oms.sig) bound to an OIDC identity rather than to a key.
 //
-// It is a separate binary from skill-guard because it is a separate module: the
+// It is a separate binary from surfaceguard because it is a separate module: the
 // Sigstore client pulls in hundreds of packages, and the core tool's offline,
 // two-dependency profile is a property worth keeping. Verifying what this
-// produces needs only `skill-guard verify`.
+// produces needs only `surfaceguard verify`.
 package main
 
 import (
@@ -16,12 +16,12 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/SVGreg/skill-guard/keyless"
-	"github.com/SVGreg/skill-guard/pkg/attest/oms"
-	"github.com/SVGreg/skill-guard/pkg/skill"
+	"github.com/SVGreg/surfaceguard/keyless"
+	"github.com/SVGreg/surfaceguard/pkg/attest/oms"
+	"github.com/SVGreg/surfaceguard/pkg/skill"
 )
 
-// Exit codes match skill-guard's contract (README "Exit codes"), so a workflow
+// Exit codes match surfaceguard's contract (README "Exit codes"), so a workflow
 // can gate on either tool the same way.
 const (
 	exitOK       = 0
@@ -34,7 +34,7 @@ func main() {
 }
 
 func run() int {
-	fs := flag.NewFlagSet("skill-guard-keyless", flag.ContinueOnError)
+	fs := flag.NewFlagSet("surfaceguard-keyless", flag.ContinueOnError)
 	var (
 		out       = fs.String("out", "", "output path (default <bundle>/skill.oms.sig)")
 		fulcioURL = fs.String("fulcio-url", keyless.DefaultFulcioURL, "Fulcio certificate authority URL")
@@ -45,26 +45,26 @@ func run() int {
 		timeout   = fs.Duration("timeout", 30*time.Second, "per-request network timeout")
 	)
 	fs.Usage = func() {
-		fmt.Fprint(os.Stderr, `skill-guard-keyless sign <path>
+		fmt.Fprint(os.Stderr, `surfaceguard-keyless sign <path>
 
 Sign a skill bundle with Sigstore: an ephemeral key, a short-lived Fulcio
 certificate bound to your OIDC identity, and a Rekor transparency-log entry.
 No long-lived key material is created or stored.
 
 The signature is written as skill.oms.sig — the same OpenSSF Model Signing
-format 'skill-guard sign --oms' produces, over a byte-identical statement — and
+format 'surfaceguard sign --oms' produces, over a byte-identical statement — and
 is verified with:
 
-  skill-guard verify <path> --policy .skillguard.yaml
+  surfaceguard verify <path> --policy .surfaceguard.yaml
 
 Verification needs the issuing CA pinned under trust.roots and the identity
-scoped under trust.identities. skill-guard trusts no CA by default.
+scoped under trust.identities. surfaceguard trusts no CA by default.
 
 IDENTITY, in order: --token, --token-file, then GitHub Actions' OIDC endpoint
 (which needs 'permissions: id-token: write'). There is no browser flow.
 
 NETWORK: this command contacts Fulcio and Rekor. It is the one part of
-skill-guard that requires network access; scanning and verifying never do.
+surfaceguard that requires network access; scanning and verifying never do.
 
 EXIT CODES: 0 success · 3 usage error · 4 internal error.
 
@@ -144,6 +144,6 @@ FLAGS:
 			fmt.Printf("  logged:   %s\n", when.Format(time.RFC3339))
 		}
 	}
-	fmt.Printf("  verify:   skill-guard verify %q --policy .skillguard.yaml\n", path)
+	fmt.Printf("  verify:   surfaceguard verify %q --policy .surfaceguard.yaml\n", path)
 	return exitOK
 }

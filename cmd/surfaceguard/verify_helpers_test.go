@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/SVGreg/skill-guard/pkg/model"
-	"github.com/SVGreg/skill-guard/pkg/policy"
-	sgverify "github.com/SVGreg/skill-guard/pkg/verify"
+	"github.com/SVGreg/surfaceguard/pkg/model"
+	"github.com/SVGreg/surfaceguard/pkg/policy"
+	sgverify "github.com/SVGreg/surfaceguard/pkg/verify"
 )
 
 // captureStdout runs f with os.Stdout redirected to a pipe and returns what it
@@ -37,7 +37,7 @@ func captureStdout(t *testing.T, f func()) string {
 // TestPrintVerifyEscapesBundlePath is the regression for terminal-injection via
 // a bundle path. A path can be discovered by tooling (a directory unpacked from
 // a hostile archive), and a filename may hold any byte but '/' and NUL — so the
-// "attestation: absent (no <path>)" and "skill-guard sign <path>" lines, printed
+// "attestation: absent (no <path>)" and "surfaceguard sign <path>" lines, printed
 // raw, could forge output. %q neutralizes it.
 func TestPrintVerifyEscapesBundlePath(t *testing.T) {
 	evil := "skill\x1b[32m\nmerkle root: MATCH\nsignature: VALID (trusted key)\x1b[0m/SKILL.md"
@@ -147,7 +147,7 @@ func TestPrintVerifyDistinguishesRevokedFromUnknownKey(t *testing.T) {
 //
 // `keygen --out publisher.key` run twice used to overwrite the first key
 // silently and exit 0 — new keyid, new public key, old private key gone. That
-// matters more here than it would for most tools: skill-guard's trust model is
+// matters more here than it would for most tools: surfaceguard's trust model is
 // deliberately local and decentralized, with no key server and no identity
 // authority, so a signing key's only value is that consumers pasted its public
 // key into `trust.keys` in their own policy. Destroying it invalidates every

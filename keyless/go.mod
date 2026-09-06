@@ -1,19 +1,19 @@
 // The keyless signing module.
 //
 // Separate from the core module on purpose: signing a skill with Sigstore
-// pulls in ~90 modules, and skill-guard's core is a two-dependency, offline,
+// pulls in ~90 modules, and surfaceguard's core is a two-dependency, offline,
 // single-static-binary tool. Keeping that dependency graph out here means
-// `go install github.com/SVGreg/skill-guard/cmd/skill-guard@latest` downloads
+// `go install github.com/SVGreg/surfaceguard/cmd/surfaceguard@latest` downloads
 // two dependencies, exactly as it always has, whether or not anyone uses
 // keyless signing.
 //
 // *Verifying* a keyless signature needs nothing from here — it lives in the
 // core module's pkg/verify and uses only the standard library.
-module github.com/SVGreg/skill-guard/keyless
+module github.com/SVGreg/surfaceguard/keyless
 
 go 1.26.2
 
-require github.com/SVGreg/skill-guard v0.2.2
+require github.com/SVGreg/surfaceguard v0.2.2
 
 require (
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
@@ -102,4 +102,4 @@ require (
 	k8s.io/klog/v2 v2.140.0 // indirect
 )
 
-replace github.com/SVGreg/skill-guard => ../
+replace github.com/SVGreg/surfaceguard => ../

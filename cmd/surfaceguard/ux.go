@@ -7,9 +7,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/SVGreg/skill-guard/pkg/attest"
-	"github.com/SVGreg/skill-guard/pkg/model"
-	"github.com/SVGreg/skill-guard/pkg/skill"
+	"github.com/SVGreg/surfaceguard/pkg/attest"
+	"github.com/SVGreg/surfaceguard/pkg/model"
+	"github.com/SVGreg/surfaceguard/pkg/skill"
 	"github.com/spf13/cobra"
 )
 
@@ -25,9 +25,9 @@ func bundlePathArg(cmd *cobra.Command, args []string) error {
 				"    • a bundle directory that contains a SKILL.md, or\n"+
 				"    • a single SKILL.md file\n\n"+
 				"  example:\n"+
-				"    skill-guard %s ./my-skill\n"+
-				"    skill-guard %s ./my-skill/SKILL.md\n\n"+
-				"  run 'skill-guard %s --help' for all options.",
+				"    surfaceguard %s ./my-skill\n"+
+				"    surfaceguard %s ./my-skill/SKILL.md\n\n"+
+				"  run 'surfaceguard %s --help' for all options.",
 			cmd.CommandPath(), cmd.Name(), cmd.Name(), cmd.Name())
 	case len(args) > 1:
 		return fmt.Errorf(
@@ -55,7 +55,7 @@ func loadBundleFriendly(path string) (*skill.Bundle, error) {
 			"  a skill bundle must contain a SKILL.md file (the manifest with name/description front-matter).", path)
 	case strings.Contains(err.Error(), "exceeds total size cap"):
 		return nil, fail(3, "%v\n"+
-			"  skill-guard bounds how much it will load from one bundle so a hostile\n"+
+			"  surfaceguard bounds how much it will load from one bundle so a hostile\n"+
 			"  or accidentally huge skill cannot exhaust memory during a batch scan.\n"+
 			"  drop large binaries/vendored trees from the bundle, or scan a subdirectory.", err)
 	case strings.Contains(err.Error(), "exceeds size cap"):
@@ -63,7 +63,7 @@ func loadBundleFriendly(path string) (*skill.Bundle, error) {
 			"  individual files are capped so a single huge blob cannot exhaust memory.\n"+
 			"  a skill bundle should not ship files that large — remove it or scan a subdirectory.", err)
 	case strings.Contains(err.Error(), "symlink"):
-		return nil, fail(3, "%q involves a symlink, which skill-guard refuses to follow for safety.\n"+
+		return nil, fail(3, "%q involves a symlink, which surfaceguard refuses to follow for safety.\n"+
 			"  replace the symlink with a regular file or directory.", path)
 	default:
 		return nil, fail(3, "cannot read skill at %q: %v", path, err)
@@ -108,13 +108,13 @@ func validateSeverity(flag, value string) error {
 
 // refuseOverwrite stops a keygen that would destroy existing key material.
 //
-// `skill-guard keygen --out publisher.key` run a second time used to overwrite
+// `surfaceguard keygen --out publisher.key` run a second time used to overwrite
 // the first key silently and exit 0 — new keyid, new public key, old private
 // key gone. That is unrecoverable in a way it would not be for most tools,
-// because skill-guard's trust model is deliberately **local and decentralized**:
+// because surfaceguard's trust model is deliberately **local and decentralized**:
 // there is no key server and no identity authority, so a signing key's only
 // value is that consumers have pasted its public key into `trust.keys` in
-// *their* `.skillguard.yaml`. Destroying it silently invalidates every roster
+// *their* `.surfaceguard.yaml`. Destroying it silently invalidates every roster
 // entry anyone made, and no already-signed bundle can be re-signed under that
 // identity again.
 //
@@ -130,9 +130,9 @@ func refuseOverwrite(path, what string) error {
 		return nil // absent (or unreadable) — let the writer report any real error
 	}
 	return fail(3, "refusing to overwrite the existing %s %q\n"+
-		"  generating over it would destroy the old key permanently, and skill-guard has no\n"+
+		"  generating over it would destroy the old key permanently, and surfaceguard has no\n"+
 		"  key server to recover from — consumers trust a key only by having added it to\n"+
-		"  trust.keys in their own .skillguard.yaml.\n"+
-		"  choose another path:  skill-guard keygen --out <new-name>.key\n"+
+		"  trust.keys in their own .surfaceguard.yaml.\n"+
+		"  choose another path:  surfaceguard keygen --out <new-name>.key\n"+
 		"  or, if you are certain the old key is retired:  --force", what, path)
 }

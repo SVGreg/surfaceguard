@@ -7,7 +7,7 @@ run before committing `scan.Card` to a shape.
 
 **Bottom line: neither source defines that artifact.** One publishes a *skill
 format*, the other a *human-authored disclosure document*. The field list the
-roadmap names is skill-guard's own card, and there is no external schema to
+roadmap names is surfaceguard's own card, and there is no external schema to
 conform to. M5-06 is rewritten accordingly.
 
 ---
@@ -34,7 +34,7 @@ returns only Mintlify `<Card>` documentation components, which are page-layout
 markup, not a schema.
 
 So there is nothing at agentskills.io to conform *to*. What it does give us is
-the authority for the frontmatter fields skill-guard already parses, which is
+the authority for the frontmatter fields surfaceguard already parses, which is
 worth citing where we describe them.
 
 ## 2. NVIDIA's skill card is a prose disclosure document
@@ -72,12 +72,12 @@ Three things follow, all corroborating M4:
 - OMS-over-a-skill-directory is exactly the usage `oms-notes.md §7` flagged as
   unproven. It is now proven: a major vendor ships it.
 - The trust anchor is **a vendor root**, which is precisely the gap the roadmap
-  identified — and precisely what skill-guard's consumer-pinned `trust.roots`
+  identified — and precisely what surfaceguard's consumer-pinned `trust.roots`
   refuses to reproduce.
 
 ## 4. Compared with `scan.Card`
 
-skill-guard's card already carries what the roadmap listed, minus one field:
+surfaceguard's card already carries what the roadmap listed, minus one field:
 
 | Roadmap field | `scan.Card` | Note |
 |---|---|---|

@@ -1,6 +1,6 @@
 ---
 name: sg-code-review
-description: Perform a cold code review of one rotating area of the skill-guard codebase — hunt for correctness bugs, security issues, and performance/efficiency problems, then fix what fits in one PR. Use when asked to review the code, audit for bugs, do a security or performance pass, or when the maintenance loop selects code review.
+description: Perform a cold code review of one rotating area of the surfaceguard codebase — hunt for correctness bugs, security issues, and performance/efficiency problems, then fix what fits in one PR. Use when asked to review the code, audit for bugs, do a security or performance pass, or when the maintenance loop selects code review.
 ---
 
 # Cold code review of one area
@@ -20,7 +20,7 @@ Load state from `.claude/maintenance/state.json` → `review_area_cursor`. Rotat
 
 ```
  0 pkg/skill        1 pkg/rules       2 pkg/scan        3 pkg/policy
- 4 pkg/attest       5 pkg/verify      6 pkg/report      7 cmd/skill-guard
+ 4 pkg/attest       5 pkg/verify      6 pkg/report      7 cmd/surfaceguard
  8 pkg/attest/oms   9 pkg/guard      10 keyless/       11 hooks/
 ```
 
@@ -46,7 +46,7 @@ Read the area's code closely. Then bring in the repo's own reviewers where they 
 
 - **Correctness** — run `/code-review` on the working diff or reason directly about the target
   files: edge cases, error handling, the line-offset invariant (`f.StartLine += t.lineOffset` in
-  `pkg/scan`), exit-code contract (`exitErr{code,msg}` in `cmd/skill-guard/main.go`), dedup/verdict
+  `pkg/scan`), exit-code contract (`exitErr{code,msg}` in `cmd/surfaceguard/main.go`), dedup/verdict
   math, RE2 assumptions.
 - **Security** — run `/security-review`. This project parses untrusted bundles: check for ReDoS-y
   patterns, unbounded reads, path traversal in the file walk, panics on malformed input, and the
@@ -68,7 +68,7 @@ Defer the rest: append larger items to `docs/planned-rules.md` (or open a GitHub
 ## 4. Verify
 
 Standard preflight is `sg-maintain` §Ship it step 1. Beyond it: if you changed a rule pack, the
-`version:` bump is normally a **patch** for a review fix (`docs/skill-guard-design.md §8.1`), and
+`version:` bump is normally a **patch** for a review fix (`docs/surfaceguard-design.md §8.1`), and
 you must regenerate evaluation and cross-check the corpus deltas (see `sg-rule-polish` §7).
 
 ## 5. Open the PR

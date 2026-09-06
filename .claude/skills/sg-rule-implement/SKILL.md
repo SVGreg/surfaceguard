@@ -1,6 +1,6 @@
 ---
 name: sg-rule-implement
-description: Implement one planned detection rule from the skill-guard backlog — take the highest-priority planned entry, write it as a pack rule plus tests and docs, verify it, and open a PR. Use when asked to implement a new rule, ship a planned detection, or when the maintenance loop selects rule implementation.
+description: Implement one planned detection rule from the surfaceguard backlog — take the highest-priority planned entry, write it as a pack rule plus tests and docs, verify it, and open a PR. Use when asked to implement a new rule, ship a planned detection, or when the maintenance loop selects rule implementation.
 ---
 
 # Implement one planned rule
@@ -21,7 +21,7 @@ Read `docs/planned-rules.md`. Choose the highest-priority `planned` row (`P0` be
 ## 2. Design the detection
 
 - Read the entry's threat description and source, plus its section (if any) in
-  `docs/rule-verification.md` and `docs/skill-guard-design.md §5`.
+  `docs/rule-verification.md` and `docs/surfaceguard-design.md §5`.
 - Decide the **layer** (`content` vs `code`), **targets** (`body`/`manifest`/`scripts`/`configs`/`refs`),
   **severity**, base **confidence**, and the **match tree**: composite (`any`/`all`/`not`) over leaf
   primitives (`regex`, `substring`, `unicode_category`, `bidi_control`, `tag_block`, `url_host`).
@@ -38,7 +38,7 @@ patterns for known benign phrasings.
 
 **Bump the pack's `version:` (line 3) in the same commit** — a new rule id is a **minor** bump
 (`1.4.0` → `1.5.0`); a brand-new pack file starts at `1.0.0`. Rules for the other levels:
-`docs/skill-guard-design.md §8.1`.
+`docs/surfaceguard-design.md §8.1`.
 
 ## 4. Test it
 
@@ -59,7 +59,7 @@ Standard preflight is `sg-maintain` §Ship it step 1. Beyond it, this cycle owes
 
 - Regenerate evaluation and confirm the new rule's corpus hits are ones you can defend, with no
   movement in the other rules' counts (git-ignored, local sanity check):
-  `go build -o skill-guard ./cmd/skill-guard && evaluation/scripts/run_scans.sh && python3 evaluation/scripts/aggregate.py`
+  `go build -o surfaceguard ./cmd/surfaceguard && evaluation/scripts/run_scans.sh && python3 evaluation/scripts/aggregate.py`
   — mind the parallelism cap in `CLAUDE.md`.
 
 ## 6. Update docs and backlog

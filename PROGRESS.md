@@ -1,10 +1,10 @@
-# skill-guard — Implementation Progress & Handoff
+# surfaceguard — Implementation Progress & Handoff
 
-**Goal of first runnable version:** M1 + M2 from `docs/skill-guard-design.md` §14 — an end-to-end
-`skill-guard scan | sign | verify` CLI + library over a real bundle, with a static rule engine,
+**Goal of first runnable version:** M1 + M2 from `docs/surfaceguard-design.md` §14 — an end-to-end
+`surfaceguard scan | sign | verify` CLI + library over a real bundle, with a static rule engine,
 SGMT-1 Merkle + DSSE Ed25519 signing/verification, policy/trust, and TP/FP fixtures.
 
-**Module:** `github.com/SVGreg/skill-guard` (rename later if a real org/remote is chosen).
+**Module:** `github.com/SVGreg/surfaceguard` (rename later if a real org/remote is chosen).
 **Toolchain:** Go 1.26.2. Deps: `gopkg.in/yaml.v3`, `github.com/spf13/cobra`. Everything else stdlib.
 
 ## Durability protocol
@@ -21,9 +21,9 @@ SGMT-1 Merkle + DSSE Ed25519 signing/verification, policy/trust, and TP/FP fixtu
 - [x] pkg/scan — orchestration, dedup, waivers, verdict + risk score, skill-card (written)
 - [x] pkg/attest — SGMT-1 Merkle, DSSE, USF fields, Ed25519 signer, keygen (written)
 - [x] pkg/verify + trust — attestation verification, SG-PRV findings (written)
-- [x] pkg/policy — .skillguard.yaml model + defaults (incl. trust roster) (written)
+- [x] pkg/policy — .surfaceguard.yaml model + defaults (incl. trust roster) (written)
 - [x] pkg/report — text + json + skill-card formatters (written)
-- [x] cmd/skill-guard — cobra CLI: scan, sign, verify, keygen, version (written)
+- [x] cmd/surfaceguard — cobra CLI: scan, sign, verify, keygen, version (written)
 - [x] testdata/ — benign + malicious fixtures (written); SGMT-1 vectors deferred
 - [x] tests — rules smoke/paraphrase, attest merkle/normalize/roundtrip, scan benign/malicious (written)
 - [x] **build/test/commit** — `go build ./...` clean, `go test ./...` green, `gofmt -l .` clean, `go vet ./...` clean.
@@ -34,7 +34,7 @@ SGMT-1 Merkle + DSSE Ed25519 signing/verification, policy/trust, and TP/FP fixtu
 - [x] First-runnable verification done — M1+M2 is runnable.
 
 ## RESUME STEPS (run these the moment Bash is available)
-1. `cd /Users/sergii/Projects/skill-guard && go build ./... 2>&1 | head`
+1. `cd /Users/sergii/Projects/surfaceguard && go build ./... 2>&1 | head`
    - Fix any compile errors. Likely-fragile spots I could not verify by running:
      - RE2 rejects lookaround/backreferences — I removed the ones I found; re-grep packs for `(?<` `(?=` `(?!`.
      - Single-quoted YAML: bare `'` ends the scalar — I doubled `don''?t` (2 spots); re-check any new apostrophes.
@@ -43,12 +43,12 @@ SGMT-1 Merkle + DSSE Ed25519 signing/verification, policy/trust, and TP/FP fixtu
    USF-field injection leaves root unchanged, SG-INJ-001 paraphrase cases.
 3. `gofmt -l . ` and `go vet ./...` — clean up nits.
 4. End-to-end smoke:
-   `go run ./cmd/skill-guard version`
-   `go run ./cmd/skill-guard scan testdata/malicious -v`      (expect verdict: fail, exit 1)
-   `go run ./cmd/skill-guard scan testdata/benign`            (expect pass, exit 0)
-   `go run ./cmd/skill-guard keygen --out /tmp/sg.key`
-   `go run ./cmd/skill-guard sign testdata/benign --key /tmp/sg.key --identity oidc:me`
-   `go run ./cmd/skill-guard verify testdata/benign`          (valid sig, merkle MATCH, key untrusted)
+   `go run ./cmd/surfaceguard version`
+   `go run ./cmd/surfaceguard scan testdata/malicious -v`      (expect verdict: fail, exit 1)
+   `go run ./cmd/surfaceguard scan testdata/benign`            (expect pass, exit 0)
+   `go run ./cmd/surfaceguard keygen --out /tmp/sg.key`
+   `go run ./cmd/surfaceguard sign testdata/benign --key /tmp/sg.key --identity oidc:me`
+   `go run ./cmd/surfaceguard verify testdata/benign`          (valid sig, merkle MATCH, key untrusted)
    then add the printed key to a policy trust roster and re-verify → trusted.
 5. Commit: `git add -A && git commit -m "feat: M1+M2 scan/sign/verify core"` (branch first if needed).
 6. Set up the scheduled cloud agent (schedule skill) for autonomous continuation.

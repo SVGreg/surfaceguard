@@ -89,7 +89,7 @@ func TestWaiverForReasonDefault(t *testing.T) {
 // writePolicy writes a policy file into a temp dir and returns its path.
 func writePolicy(t *testing.T, body string) string {
 	t.Helper()
-	p := filepath.Join(t.TempDir(), ".skillguard.yaml")
+	p := filepath.Join(t.TempDir(), ".surfaceguard.yaml")
 	if err := os.WriteFile(p, []byte(body), 0o600); err != nil {
 		t.Fatalf("write policy: %v", err)
 	}
@@ -172,11 +172,11 @@ func TestLoadDefaultsSurviveAPartialAttestationBlock(t *testing.T) {
 	}
 }
 
-// TestRepoPolicyLoads keeps the repo's own .skillguard.yaml loadable under the
+// TestRepoPolicyLoads keeps the repo's own .surfaceguard.yaml loadable under the
 // strict decoder — it is the worked example users copy.
 func TestRepoPolicyLoads(t *testing.T) {
-	if _, err := Load("../../.skillguard.yaml"); err != nil {
-		t.Fatalf("the repo's own .skillguard.yaml no longer loads: %v", err)
+	if _, err := Load("../../.surfaceguard.yaml"); err != nil {
+		t.Fatalf("the repo's own .surfaceguard.yaml no longer loads: %v", err)
 	}
 }
 
@@ -198,7 +198,7 @@ func TestWaiverPathGlobIsSingleSegment(t *testing.T) {
 }
 
 // TestDesignDocExamplePolicyLoads keeps the worked example in
-// docs/skill-guard-design.md §10.4 loadable. Strict decoding makes every
+// docs/surfaceguard-design.md §10.4 loadable. Strict decoding makes every
 // documented key load-bearing: the first cut of this change rejected the
 // project's own example over `scoring: {}`, which is exactly the failure mode
 // users would have hit by copying it.
