@@ -4,8 +4,11 @@
 #   curl -fsSL https://raw.githubusercontent.com/SVGreg/skill-guard/main/install.sh | sh
 #
 # Environment overrides:
-#   VERSION      release tag to install (e.g. v0.1.0); default: latest
-#   INSTALL_DIR  target directory; default: /usr/local/bin
+#   VERSION       release tag to install (e.g. v0.3.0); default: latest
+#   INSTALL_DIR   target directory; default: /usr/local/bin
+#   GITHUB_TOKEN  optional; only used to authenticate the "latest release"
+#                 lookup, which is anonymous-rate-limited per IP. Release
+#                 assets themselves are public and fetched without it.
 set -eu
 
 REPO="SVGreg/skill-guard"
@@ -32,9 +35,17 @@ esac
 
 VERSION="${VERSION:-}"
 if [ -z "$VERSION" ]; then
-  VERSION=$(curl -fsSL "https://api.github.com/repos/$REPO/releases/latest" |
-    grep -m1 '"tag_name"' | cut -d '"' -f 4)
-  [ -n "$VERSION" ] || err "could not determine the latest release tag"
+  api="https://api.github.com/repos/$REPO/releases/latest"
+  # Spelled out twice rather than once with ${GITHUB_TOKEN:+-H "..."}: that
+  # expansion is unquoted, so the shell would split the header into four
+  # arguments and send a malformed request.
+  if [ -n "${GITHUB_TOKEN:-}" ]; then
+    latest=$(curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" "$api" || true)
+  else
+    latest=$(curl -fsSL "$api" || true)
+  fi
+  VERSION=$(printf '%s' "$latest" | grep -m1 '"tag_name"' | cut -d '"' -f 4)
+  [ -n "$VERSION" ] || err "could not determine the latest release tag (GitHub API rate limit? set VERSION=vX.Y.Z or GITHUB_TOKEN)"
 fi
 
 vnum="${VERSION#v}"

@@ -50,6 +50,8 @@ jobs:
             || { echo "the malicious fixture did not fail the gate"; exit 1; }
           test "${{ steps.malicious.outputs.exit-code }}" = "1" \
             || { echo "expected exit 1, got ${{ steps.malicious.outputs.exit-code }}"; exit 1; }
+          test "${{ steps.malicious.outputs.verdict }}" = "fail" \
+            || { echo "expected verdict fail, got '${{ steps.malicious.outputs.verdict }}'"; exit 1; }
           test -s malicious.sarif || { echo "no SARIF was written"; exit 1; }
           python3 - <<'PY'
           import json
@@ -74,6 +76,88 @@ jobs:
         run: |
           test "${{ steps.benign.outputs.exit-code }}" = "0" \
             || { echo "benign fixture did not pass"; exit 1; }
+          test "${{ steps.benign.outputs.verdict }}" = "pass" \
+            || { echo "expected verdict pass, got '${{ steps.benign.outputs.verdict }}'"; exit 1; }
+          test "${{ steps.benign.outputs.output-file }}" = "benign.sarif" \
+            || { echo "output-file was '${{ steps.benign.outputs.output-file }}'"; exit 1; }
+
+      # The action's own guardrails. Each of these used to reach skill-guard and
+      # come back as a usage error, which reads like the scanner's fault rather
+      # than the workflow's.
+      - name: A bad format is rejected before anything runs
+        id: badformat
+        continue-on-error: true
+        uses: ./
+        with:
+          path: testdata/benign
+          format: yaml
+          version: preinstalled
+          upload-sarif: "false"
+
+      - name: A missing path names the fix
+        id: nopath
+        continue-on-error: true
+        uses: ./
+        with:
+          path: testdata/does-not-exist
+          version: preinstalled
+          upload-sarif: "false"
+
+      - name: Both guardrails must have failed the step
+        run: |
+          test "${{ steps.badformat.outcome }}" = "failure" \
+            || { echo "format: yaml was accepted"; exit 1; }
+          test "${{ steps.nopath.outcome }}" = "failure" \
+            || { echo "a nonexistent path was accepted"; exit 1; }
+
+  # The path a marketplace consumer actually takes: install a published release
+  # through the action rather than building from the checkout. This is what
+  # catches a broken install.sh, a renamed release asset, or a checksum that no
+  # longer matches — none of which the preinstalled jobs above can see.
+  released-binary:
+    name: install ${{ matrix.version }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # Both OSes, because the asset name carries the platform and a rename
+        # only breaks one of them; both version modes, because resolving an
+        # exact tag and resolving "the newest release" are different code paths
+        # in the action.
+        os: [ubuntu-latest, macos-latest]
+        version: [v0.3.0, latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Scan with the released binary
+        id: released
+        uses: ./
+        with:
+          path: testdata/benign
+          output: released.sarif
+          version: ${{ matrix.version }}
+          category: skill-guard:demo-${{ matrix.version }}
+          upload-sarif: "false"
+
+      - name: The released binary must have produced a clean scan
+        env:
+          WANT_VERSION: ${{ matrix.version }}
+        run: |
+          test "${{ steps.released.outputs.exit-code }}" = "0" \
+            || { echo "the released binary did not pass the benign fixture"; exit 1; }
+          test "${{ steps.released.outputs.verdict }}" = "pass" \
+            || { echo "expected verdict pass, got '${{ steps.released.outputs.verdict }}'"; exit 1; }
+          test -s released.sarif || { echo "no SARIF was written"; exit 1; }
+          installed=$(skill-guard version | head -1)
+          echo "$installed"
+          # An exact tag must install exactly that; "latest" only has to install
+          # something, since the newest release moves.
+          case "$WANT_VERSION" in
+            v*)
+              echo "$installed" | grep -q "${WANT_VERSION#v}" \
+                || { echo "wanted $WANT_VERSION, got: $installed"; exit 1; }
+              ;;
+          esac
 
   code-scanning:
     name: upload to code scanning
