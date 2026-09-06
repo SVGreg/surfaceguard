@@ -1059,6 +1059,10 @@ pinned workflow keeps running the binary it was tested against — set
 `version: latest` to opt out of that, or `version: preinstalled` to use a
 `skill-guard` you put on `PATH` yourself.
 
+**On the marketplace** the action is listed as **Agent Skill Security Scan** — the listing name
+has to be unique across GitHub and `skill-guard` belongs to an unrelated project. The `uses:` line,
+the binary, and everything else keep the name you already know.
+
 **Runners.** `ubuntu-*` and `macos-*`. Windows runners must install skill-guard
 themselves and pass `version: preinstalled`; the action says so rather than
 failing obscurely.

@@ -1,4 +1,10 @@
-name: skill-guard
+# The marketplace listing name, which must be unique across GitHub Marketplace
+# and is not the tool's name: "skill-guard" is already listed by an unrelated
+# project (vaibhavtupe/skill-guard-action, published before this one), and a
+# second listing cannot reuse it. The binary, the repo, the module path and the
+# `uses: SVGreg/skill-guard@v0` line are all unaffected — only this string is
+# the listing's identity.
+name: Agent Skill Security Scan
 description: Scan Agent Skills (SKILL.md bundles) against the OWASP Agentic Skills Top 10 and upload the findings to code scanning.
 author: SVGreg
 

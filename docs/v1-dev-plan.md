@@ -577,9 +577,11 @@ both runner OSes so a broken asset name fails CI rather than a user's build.
 
 **What only the owner can do,** because it needs the repo's Settings and a release page:
 1. Releases → the latest release → **Edit** → tick *Publish this Action to the GitHub Marketplace*,
-   accept the terms, pick the categories (Security / Code quality). The name `skill-guard` must be
-   unique across the marketplace — GitHub says so at this step, and the fix is `name:` in
-   `action.yml`, nothing else.
+   accept the terms, pick the categories (Security / Code quality). The listing name is
+   **`Agent Skill Security Scan`**, not `skill-guard`: that one is already listed by an unrelated
+   project (`vaibhavtupe/skill-guard-action`, whose repo predates this one by four months), and
+   marketplace names are unique. `AI-Provenance/skillguard-core` holds `SkillGuard Scan` as well —
+   the neighbourhood is crowded, which is the subject of the pending project-rename discussion.
 2. Confirm the listing renders: icon (shield/blue), description, and the README's Action section.
 3. After the next release, check `v0` moved (the `major-tag` job) — that is the ref the listing's
    copy-paste snippet hands people.
