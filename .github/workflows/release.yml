@@ -49,3 +49,35 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # The composite action in this repo is consumed as `uses: SVGreg/skill-guard@v0`,
+  # the floating major tag every marketplace action is expected to publish. It is
+  # moved only after goreleaser has attached the binaries: the action installs the
+  # release matching its own ref, so a major tag pointing at a release with no
+  # assets would break every workflow using it.
+  major-tag:
+    needs: [release-please, goreleaser]
+    if: needs.release-please.outputs.release_created == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.release-please.outputs.tag_name }}
+
+      - name: Move the major tag to this release
+        env:
+          TAG: ${{ needs.release-please.outputs.tag_name }}
+        run: |
+          major="${TAG%%.*}"          # v0.3.0 -> v0
+          case "$major" in
+            v[0-9]*) ;;
+            *) echo "::error::unexpected tag $TAG; not moving a major tag"; exit 1 ;;
+          esac
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -f "$major" "$TAG"
+          git push -f origin "refs/tags/$major"
+          echo "$major now points at $TAG" >> "$GITHUB_STEP_SUMMARY"

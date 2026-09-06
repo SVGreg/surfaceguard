@@ -33,11 +33,20 @@ inputs:
     default: ""
   version:
     description: >-
-      skill-guard release to install (e.g. v0.2.2), "latest" for the newest release, or
-      "preinstalled" to use a skill-guard already on PATH (a Homebrew install, or one built
-      from source in an earlier step).
+      skill-guard release to install. The default installs the release matching the
+      ref this action was pinned to (so @v0.3.0 installs v0.3.0), falling back to the
+      newest release when the action is used from a branch or a local path. Set an
+      explicit tag (e.g. v0.3.0) to override, "latest" to always take the newest, or
+      "preinstalled" to use a skill-guard already on PATH.
     required: false
-    default: latest
+    default: ""
+  category:
+    description: >-
+      Code-scanning category for the SARIF upload. Set a distinct value per scan when
+      a workflow scans several skills, otherwise each upload replaces the previous
+      one's alerts. Defaults to the scanned path.
+    required: false
+    default: ""
   upload-sarif:
     description: "Upload the SARIF file to GitHub code scanning. Requires the security-events: write permission."
     required: false
@@ -46,6 +55,12 @@ inputs:
     description: Fail the job when the scan verdict is fail (exit 1). The upload still happens first.
     required: false
     default: "true"
+  token:
+    description: >-
+      Token used to resolve and download the release. The default is enough; it exists
+      so a busy org can supply its own rather than hit the anonymous API rate limit.
+    required: false
+    default: ${{ github.token }}
 
 outputs:
   exit-code:
@@ -54,20 +69,109 @@ outputs:
   output-file:
     description: Path to the file the scan wrote.
     value: ${{ steps.scan.outputs.output-file }}
+  verdict:
+    description: "The scan verdict: pass, warn, or fail."
+    value: ${{ steps.scan.outputs.verdict }}
 
 runs:
   using: composite
   steps:
+    # Everything checked here produces a message naming the fix. The failures
+    # this catches (no checkout, a Windows runner, a typo'd format) otherwise
+    # surface as a scanner usage error, which reads like skill-guard's fault.
+    - name: Check the inputs and the runner
+      shell: bash
+      env:
+        SG_PATH: ${{ inputs.path }}
+        SG_FORMAT: ${{ inputs.format }}
+        SG_UPLOAD: ${{ inputs.upload-sarif }}
+        SG_VERSION: ${{ inputs.version }}
+      run: |
+        case "$SG_FORMAT" in
+          sarif|json|text|skill-card) ;;
+          *)
+            echo "::error::format: $SG_FORMAT is not a skill-guard output format (sarif | json | text | skill-card)"
+            exit 1
+            ;;
+        esac
+
+        if [ "$RUNNER_OS" != "Linux" ] && [ "$RUNNER_OS" != "macOS" ] && [ "$SG_VERSION" != "preinstalled" ]; then
+          echo "::error::this action installs a Linux or macOS binary; $RUNNER_OS runners must install skill-guard themselves and pass version: preinstalled"
+          exit 1
+        fi
+
+        if [ ! -e "$SG_PATH" ]; then
+          echo "::error::path: $SG_PATH does not exist in the workspace. Add 'uses: actions/checkout@v4' before this step, or point path at the skill you mean to scan."
+          exit 1
+        fi
+
+        if [ "$SG_UPLOAD" = "true" ] && [ "$SG_FORMAT" != "sarif" ]; then
+          echo "::warning::upload-sarif is true but format is $SG_FORMAT; code scanning only accepts SARIF, so nothing will be uploaded"
+        fi
+
     - name: Install skill-guard
       if: ${{ inputs.version != 'preinstalled' }}
       shell: bash
       env:
+        # An action pinned to a tag installs the binary from that same tag by
+        # default. Resolving "latest" here instead would mean @v0.3.0 silently
+        # running a future release whose flags this action's install step and
+        # docs were never written against — the version skew a pinned ref
+        # exists to prevent. github.action_ref is empty for a local `uses: ./`
+        # and is a branch name when pinned to one; both fall back to latest,
+        # which install.sh reads as an empty VERSION.
+        REQUESTED: ${{ inputs.version }}
+        ACTION_REF: ${{ github.action_ref }}
+        INSTALL_DIR: ${{ runner.temp }}/skill-guard-bin
+        # Used only to raise the API rate limit while resolving "latest"; the
+        # download itself is a public release asset.
+        GITHUB_TOKEN: ${{ inputs.token }}
+      run: |
+        # Newest release within one major line, for a floating major tag. A
+        # release named "v0" does not exist — the tag does — so following the
+        # ref literally would ask install.sh for assets that were never
+        # published. An empty answer here falls back to the newest release,
+        # which is also what a failed lookup should do rather than break a
+        # build over a rate limit.
+        newest_in_major() {
+          url="https://api.github.com/repos/SVGreg/skill-guard/releases?per_page=100"
+          # Two spellings rather than one with ${TOKEN:+-H "..."}: that
+          # expansion is unquoted, so the shell would split the header into
+          # four arguments and send a malformed request.
+          if [ -n "${GITHUB_TOKEN:-}" ]; then
+            body=$(curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" "$url" 2>/dev/null || true)
+          else
+            body=$(curl -fsSL "$url" 2>/dev/null || true)
+          fi
+          # The list endpoint returns newest first.
+          printf '%s' "$body" | grep -o '"tag_name": *"[^"]*"' | cut -d '"' -f 4 |
+            grep -E "^$1\." | head -1
+        }
+
+        resolve() {
+          # An explicit tag always wins; an explicit "latest" always means the
+          # newest release, even when the action itself is pinned.
+          if [ -n "$REQUESTED" ]; then
+            if [ "$REQUESTED" = "latest" ]; then echo ""; else echo "$REQUESTED"; fi
+            return
+          fi
+          # Default: follow the ref this action was pinned to.
+          case "$ACTION_REF" in
+            v[0-9]*.[0-9]*.[0-9]*) echo "$ACTION_REF" ;;   # exact release tag
+            v[0-9]*)               newest_in_major "$ACTION_REF" ;;
+            *)                     echo "" ;;              # branch, sha, or uses: ./
+          esac
+        }
+        VERSION=$(resolve)
+        export VERSION INSTALL_DIR
+        if [ -n "$VERSION" ]; then
+          echo "Installing skill-guard $VERSION"
+        else
+          echo "Installing the newest skill-guard release"
+        fi
+        mkdir -p "$INSTALL_DIR"
         # The action's own copy of install.sh is used, so the installer matches
         # the ref the workflow pinned rather than whatever is on main.
-        VERSION: ${{ inputs.version == 'latest' && '' || inputs.version }}
-        INSTALL_DIR: ${{ runner.temp }}/skill-guard-bin
-      run: |
-        mkdir -p "$INSTALL_DIR"
         sh "${{ github.action_path }}/install.sh"
         echo "$INSTALL_DIR" >> "$GITHUB_PATH"
 
@@ -110,8 +214,39 @@ runs:
         skill-guard "${args[@]}"
         code=$?
         set -e
-        echo "exit-code=$code" >> "$GITHUB_OUTPUT"
-        echo "output-file=$SG_OUTPUT" >> "$GITHUB_OUTPUT"
+        # Written before the exit-code check below, so a hard failure still
+        # reports what it managed to produce.
+        {
+          echo "exit-code=$code"
+          echo "output-file=$SG_OUTPUT"
+        } >> "$GITHUB_OUTPUT"
+
+        # Whether there is anything to upload. Computed here, with a plain file
+        # test, rather than in the upload step's `if:` — hashFiles() resolves
+        # against the workspace and would silently skip the upload for an
+        # output path outside it.
+        if [ -s "$SG_OUTPUT" ]; then
+          echo "uploadable=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "uploadable=false" >> "$GITHUB_OUTPUT"
+        fi
+
+        # The verdict is read back from the artifact rather than inferred from
+        # the exit code, which cannot tell pass from warn — both exit 0. The
+        # key appears exactly once in a SARIF log (runs[].properties.verdict),
+        # so sed is enough and the action needs no JSON tooling on the runner.
+        verdict=""
+        if [ "$SG_FORMAT" = "sarif" ] && [ -s "$SG_OUTPUT" ]; then
+          verdict=$(sed -n 's/.*"verdict": *"\([a-z]*\)".*/\1/p' "$SG_OUTPUT" | head -1)
+        fi
+        if [ -z "$verdict" ]; then
+          case "$code" in
+            0) verdict=pass ;;
+            1) verdict=fail ;;
+          esac
+        fi
+        echo "verdict=$verdict" >> "$GITHUB_OUTPUT"
+
         # 0 (pass/warn) and 1 (verdict fail) are scan outcomes and are handled
         # by the gate step after the upload. Anything else — 3 usage, 4
         # internal, 127 missing binary — is a broken workflow, not a finding,
@@ -125,17 +260,32 @@ runs:
         esac
 
     - name: Upload SARIF
-      if: ${{ always() && inputs.upload-sarif == 'true' && inputs.format == 'sarif' }}
+      # always(), so findings from a failing scan are still delivered — but only
+      # when a SARIF file actually exists. Uploading unconditionally turned an
+      # install failure into a second, misleading error about a missing file.
+      if: ${{ always() && inputs.upload-sarif == 'true' && inputs.format == 'sarif' && steps.scan.outputs.uploadable == 'true' }}
       uses: github/codeql-action/upload-sarif@v3
       with:
         sarif_file: ${{ inputs.output }}
+        # Distinguishes one scan from another in the same repo. Without it, a
+        # workflow scanning several skills has each upload replace the last
+        # one's alerts, so only the final skill stays visible.
+        category: ${{ inputs.category != '' && inputs.category || format('skill-guard:{0}', inputs.path) }}
 
     - name: Apply the verdict gate
       if: ${{ always() && inputs.fail-on-verdict == 'true' }}
       shell: bash
+      env:
+        SG_CODE: ${{ steps.scan.outputs.exit-code }}
       run: |
-        code="${{ steps.scan.outputs.exit-code }}"
-        if [ "$code" != "0" ]; then
-          echo "::error::skill-guard verdict gate failed (exit $code); findings were uploaded first"
-          exit "$code"
+        # Empty means the scan step never ran (an earlier step failed). Exiting
+        # with an empty status is a bash error rather than a verdict, so it is
+        # named here instead.
+        if [ -z "$SG_CODE" ]; then
+          echo "::error::the scan step did not run; see the failing step above"
+          exit 1
+        fi
+        if [ "$SG_CODE" != "0" ]; then
+          echo "::error::skill-guard verdict gate failed (exit $SG_CODE); findings were uploaded first"
+          exit "$SG_CODE"
         fi

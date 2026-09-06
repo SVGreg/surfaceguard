@@ -568,12 +568,38 @@ first call cheap too still passes `Options.Rules`.
 `D-05` is recurring, not one-shot: `/sg-plan` re-checks it whenever it expands a milestone, and
 `/sg-threat-research` may feed it.
 
+### D-01 — Publish the action to the marketplace *(owner)*
+**Everything a repo can do for this is done** (see the marketplace-readiness pass): the action is
+hardened, `LICENSE` exists (the README claimed Apache-2.0 with no file, which the listing shows),
+`branding` is set, the release workflow maintains the floating **`v0`** tag the `uses:` line in the
+README and in the M3-06 card always assumed, and the demo workflow installs published releases on
+both runner OSes so a broken asset name fails CI rather than a user's build.
+
+**What only the owner can do,** because it needs the repo's Settings and a release page:
+1. Releases → the latest release → **Edit** → tick *Publish this Action to the GitHub Marketplace*,
+   accept the terms, pick the categories (Security / Code quality). The name `skill-guard` must be
+   unique across the marketplace — GitHub says so at this step, and the fix is `name:` in
+   `action.yml`, nothing else.
+2. Confirm the listing renders: icon (shield/blue), description, and the README's Action section.
+3. After the next release, check `v0` moved (the `major-tag` job) — that is the ref the listing's
+   copy-paste snippet hands people.
+
+Nothing in the repo blocks step 1 any more; it is a five-minute UI task.
+
 ---
 
 ## Change log
 
 Newest last. One line per planning change, written by `/sg-plan`.
 
+- 2026-09-04 — Marketplace-readiness pass on the action (D-01's repo half). Notable: the repo had
+  **no `LICENSE` file** while the README claimed Apache-2.0 — the marketplace listing shows the
+  licence, so that was a publish blocker rather than a tidiness issue. The action now installs the
+  release matching its own ref instead of always `latest` (a workflow pinned to `@v0.3.0` was
+  silently running whatever shipped since), takes a `category` so a repo can scan more than one
+  skill without each upload erasing the last one's alerts, and the release workflow maintains the
+  `v0` tag that M3-06's card assumed but nothing created. D-01 stays `owner`: only a human can tick
+  the publish checkbox.
 - 2026-09-01 — **M5 is complete** (M5-01…M5-09 all `done`, #228–#237). The milestone shipped the
   gate (`Guard()`, its cache, `guard`, install mode), the load-time integration (`hooks/` reading
   the gate's own decision), verifiable skill cards with a documented schema, and the measured

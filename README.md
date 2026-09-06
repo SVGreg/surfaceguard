@@ -1047,11 +1047,21 @@ jobs:
   scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: SVGreg/skill-guard@main    # pin to a release tag for reproducibility
+      - uses: actions/checkout@v4      # the action scans the workspace
+      - uses: SVGreg/skill-guard@v0    # or @v0.3.0 to pin exactly
         with:
           path: ./my-skill
 ```
+
+**Pinning.** `@v0` follows the newest `0.x` release; `@v0.3.0` pins exactly. Either
+way the action installs **the skill-guard release matching its own ref**, so a
+pinned workflow keeps running the binary it was tested against — set
+`version: latest` to opt out of that, or `version: preinstalled` to use a
+`skill-guard` you put on `PATH` yourself.
+
+**Runners.** `ubuntu-*` and `macos-*`. Windows runners must install skill-guard
+themselves and pass `version: preinstalled`; the action says so rather than
+failing obscurely.
 
 | Input | Default | Description |
 |-------|---------|-------------|
@@ -1061,16 +1071,48 @@ jobs:
 | `policy` | – | path to a `.skillguard.yaml` |
 | `fail-on` | – | override the fail threshold |
 | `rulepack` | – | extra rule-pack YAML (one path per line) |
-| `version` | `latest` | release to install, or `preinstalled` to use a `skill-guard` already on `PATH` |
+| `version` | *the action's own ref* | release to install, `latest`, or `preinstalled` |
+| `category` | `skill-guard:<path>` | code-scanning category — **set this per scan when a workflow scans several skills** |
 | `upload-sarif` | `true` | upload to code scanning |
 | `fail-on-verdict` | `true` | fail the job on a `fail` verdict |
+| `token` | `${{ github.token }}` | only used to raise the API rate limit when resolving a release |
 
-Outputs: `exit-code` (`0` pass/warn, `1` verdict fail) and `output-file`.
+| Output | Description |
+|--------|-------------|
+| `exit-code` | `0` pass/warn, `1` verdict fail |
+| `verdict` | `pass`, `warn`, or `fail` — distinguishes the two outcomes that share exit `0` |
+| `output-file` | path to the file the scan wrote |
 
 **The upload happens before the gate**, so a failing scan still delivers its
 findings — a build that only tells you it failed is not a review. A usage or
 internal error (exit `3`/`4`) fails the step immediately instead of being
 reported as a clean scan.
+
+#### Scanning several skills
+
+Each upload needs its own `category`, or every scan replaces the previous one's
+alerts and only the last skill stays visible in the Security tab:
+
+```yaml
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false          # report every skill, not just the first failure
+      matrix:
+        skill: [skills/pdf-tools, skills/db-helper, skills/deploy]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: SVGreg/skill-guard@v0
+        with:
+          path: ${{ matrix.skill }}
+          output: ${{ matrix.skill }}.sarif
+          category: skill-guard:${{ matrix.skill }}
+```
+
+The default `category` is derived from `path`, so the matrix above works even if
+you drop the explicit line — it is spelled out because a hand-written second job
+usually needs it.
 
 To wire it up by hand instead, emit SARIF and call the uploader yourself:
 
