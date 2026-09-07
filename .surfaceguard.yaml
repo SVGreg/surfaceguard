@@ -6,9 +6,11 @@ trust:
     - keyid: sg-4e342c47160e
       algorithm: ed25519
       public_key: Ma3DtMHino+NPGAyskMJS+8Vzo+ePVSlZ6RSNc7FPYM=   # from keygen
-    # OMS mandates EC P-256/384/521 and has no Ed25519 method, so the skills in
-    # .claude/skills are signed with this key: one `sign --oms` run writes both
-    # SKILL.md.skillsig (SGMT-1) and skill.oms.sig from it. See scripts/sign-skills.sh.
+    # OMS mandates EC P-256/384/521 and has no Ed25519 method, so skill.oms.sig
+    # is signed with this key while SKILL.md.skillsig stays on the ed25519 key
+    # above — scripts/sign-skills.sh makes two passes for exactly that reason,
+    # and both keys must stay listed here or one of the two formats reads
+    # INVALID rather than merely untrusted.
     - keyid: sg-7ea971cb4c9a
       algorithm: ecdsa-p256
       public_key: MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAET0+EHun1XPU/uvt4aFtLS8rpkF3Jp6rwKJWlD/lcrnFb1NzEqZeq3GgnDYSCGt5GkRmtUyRDIPrQUNQaXhyXLg==
