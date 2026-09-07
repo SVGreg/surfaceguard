@@ -14,29 +14,22 @@ import (
 )
 
 // PayloadType is the DSSE payloadType for surfaceguard attestations, and
-// LegacyPayloadType the pre-0.5 spelling. DSSE convention is a media type (the
-// in-toto envelope uses application/vnd.in-toto+json), and the "+json" suffix
-// is what tells a generic consumer how to parse the payload — so this stays a
-// media type while StatementType, which answers "what is this document", is a
-// resolvable URI. The two must never be interchangeable: pkg/verify relies on
-// the payloadType to stop a USF field signature being replayed as an
-// attestation.
+// StatementType the `_type` of the statement it carries.
 //
-// The payloadType is inside the DSSE pre-authentication encoding, so changing
-// it changes the signed bytes: every attestation made under the legacy spelling
-// must be re-signed. Verification accepts the legacy value for one release with
-// a deprecation finding (SG-PRV-006); see docs/rename-migration.md.
+// They follow different conventions on purpose. DSSE names a media type (the
+// in-toto envelope uses application/vnd.in-toto+json), whose "+json" suffix
+// tells a generic consumer how to parse the payload; the statement's own _type
+// is a resolvable URI answering what the document is. They must never be
+// interchangeable: pkg/verify relies on the payloadType to stop a USF field
+// signature — published in plaintext in SKILL.md front-matter — being replayed
+// as an attestation.
+//
+// The payloadType is inside the DSSE pre-authentication encoding, so it is
+// signed material: changing either constant invalidates every existing
+// signature.
 const (
-	PayloadType       = "application/vnd.surfaceguard.attestation.v1+json"
-	LegacyPayloadType = "application/vnd.skillguard.attestation.v1+json"
-)
-
-// StatementType is the `_type` of the signed statement — a resolvable URI, the
-// in-toto convention this statement shape follows. LegacyStatementType is the
-// pre-0.5 spelling, accepted on read.
-const (
-	StatementType       = "https://surfaceguard.svgreg.net/attestation/v1"
-	LegacyStatementType = "skillguard.net/attestation/v1"
+	PayloadType   = "application/vnd.surfaceguard.attestation.v1+json"
+	StatementType = "https://surfaceguard.svgreg.net/attestation/v1"
 )
 
 // Signer abstracts the private-key operation (design §7.4).

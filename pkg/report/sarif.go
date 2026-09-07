@@ -46,7 +46,7 @@ const (
 	// fingerprintKey is versioned: changing how the fingerprint is computed
 	// would otherwise silently re-open every existing alert. Bump the suffix
 	// and consumers keep both, which is the documented SARIF behavior.
-	fingerprintKey = "skillGuard/v1"
+	fingerprintKey = "surfaceGuard/v1"
 )
 
 // --- wire types (the subset of SARIF 2.1.0 we emit) ---

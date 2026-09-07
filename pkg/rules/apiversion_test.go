@@ -29,7 +29,7 @@ rules:
 // The gate is fail-closed by design: a pack written against a schema this build
 // does not know would otherwise load and run under today's semantics, which is
 // the same class of bug as an unknown `engine:` (design §8.1) with a wider blast
-// radius. Both the current id and the pre-0.5 one are accepted; nothing else is.
+// radius. Exactly one id is accepted.
 func TestAPIVersionGate(t *testing.T) {
 	for _, tc := range []struct {
 		name       string
@@ -37,7 +37,6 @@ func TestAPIVersionGate(t *testing.T) {
 		wantErr    bool
 	}{
 		{"current", APIVersion, false},
-		{"legacy pre-0.5", LegacyAPIVersion, false},
 		{"future major", "surfaceguard.svgreg.net/rulepack.v2", true},
 		{"foreign namespace", "example.com/rulepack.v1", true},
 		{"nonsense", "potato", true},
@@ -69,8 +68,8 @@ func TestAPIVersionGate(t *testing.T) {
 	}
 }
 
-// Every built-in pack must carry the current id — a legacy one shipping inside
-// the binary would mean the rename missed a file.
+// Every built-in pack must carry the current id — anything else shipping inside
+// the binary would mean an edit missed a file.
 func TestBuiltinPacksDeclareCurrentAPIVersion(t *testing.T) {
 	packs, err := Builtin()
 	if err != nil {

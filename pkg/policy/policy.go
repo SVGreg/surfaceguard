@@ -17,14 +17,10 @@ import (
 )
 
 // Policy is the loaded, defaulted configuration.
-// APIVersion is the policy schema id written by `surfaceguard policy init`, and
-// LegacyAPIVersion the pre-0.5 spelling. Unlike a rule pack, a policy is the
-// *user's* file: both are read without complaint and neither is required, so a
-// hand-written `.surfaceguard.yaml` never breaks on a rename of ours.
-const (
-	APIVersion       = "surfaceguard.svgreg.net/policy.v1"
-	LegacyAPIVersion = "skillguard.net/policy.v1"
-)
+// APIVersion is the policy schema id written by `surfaceguard policy init`.
+// Unlike a rule pack it is not gated: a policy is the *user's* file, and the
+// field stays optional.
+const APIVersion = "surfaceguard.svgreg.net/policy.v1"
 
 type Policy struct {
 	APIVersion  string          `yaml:"apiVersion"`

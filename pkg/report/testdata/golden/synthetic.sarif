@@ -371,7 +371,7 @@
             }
           ],
           "partialFingerprints": {
-            "skillGuard/v1": "3dc2e7f37a5d292d"
+            "surfaceGuard/v1": "3dc2e7f37a5d292d"
           },
           "properties": {
             "ast": [
@@ -416,7 +416,7 @@
             }
           ],
           "partialFingerprints": {
-            "skillGuard/v1": "fbb908bb67df8c3d"
+            "surfaceGuard/v1": "fbb908bb67df8c3d"
           },
           "properties": {
             "ast": [
@@ -460,7 +460,7 @@
             }
           ],
           "partialFingerprints": {
-            "skillGuard/v1": "6ad8701edb6d94f2"
+            "surfaceGuard/v1": "6ad8701edb6d94f2"
           },
           "properties": {
             "ast": [
@@ -493,7 +493,7 @@
             }
           ],
           "partialFingerprints": {
-            "skillGuard/v1": "096494328de0fa83"
+            "surfaceGuard/v1": "096494328de0fa83"
           },
           "properties": {
             "ast": [
@@ -537,7 +537,7 @@
             }
           ],
           "partialFingerprints": {
-            "skillGuard/v1": "8d0f11f35aa6db8d"
+            "surfaceGuard/v1": "8d0f11f35aa6db8d"
           },
           "suppressions": [
             {

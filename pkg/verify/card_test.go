@@ -127,7 +127,7 @@ func TestParseCardRejectsUncheckableDocuments(t *testing.T) {
 	}{
 		{"not json", "hello", ErrNotACard},
 		{"no _type", `{"name":"x","content_hash":"sha256:aa"}`, ErrNotACard},
-		{"future schema", `{"_type":"skillguard.net/skill-card/v2","content_hash":"sha256:aa"}`, ErrUnsupportedSchema},
+		{"future schema", `{"_type":"https://surfaceguard.svgreg.net/skill-card/v2","content_hash":"sha256:aa"}`, ErrUnsupportedSchema},
 		{"foreign card", `{"_type":"example.com/other-card/v1","content_hash":"sha256:aa"}`, ErrUnsupportedSchema},
 		{"pre-hash card", `{"_type":"` + scan.CardType + `","name":"x"}`, ErrNoContentHash},
 	}

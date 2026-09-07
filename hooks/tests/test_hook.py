@@ -129,49 +129,33 @@ class TestTimeout(unittest.TestCase):
         self.assertEqual(hook._timeout({}), 20)
 
 
-class TestLegacyNames(unittest.TestCase):
-    """The project was called skill-guard through v0.3.0. An installed hook keeps
-    its old spellings, and silently ignoring them would drop a working security
-    configuration — so each one is pinned."""
+class TestConfigDiscovery(unittest.TestCase):
+    """Config lookup order: env, then project, then user — one spelling each."""
 
-    def test_legacy_config_key_is_adopted(self):
-        cfg = hook._adopt_legacy_keys({"skill_guard_bin": "/opt/bin/skill-guard"})
-        self.assertEqual(cfg.get("surfaceguard_bin"), "/opt/bin/skill-guard")
-        self.assertNotIn("skill_guard_bin", cfg)
-
-    def test_current_key_wins_when_both_present(self):
-        cfg = hook._adopt_legacy_keys({"surfaceguard_bin": "new", "skill_guard_bin": "old"})
-        self.assertEqual(cfg["surfaceguard_bin"], "new")
-
-    def test_legacy_config_file_is_searched(self):
+    def test_candidate_order(self):
         cands = hook._config_candidates()
-        self.assertTrue(any(c.endswith("skillguard-hook.config.json") for c in cands))
-        self.assertTrue(any(c.endswith("surfaceguard-hook.config.json") for c in cands))
-        # The current name must be preferred over the legacy one at each scope.
-        proj_new = next(i for i, c in enumerate(cands) if c.endswith(".claude/surfaceguard-hook.config.json"))
-        proj_old = next(i for i, c in enumerate(cands) if c.endswith(".claude/skillguard-hook.config.json"))
-        self.assertLess(proj_new, proj_old)
+        proj = next(i for i, c in enumerate(cands)
+                    if c.endswith(".claude/surfaceguard-hook.config.json"))
+        home = next(i for i, c in enumerate(cands[proj + 1:])
+                    if c.endswith(".claude/surfaceguard-hook.config.json"))
+        self.assertGreaterEqual(home, 0)
 
-    def test_legacy_policy_filename_is_found(self):
+    def test_default_policy_is_found_in_the_project(self):
         import tempfile
         d = tempfile.mkdtemp()
         os.environ["CLAUDE_PROJECT_DIR"] = d
-        legacy = os.path.join(d, ".skillguard.yaml")
-        open(legacy, "w").close()
-        # Default policy path (.surfaceguard.yaml) is absent, so the pre-rename
-        # file must still be picked up rather than the scan running unpoliced.
-        self.assertEqual(hook._resolve_policy(dict(hook.DEFAULT_CONFIG)), legacy)
-
         current = os.path.join(d, ".surfaceguard.yaml")
         open(current, "w").close()
         self.assertEqual(hook._resolve_policy(dict(hook.DEFAULT_CONFIG)), current)
 
-    def test_an_explicit_policy_does_not_fall_back(self):
+    def test_a_missing_policy_resolves_to_nothing(self):
         import tempfile
-        d = tempfile.mkdtemp()
-        os.environ["CLAUDE_PROJECT_DIR"] = d
-        open(os.path.join(d, ".skillguard.yaml"), "w").close()
-        # The caller named a file; guessing a different one would be surprising.
+        os.environ["CLAUDE_PROJECT_DIR"] = tempfile.mkdtemp()
+        self.assertEqual(hook._resolve_policy(dict(hook.DEFAULT_CONFIG)), "")
+
+    def test_an_explicit_policy_that_is_absent_does_not_guess(self):
+        import tempfile
+        os.environ["CLAUDE_PROJECT_DIR"] = tempfile.mkdtemp()
         self.assertEqual(hook._resolve_policy({"policy": "custom.yaml"}), "")
 
 

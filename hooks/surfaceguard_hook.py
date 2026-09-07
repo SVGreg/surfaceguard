@@ -94,16 +94,6 @@ DEFAULT_CONFIG: Dict[str, Any] = {
 CONFIG_ENV = "SURFACEGUARD_HOOK_CONFIG"
 CONFIG_BASENAME = "surfaceguard-hook.config.json"
 
-# The project was called skill-guard through v0.3.0. An installed hook keeps its
-# old config file, env var, and key names until someone rewrites them, and a
-# rename that silently ignored them would drop a working configuration — the one
-# failure mode a security gate must not have. All three legacy spellings are
-# still read; the current ones win where both are present.
-LEGACY_CONFIG_ENV = "SKILLGUARD_HOOK_CONFIG"
-LEGACY_CONFIG_BASENAME = "skillguard-hook.config.json"
-LEGACY_KEYS = {"surfaceguard_bin": "skill_guard_bin"}
-LEGACY_POLICY = ".skillguard.yaml"
-
 
 def load_config() -> Dict[str, Any]:
     """Merge the first config found (env → project → user) over defaults."""
@@ -116,14 +106,6 @@ def load_config() -> Dict[str, Any]:
             except (OSError, ValueError) as exc:  # pragma: no cover - defensive
                 _stderr(f"surfaceguard-hook: ignoring bad config {path}: {exc}")
             break
-    return _adopt_legacy_keys(cfg)
-
-
-def _adopt_legacy_keys(cfg: Dict[str, Any]) -> Dict[str, Any]:
-    """Read pre-rename key spellings so an existing config keeps working."""
-    for current, legacy in LEGACY_KEYS.items():
-        if legacy in cfg and current not in cfg:
-            cfg[current] = cfg.pop(legacy)
     return cfg
 
 
@@ -132,11 +114,8 @@ def _config_candidates() -> List[str]:
     home = os.path.expanduser("~")
     return [
         os.environ.get(CONFIG_ENV, ""),
-        os.environ.get(LEGACY_CONFIG_ENV, ""),
         os.path.join(project, ".claude", CONFIG_BASENAME),
-        os.path.join(project, ".claude", LEGACY_CONFIG_BASENAME),
         os.path.join(home, ".claude", CONFIG_BASENAME),
-        os.path.join(home, ".claude", LEGACY_CONFIG_BASENAME),
     ]
 
 
@@ -295,17 +274,8 @@ def guard_command(cfg: Dict[str, Any], bundle: str) -> List[str]:
 
 
 def _resolve_policy(cfg: Dict[str, Any]) -> str:
-    """Absolute path of the policy to pass, or "" when there is none.
-
-    Falls back to the pre-rename filename: the default is a *path*, so a project
-    that still has .skillguard.yaml would otherwise be scanned with no policy at
-    all — silently losing its thresholds, waivers and trust roster rather than
-    failing loudly.
-    """
-    candidates = [cfg.get("policy", "")]
-    if candidates[0] == DEFAULT_CONFIG["policy"]:
-        candidates.append(LEGACY_POLICY)
-    for cand in candidates:
+    """Absolute path of the policy to pass, or "" when there is none."""
+    for cand in [cfg.get("policy", "")]:
         path = expand(cand)
         if not path:
             continue

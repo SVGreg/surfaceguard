@@ -257,11 +257,11 @@ Severity: `critical > high > medium > low > info`. Engines: `static` (regex/AST/
 
 ### 5.5 Metadata & manifest integrity → AST04, AST03
 - **SG-MTA-001** Unsafe YAML tags (`!!python/object`, `!!python/apply`, `!!python/name`) / deserialization gadgets. `static`, critical.
-- **SG-MTA-002** Front-matter schema violation vs. the pinned agentskills.io schema version: missing `name`/`description`, malformed values. Unknown **top-level** keys → `low` (the spec evolves; `metadata.*` is open by spec and never flagged; USF reserved keys `signature`/`content_hash` and the `metadata.skillguard.*` extension are recognized). `static`, medium/low as above.
+- **SG-MTA-002** Front-matter schema violation vs. the pinned agentskills.io schema version: missing `name`/`description`, malformed values. Unknown **top-level** keys → `low` (the spec evolves; `metadata.*` is open by spec and never flagged; USF reserved keys `signature`/`content_hash` and the `metadata.surfaceguard.*` extension are recognized). `static`, medium/low as above.
 - **SG-MTA-003** `allowed-tools` over-broad (`Bash(*)`, unrestricted shell) or absent while scripts execute commands. `static`, high.
 - **SG-MTA-004** Overly broad file globs in declared permissions (`**/*`). `static`, medium.
 - **SG-MTA-005** Brand/trademark impersonation in `name`/`description`. `static`, medium.
-- **SG-MTA-006** Declared risk tier inconsistent with observed permission scope. Declared tier is read from the optional `metadata.skillguard.risk_tier` extension key (spec-legal, since `metadata` is open); **rule is inactive when the key is absent.** `static`, medium.
+- **SG-MTA-006** Declared risk tier inconsistent with observed permission scope. Declared tier is read from the optional `metadata.surfaceguard.risk_tier` extension key (spec-legal, since `metadata` is open); **rule is inactive when the key is absent.** `static`, medium.
 - **SG-TRIG-001** Trigger abuse / shadowing — description/trigger engineered for over-activation (generic single-word triggers, "any/all/every request" claims) or shadowing a built-in/peer-skill trigger. `static`(+`llm`), medium.
 
 ### 5.6 Supply chain & dependencies → AST02, AST07
@@ -293,7 +293,6 @@ Connect **sources** (env, credential reads, conversation, clipboard, network inp
 - **SG-PRV-005** Publisher identity unverified (no bound identity claim). `provenance`, medium.
 - **SG-PRV-006** Attestation is integrity-only (`scan: null`, signed with `--no-scan`) — skill was never scanned at signing time. `provenance`, low.
 - **SG-PRV-007** Skill card does not describe this bundle — the card's `content_hash` is not the bundle's recomputed SGMT-1 root (`verify --card`; exit 2, §10.5). `provenance`, critical. Schema and semantics: `docs/skill-card-schema.md`.
-- **SG-PRV-008** Attestation carries the pre-0.5 DSSE `payloadType`; it still verifies, but should be re-signed. Removed at v1 (then SG-PRV-002). `provenance`, medium.
 
 ### 5.10 Opt-in advanced engines
 - **SG-YARA-\*** (`static`, opt-in) Bundled YARA signatures for known malware — reverse shells, webshells, C2 frameworks, info-stealers, crypto-miners, exploit tools. High precision, critical on match; versioned ruleset in the pack.
@@ -408,7 +407,7 @@ This section is the interop contract. Independent implementations (per-language 
 
 ### 7.1 Bundle canonicalization & Merkle tree (`SGMT-1`)
 
-**File set.** All regular files under the bundle root, **excluding**: the detached attestation (`*.skillsig`), `.git/`, `.DS_Store`, `Thumbs.db`, and paths matched by an optional `.skillguardignore` (which, if present, is itself **included** in the file set). Symlinks MUST be rejected (error, not skipped). Empty file set is invalid.
+**File set.** All regular files under the bundle root, **excluding**: the detached attestation (`*.skillsig`), `.git/`, `.DS_Store`, `Thumbs.db`, and paths matched by an optional `.surfaceguardignore` (which, if present, is itself **included** in the file set). Symlinks MUST be rejected (error, not skipped). Empty file set is invalid.
 
 **Path normalization.** Paths are relative to the bundle root, use `/` as separator on all platforms (Windows `\` normalized), no leading `./`, no `.`/`..` segments, Unicode NFC-normalized, UTF-8 encoded. Duplicate post-normalization paths ⇒ error.
 
@@ -443,7 +442,7 @@ The signed payload is a JSON **statement** (no signature material inside):
     "max_severity": "low",
     "risk_score": 4,
     "findings_digest": "sha256:…",
-    "skillguard_version": "1.0.0"
+    "surfaceguard_version": "1.0.0"
   },
   "predicate": {
     "issued_at": "2026-07-16T00:00:00Z",
@@ -513,9 +512,8 @@ OWASP's USF places `content_hash: "sha256:…"` and `signature: "ed25519:…"` *
 
 ### 8.1 Format (`rulepack.v1`)
 
-`apiVersion` is **validated**: a pack must declare `surfaceguard.svgreg.net/rulepack.v1` (or the
-pre-0.5 `skillguard.net/rulepack.v1`, accepted for one release), and anything else — including a
-missing value — is refused with `ErrAPIVersion`. This is the same fail-closed posture as an unknown
+`apiVersion` is **validated**: a pack must declare `surfaceguard.svgreg.net/rulepack.v1`, and
+anything else — including a missing value — is refused with `ErrAPIVersion`. This is the same fail-closed posture as an unknown
 `engine:`; before 0.5 the field was parsed and ignored, so a pack written against a future schema
 would silently run under today's semantics. The id is compared as a string and never dereferenced;
 the bare `authority/name.vN` shape is the Kubernetes convention, where the domain buys global
@@ -615,7 +613,7 @@ Two layers, resolving the determinism/timestamp conflict:
   "envelope": {
     "scanned_at": "2026-07-16T10:22:00Z",
     "source": "git+https://…@<sha>",
-    "skillguard_version": "1.0.0"
+    "surfaceguard_version": "1.0.0"
   }
 }
 ```
@@ -716,7 +714,7 @@ trust:                           # the roster — same file, no --trust-store fl
 ### 11.1 Library API (Go, canonical)
 
 ```go
-package skillguard
+package surfaceguard
 
 func LoadBundle(ctx context.Context, src Source) (*Bundle, error)
 
@@ -754,7 +752,7 @@ Extension interfaces: `Engine`, `Signer` (§7.4), `TrustRoster` (§7.4), `Provid
 **(a) Staging-directory filter (works with every SDK today, including Anthropic's Agent SDK):** guard skills *before* the session sees them —
 
 ```python
-from skillguard import guard        # PyPI wheel (FFI) or daemon client — same API
+from surfaceguard import guard        # PyPI wheel (FFI) or daemon client — same API
 import shutil, pathlib
 
 def stage_safe_skills(src: pathlib.Path, dst: pathlib.Path, policy: str) -> None:
@@ -785,7 +783,7 @@ loadSkill(skillPath);
 
 ### 11.3 Daemon (`surfaceguard serve`) — language-agnostic, secure by default
 
-- **gRPC** (`proto/skillguard.proto`): `Scan`, `Sign`, `Verify`, `Card`, `Guard`.
+- **gRPC** (`proto/surfaceguard.proto`): `Scan`, `Sign`, `Verify`, `Card`, `Guard`.
 - **JSON-RPC over stdio** (`serve --stdio`): MCP-style framing, zero FFI for any host that can spawn a subprocess.
 - **Binding policy (we pass our own SG-NET-006):** default transport is a **Unix domain socket** (0600) on macOS/Linux and a named pipe on Windows. TCP requires explicit `--listen 127.0.0.1:PORT` and generates a bearer token (`--token-file`); non-loopback binds additionally require `--allow-remote` **and** TLS flags. No unauthenticated network surface, ever.
 
@@ -793,13 +791,13 @@ loadSkill(skillPath);
 
 | Tier | Mechanism | Languages | Notes |
 |---|---|---|---|
-| **A. Native** | Go module `skillguard` | Go | Canonical, in-process. |
-| **B. FFI over C-ABI** | cgo `libskillguard` + idiomatic wrappers | **Python** (cffi wheel: manylinux/macOS/Windows), **Node** (napi-rs; WASM build for verify-only edge), **Rust** (bindgen crate) | One audited core; wrappers add types + the guard helper. |
+| **A. Native** | Go module `surfaceguard` | Go | Canonical, in-process. |
+| **B. FFI over C-ABI** | cgo `libsurfaceguard` + idiomatic wrappers | **Python** (cffi wheel: manylinux/macOS/Windows), **Node** (napi-rs; WASM build for verify-only edge), **Rust** (bindgen crate) | One audited core; wrappers add types + the guard helper. |
 | **C. Daemon/RPC** | §11.3 | Any (Java, C#, Ruby, PHP, shell…) | No native code; process isolation is a security plus; recommended default for SDK integrations. |
 
 Rationale: duplicating rule evaluation per language multiplies attack surface and drift; one audited Go core with thin bindings is the trust-correct split. **Verify-only** is additionally specified for pure per-language reimplementation (§7 is self-contained) so load-time verification can be dependency-free where FFI is unacceptable.
 
-Packaging: GoReleaser (CLI + shared libs, linux/macos/windows × amd64/arm64), PyPI `surfaceguard`, npm `@surfaceguard/node`, crates.io `skillguard`, GitHub Action `surfaceguard/action@v1`, pre-commit hook repo.
+Packaging: GoReleaser (CLI + shared libs, linux/macos/windows × amd64/arm64), PyPI `surfaceguard`, npm `@surfaceguard/node`, crates.io `surfaceguard`, GitHub Action `surfaceguard/action@v1`, pre-commit hook repo.
 
 ---
 
@@ -849,7 +847,7 @@ Packaging: GoReleaser (CLI + shared libs, linux/macos/windows × amd64/arm64), P
 - Verdict: `pass|warn|fail` lowercase everywhere; `warn` defined; `--strict-warn` (§10.3, §10.5).
 - Policy vs trust: one file, `trust:` section (§10.4).
 - Determinism vs timestamps: card/envelope split (§9).
-- `risk_tier` declaration: optional `metadata.skillguard.risk_tier`; SG-MTA-006 inactive when absent (§5.5).
+- `risk_tier` declaration: optional `metadata.surfaceguard.risk_tier`; SG-MTA-006 inactive when absent (§5.5).
 - USF in-manifest signing semantics: normalized-SKILL.md rule (§7.5).
 - Daemon security, corpus quarantine, stdin semantics, waived counts, `Signer` context, `platforms[]`.
 

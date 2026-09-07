@@ -8,7 +8,7 @@ import (
 )
 
 const ctxPack = `
-apiVersion: skillguard.net/rulepack.v1
+apiVersion: surfaceguard.svgreg.net/rulepack.v1
 name: t
 version: 1.0.0
 rules:

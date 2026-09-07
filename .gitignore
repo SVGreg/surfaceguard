@@ -1,6 +1,5 @@
 # Binaries
 /surfaceguard
-/skill-guard   # pre-rename binary, so a stale one is never committed
 /dist/
 *.exe
 *.test

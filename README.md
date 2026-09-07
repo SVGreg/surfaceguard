@@ -15,12 +15,6 @@ artifact so consumers can verify its integrity and provenance.
 Use it as a **CLI** (`surfaceguard`) in CI or as a pre-load gate, or as a **Go
 library** embedded in an agent loop.
 
-> **Renamed from `skill-guard` in v0.4.0.** The scope outgrew "skills", and two
-> unrelated projects already used the old name. Rule ids (`SG-*`), the SGMT-1
-> Merkle format, `.skillsig` attestations and every emitted schema id are
-> **unchanged** — existing signatures and SARIF logs stay valid. See
-> [`docs/rename-migration.md`](docs/rename-migration.md).
-
 > Status: five milestones are implemented and runnable — **scan** (rule packs,
 > policy, risk score), **sign/verify** (SGMT-1 + DSSE), **SARIF/CI**,
 > **OMS + Sigstore keyless interop**, and the **load-time / install-time gate**
@@ -41,7 +35,7 @@ library** embedded in an agent loop.
   - [`verify`](#verify)
   - [`guard`](#guard)
 - [Input & output formats](#input--output-formats)
-- [Policy file (`.surfaceguard.yaml`)](#policy-file-skillguardyaml)
+- [Policy file (`.surfaceguard.yaml`)](#policy-file-surfaceguardyaml)
 - [Signature formats: SGMT-1 and OMS](#signature-formats-sgmt-1-and-oms)
 - [Publisher identity & trust (`SG-PRV-005`)](#publisher-identity--trust-sg-prv-005)
 - [Exit codes](#exit-codes)

@@ -67,15 +67,12 @@ type condDTO struct {
 	Confidence      *float64      `yaml:"confidence"`
 }
 
-// APIVersion is the rule-pack schema id, LegacyAPIVersion the pre-0.5 spelling.
-// Both are accepted; anything else is refused. The bare `authority/name.vN`
-// shape (no scheme) is the Kubernetes convention this field follows — the
-// domain makes the name globally unique through DNS ownership, and is never
-// dereferenced. Nothing in this binary performs network I/O.
-const (
-	APIVersion       = "surfaceguard.svgreg.net/rulepack.v1"
-	LegacyAPIVersion = "skillguard.net/rulepack.v1"
-)
+// APIVersion is the rule-pack schema id; a pack declaring anything else is
+// refused. The bare `authority/name.vN` shape (no scheme) is the Kubernetes
+// convention this field follows — the domain makes the name globally unique
+// through DNS ownership, and is never dereferenced. Nothing in this binary
+// performs network I/O.
+const APIVersion = "surfaceguard.svgreg.net/rulepack.v1"
 
 // ErrAPIVersion is returned for a pack whose apiVersion this build does not
 // understand — including a missing one. The engine registry is already
@@ -95,7 +92,7 @@ func LoadPack(data []byte) (*Pack, error) {
 		return nil, fmt.Errorf("pack missing name")
 	}
 	switch dto.APIVersion {
-	case APIVersion, LegacyAPIVersion:
+	case APIVersion:
 	case "":
 		return nil, fmt.Errorf("%w: pack %q declares none (want %q)", ErrAPIVersion, dto.Name, APIVersion)
 	default:
