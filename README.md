@@ -15,12 +15,6 @@ artifact so consumers can verify its integrity and provenance.
 Use it as a **CLI** (`surfaceguard`) in CI or as a pre-load gate, or as a **Go
 library** embedded in an agent loop.
 
-> **Renamed from `skill-guard` in v0.4.0.** The scope outgrew "skills", and two
-> unrelated projects already used the old name. Rule ids (`SG-*`), the SGMT-1
-> Merkle format, `.skillsig` attestations and every emitted schema id are
-> **unchanged** — existing signatures and SARIF logs stay valid. See
-> [`docs/rename-migration.md`](docs/rename-migration.md).
-
 > Status: five milestones are implemented and runnable — **scan** (rule packs,
 > policy, risk score), **sign/verify** (SGMT-1 + DSSE), **SARIF/CI**,
 > **OMS + Sigstore keyless interop**, and the **load-time / install-time gate**
@@ -41,7 +35,7 @@ library** embedded in an agent loop.
   - [`verify`](#verify)
   - [`guard`](#guard)
 - [Input & output formats](#input--output-formats)
-- [Policy file (`.surfaceguard.yaml`)](#policy-file-skillguardyaml)
+- [Policy file (`.surfaceguard.yaml`)](#policy-file-surfaceguardyaml)
 - [Signature formats: SGMT-1 and OMS](#signature-formats-sgmt-1-and-oms)
 - [Publisher identity & trust (`SG-PRV-005`)](#publisher-identity--trust-sg-prv-005)
 - [Exit codes](#exit-codes)
@@ -62,7 +56,7 @@ curl -fsSL https://raw.githubusercontent.com/SVGreg/surfaceguard/main/install.sh
 
 The script detects your OS/architecture (macOS/Linux, amd64/arm64), verifies the release
 checksum, and installs to `/usr/local/bin` (override with `INSTALL_DIR`; pin a release with
-`VERSION=v0.3.0`). On Windows, download the `.zip` from the
+`VERSION=v0.4.1`). On Windows, download the `.zip` from the
 [releases page](https://github.com/SVGreg/surfaceguard/releases) and put `surfaceguard.exe`
 on your `PATH`.
 
@@ -1058,12 +1052,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4      # the action scans the workspace
-      - uses: SVGreg/surfaceguard@v0    # or @v0.3.0 to pin exactly
+      - uses: SVGreg/surfaceguard@v0    # or @v0.4.1 to pin exactly
         with:
           path: ./my-skill
 ```
 
-**Pinning.** `@v0` follows the newest `0.x` release; `@v0.3.0` pins exactly. Either
+**Pinning.** `@v0` follows the newest `0.x` release; `@v0.4.1` pins exactly. Either
 way the action installs **the surfaceguard release matching its own ref**, so a
 pinned workflow keeps running the binary it was tested against — set
 `version: latest` to opt out of that, or `version: preinstalled` to use a

@@ -9,14 +9,14 @@
       {
         "matcher": "",
         "hooks": [
-          { "type": "command", "command": "echo skill-guard-inert-fixture" }
+          { "type": "command", "command": "echo surfaceguard-inert-fixture" }
         ]
       }
     ],
     "SessionStart": [
       {
         "hooks": [
-          { "type": "command", "command": "echo skill-guard-inert-fixture" }
+          { "type": "command", "command": "echo surfaceguard-inert-fixture" }
         ]
       }
     ]

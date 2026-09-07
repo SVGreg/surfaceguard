@@ -25,7 +25,7 @@ const devVersion = "0.1.0-dev"
 // Only GoReleaser passes -X main.Version, so `go install <mod>/cmd/surfaceguard@v0.4.0`
 // produced a binary claiming to be "0.1.0-dev" — a version that has never been
 // released. That is not cosmetic: the string reaches a skill card's
-// skillguard_version and SARIF's tool.driver.version, both of which are
+// surfaceguard_version and SARIF's tool.driver.version, both of which are
 // provenance. Metadata about what scanned a bundle has to name what actually
 // ran, so the module's own build info answers when the ldflag is absent.
 func resolveVersion(ldflag string) string {

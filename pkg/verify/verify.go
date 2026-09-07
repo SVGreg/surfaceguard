@@ -86,21 +86,7 @@ func Verify(b *skill.Bundle, env *attest.Envelope, roster policy.Trust) *Result 
 	// but checking it up front is what stops a signature made by the same key in
 	// another context (notably the USF field signature, which is published in
 	// plaintext in SKILL.md front-matter) from being replayed as an attestation.
-	switch env.PayloadType {
-	case attest.PayloadType:
-	case attest.LegacyPayloadType:
-		// The pre-0.5 spelling still verifies — the PAE below is rebuilt from
-		// the envelope's own payloadType, so the signature is checked exactly as
-		// it was made. Only the label changed, and refusing a signature over a
-		// rename would strand every attestation issued before it. Accepting it
-		// is safe because the accepted set holds attestation types only: the USF
-		// type stays outside it, which is what this gate exists for.
-		res.Findings = append(res.Findings, prv("SG-PRV-008", model.SevMedium,
-			"Legacy attestation payload type",
-			"This attestation was signed as "+attest.LegacyPayloadType+", the pre-0.5 spelling. "+
-				"It still verifies; support is removed at v1.",
-			"Re-sign the bundle: surfaceguard sign <path>."))
-	default:
+	if env.PayloadType != attest.PayloadType {
 		res.Findings = append(res.Findings, prv("SG-PRV-002", model.SevCritical,
 			"Unexpected attestation payload type",
 			"The envelope's payloadType is not "+attest.PayloadType+"; it was signed for a different purpose.",

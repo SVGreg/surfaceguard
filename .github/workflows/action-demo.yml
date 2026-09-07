@@ -120,12 +120,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Both OSes, because the asset name carries the platform and a rename
-        # only breaks one of them; both version modes, because resolving an
-        # exact tag and resolving "the newest release" are different code paths
-        # in the action.
+        # Both OSes, because the asset name carries the platform and a broken
+        # asset name only breaks one of them; both version modes, because
+        # resolving an exact tag and resolving "the newest release" are
+        # different code paths in the action.
+        #
+        # The pinned tag must be >= v0.4.0: that is the first release whose
+        # assets carry the current binary name, and install.sh no longer carries
+        # a fallback for anything older.
         os: [ubuntu-latest, macos-latest]
-        version: [v0.3.0, latest]
+        version: [v0.4.1, latest]
     steps:
       - uses: actions/checkout@v4
 

@@ -1417,7 +1417,7 @@ Backtick and `*` are excluded from the redirect-target character class for the r
 `TestSelfModificationCoversReferenceDocOverwrite`.
 
 ### SG-EXE-005 — Anti-analysis / evasion  (AST01/AST08, high)
-- **Signals:** sandbox/VM/debugger detection then branch (`if os.environ.get('CI')`, checks for `SKILLGUARD`/scanner env, `ptrace`, timing checks), scanner-name string checks, behavior that differs when observed, deliberate obfuscation *combined* with the above.
+- **Signals:** sandbox/VM/debugger detection then branch (`if os.environ.get('CI')`, checks for `SURFACEGUARD`/scanner env, `ptrace`, timing checks), scanner-name string checks, behavior that differs when observed, deliberate obfuscation *combined* with the above.
 - **FP carve-outs:** legitimate CI-conditional logic (`if CI: skip interactive prompt`) is common → require the branch to gate **malicious** behavior or to specifically detect security tooling.
 - **Confidence:** scanner-detection branch 0.85; generic CI check 0.2.
 - **Fixtures:** TP: `if not is_sandbox(): exfiltrate()`. FP: `if CI: disable_color()`.
@@ -2551,7 +2551,6 @@ These are **not** pattern rules; they are outcomes of §7 verification in the de
 - **SG-PRV-005 (unverified identity, medium):** no bound identity claim. FP-free.
 - **SG-PRV-006 (integrity-only, low):** `scan: null` — informational; never a gate.
 - **SG-PRV-007 (skill card does not describe this bundle, critical):** emitted only by `verify --card`. The card's `content_hash` is compared with the SGMT-1 root recomputed from the bundle on disk; a mismatch means the card was written for a different skill, or the skill changed after the card was written. Same FP posture and same normalization dependency as SG-PRV-003 — it is the same comparison, against a claim in an unsigned card rather than in a signed statement. Deliberately **not** a re-scan: a card's `verdict`/`risk_score` are products of the emitter's policy, so re-deriving them under the verifier's policy would report a policy difference as tampering. Malformed or foreign card documents are usage errors (exit 3), not findings — a file that is not a card makes no claim to be wrong about. Schema: `docs/skill-card-schema.md`.
-- **SG-PRV-008 (legacy attestation payload type, medium):** the envelope's DSSE `payloadType` is the pre-0.5 spelling `application/vnd.skillguard.attestation.v1+json`. The signature still verifies — the PAE is rebuilt from the envelope's own declared type, so the bytes checked are the bytes signed — and the finding exists to say the attestation predates the identifier rename and should be re-issued. FP-free: it is an exact string comparison against a value this project itself minted. **Accepting it is only safe because the accepted set contains attestation types alone.** The USF field signature (`application/vnd.surfaceguard.usf-fields.v1`, and its legacy spelling) is published in plaintext in `SKILL.md` front-matter, and the payloadType gate is what stops that signature being replayed as a full attestation; a legacy entry must never widen the set beyond attestations. Support is removed at v1, after which the same envelope reports SG-PRV-002 (critical). See `docs/rename-migration.md`.
 
 *No LLM, no widening — precision comes from correct crypto + normalization, tested by vectors (design §13), not from patterns.*
 

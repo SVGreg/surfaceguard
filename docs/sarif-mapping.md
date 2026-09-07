@@ -63,7 +63,7 @@ array is sorted by id and deduplicated.
 
 ## `partialFingerprints`
 
-Key `skillGuard/v1`, value the first 8 bytes of
+Key `surfaceGuard/v1`, value the first 8 bytes of
 `sha256(ruleId | file | whitespace-normalized excerpt)`.
 
 **The line number is deliberately excluded.** Inserting a paragraph above a
@@ -73,7 +73,9 @@ identical hits in the same file are disambiguated by a deterministic occurrence
 counter, so they stay two alerts rather than collapsing into one.
 
 The key is versioned: a change to how the fingerprint is computed will land as
-`skillGuard/v2` rather than silently re-opening every existing alert.
+`surfaceGuard/v2` rather than silently re-opening every existing alert.
+The rename from the pre-0.5 key is itself such a change: alerts opened under it
+are re-keyed once, which is why it happened before anyone consumed the output.
 
 ## OWASP taxonomy
 

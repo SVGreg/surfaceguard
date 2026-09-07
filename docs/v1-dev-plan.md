@@ -579,10 +579,8 @@ both runner OSes so a broken asset name fails CI rather than a user's build.
 1. Releases → the latest release → **Edit** → tick *Publish this Action to the GitHub Marketplace*,
    accept the terms, pick the categories (Security / Code quality). The listing name is
    **`Agent Skill Security Scan`** — spelled out rather than the brand, because marketplace search
-   is keyword-driven. Marketplace names must be unique, and the pre-rename name `skill-guard` was
-   already listed by an unrelated project (`vaibhavtupe/skill-guard-action`, whose repo predates
-   this one by four months); `AI-Provenance/skillguard-core` holds `SkillGuard Scan`. That crowding
-   is what the rename to SurfaceGuard resolved — see `docs/rename-migration.md`.
+   is keyword-driven. Marketplace names must be unique, and the brand alone is crowded there by
+   unrelated projects, which is why the listing spells out what the action does.
 2. Confirm the listing renders: icon (shield/blue), description, and the README's Action section.
 3. After the next release, check `v0` moved (the `major-tag` job) — that is the ref the listing's
    copy-paste snippet hands people.

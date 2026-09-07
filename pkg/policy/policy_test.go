@@ -142,8 +142,7 @@ func TestLoadAcceptsValidPolicies(t *testing.T) {
 		{"empty file", ""},
 		{"comments only", "# nothing to see here\n"},
 		{"apiVersion only", "apiVersion: " + APIVersion + "\n"},
-		{"legacy apiVersion", "apiVersion: " + LegacyAPIVersion + "\n"},
-		{"README trust roster", "apiVersion: skillguard.net/policy.v1\ntrust:\n  keys:\n    - keyid: sg-8f7164b591be\n      algorithm: ed25519\n      public_key: xllKlT5UIVX+Pw1QC+W2SDzM8mYCeebWrW+mOuA2/aM=\n      identity: oidc:you@example.com\n  revoked: []\n"},
+		{"README trust roster", "apiVersion: " + APIVersion + "\ntrust:\n  keys:\n    - keyid: sg-8f7164b591be\n      algorithm: ed25519\n      public_key: xllKlT5UIVX+Pw1QC+W2SDzM8mYCeebWrW+mOuA2/aM=\n      identity: oidc:you@example.com\n  revoked: []\n"},
 		{"thresholds and a waiver", "fail_on: critical\nwarn_on: low\nwaivers:\n  - rule: SG-NET-001\n    path: scripts/*.sh\n    reason: reviewed\n    expires: 2999-01-01\n"},
 		{"empty include/pack_keys/scoring are harmless", "scoring: {}\ntrust:\n  include: []\n  pack_keys: []\n"},
 		{"attestation block keeps unset defaults", "attestation:\n  required: true\n"},
@@ -204,7 +203,7 @@ func TestWaiverPathGlobIsSingleSegment(t *testing.T) {
 // project's own example over `scoring: {}`, which is exactly the failure mode
 // users would have hit by copying it.
 func TestDesignDocExamplePolicyLoads(t *testing.T) {
-	body := `apiVersion: skillguard.net/policy.v1
+	body := `apiVersion: surfaceguard.svgreg.net/policy.v1
 fail_on: high
 warn_on: medium
 attestation: { required: false, warn_if_missing: true }

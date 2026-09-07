@@ -6,7 +6,7 @@ import (
 )
 
 // TestVersionFrom pins what the binary claims to be. The string is not
-// cosmetic: it reaches a skill card's skillguard_version and SARIF's
+// cosmetic: it reaches a skill card's surfaceguard_version and SARIF's
 // tool.driver.version, both of which are provenance, so a build that cannot
 // establish its version must say so rather than name one that never shipped.
 //

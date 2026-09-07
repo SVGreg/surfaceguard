@@ -51,29 +51,15 @@ fi
 vnum="${VERSION#v}"
 base="https://github.com/$REPO/releases/download/$VERSION"
 
-# The project was called skill-guard through v0.3.0, so releases up to that
-# point publish skill-guard_<v>_<os>_<arch>.tar.gz with a `skill-guard` binary
-# inside. Installing an older pinned version has to keep working — the GitHub
-# Action resolves `version:` to whatever ref a workflow pinned, which may well
-# predate the rename — so the legacy asset is tried when the current name 404s,
-# and whatever comes out is installed under the current name either way.
 asset="${BINARY}_${vnum}_${os}_${arch}.tar.gz"
 inner="$BINARY"
-legacy_asset="skill-guard_${vnum}_${os}_${arch}.tar.gz"
 
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
 echo "Downloading $BINARY $VERSION ($os/$arch)..."
-if ! curl -fsSL -o "$tmp/$asset" "$base/$asset" 2>/dev/null; then
-  if curl -fsSL -o "$tmp/$legacy_asset" "$base/$legacy_asset" 2>/dev/null; then
-    echo "note: $VERSION predates the rename; installing its skill-guard asset as $BINARY"
-    asset="$legacy_asset"
-    inner="skill-guard"
-  else
-    err "download failed: $base/$asset"
-  fi
-fi
+curl -fsSL -o "$tmp/$asset" "$base/$asset" 2>/dev/null || err "download failed: $base/$asset
+(releases before v0.4.0 published a differently named asset and cannot be installed by this script)"
 curl -fsSL -o "$tmp/checksums.txt" "$base/checksums.txt" || err "download failed: $base/checksums.txt"
 
 (

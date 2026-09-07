@@ -40,9 +40,9 @@ inputs:
   version:
     description: >-
       surfaceguard release to install. The default installs the release matching the
-      ref this action was pinned to (so @v0.3.0 installs v0.3.0), falling back to the
+      ref this action was pinned to (so @v0.4.1 installs v0.4.1), falling back to the
       newest release when the action is used from a branch or a local path. Set an
-      explicit tag (e.g. v0.3.0) to override, "latest" to always take the newest, or
+      explicit tag (e.g. v0.4.1) to override, "latest" to always take the newest, or
       "preinstalled" to use a surfaceguard already on PATH.
     required: false
     default: ""
@@ -120,7 +120,7 @@ runs:
       shell: bash
       env:
         # An action pinned to a tag installs the binary from that same tag by
-        # default. Resolving "latest" here instead would mean @v0.3.0 silently
+        # default. Resolving "latest" here instead would mean @v0.4.1 silently
         # running a future release whose flags this action's install step and
         # docs were never written against — the version skew a pinned ref
         # exists to prevent. github.action_ref is empty for a local `uses: ./`
