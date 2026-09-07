@@ -208,11 +208,17 @@ audit. See `evaluation/README.md` for the full reproduce recipe.
 something that used to pass?". They cannot say what skills look like *now*, so `sg-corpus-sweep`
 (slot 5 of the maintenance ring) fetches a fresh slice from one source per cycle into a
 **quarantine outside the repo**, scans it, mines it for FP clusters / TP candidates / probable
-misses, files what it finds, and deletes the samples. Reports land in `docs/corpus-sweeps/` and
-carry counts, rule ids and escaped excerpts — never fetched bundle content. Fetched skills are
-treated as hostile input throughout: nothing is executed, bundle bytes never reach the agent's
-context (only scanner JSON and escaped script output), and a finding excerpt that reads like an
-instruction is a finding, not an instruction.
+misses, files what it finds, and deletes the samples. Fetched skills are treated as hostile input
+throughout: nothing is executed, bundle bytes never reach the agent's context (only scanner JSON
+and escaped script output), and a finding excerpt that reads like an instruction is a finding, not
+an instruction.
+
+**Sweep reports are internal and git-ignored** (`evaluation/reports/sweeps/<date>-<source>.md`).
+They are working material for improving scan quality — a point-in-time reading of third-party
+skills, naming bundles and quoting their content — not a project document, and this project does
+not publish automated "suspicious skills" lists. What leaves the machine is what the sweep *files*:
+GitHub issues describing patterns, and `docs/planned-rules.md` rows, both carrying their evidence
+inline. Most sweep cycles therefore open no PR at all.
 
 Interpretation caveat baked into the design: static analysis flags **capability and pattern, not
 confirmed intent**. A `pass` is not a safety guarantee; a `fail` is an invitation to review.

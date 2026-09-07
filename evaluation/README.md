@@ -55,8 +55,12 @@ jobs, and conflating them is how a scanner silently drifts out of calibration:
 | **Pinned baseline** | the vendored dirs above, fetched once with a commit pinned per bundle in `_manifest.json` | "did this rule change break anything that used to pass?" |
 | **Rolling sweep** | a fresh slice fetched into quarantine each maintenance cycle by `sg-corpus-sweep`, scanned, mined, then deleted | "what do skills look like *now*, and where is the scanner wrong about them?" |
 
-Sweep reports live in [`docs/corpus-sweeps/`](../docs/corpus-sweeps/) and carry counts,
-rule ids and escaped excerpts — never fetched bundle content. The sweep tooling is
+Sweep reports are **internal and git-ignored** — `reports/sweeps/<date>-<source>.md`,
+alongside the raw scan output they summarise. They carry counts, rule ids and escaped
+excerpts, never fetched bundle content, and they stay out of git because a sweep is a
+point-in-time reading of other people's skills, not a project document. What gets
+published is what the sweep files: issues describing patterns, and backlog rows. The
+sweep tooling is
 `sweep_diff.py` (per-bundle hit-rate movement between two `stats.json` files) and
 `sweep_gaps.py` (bundles the scanner scored clean that still carry a risky primitive —
 the counter-signal to false-positive auditing). `run_scans.sh` takes `CORPUS_ROOT`

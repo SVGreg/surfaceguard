@@ -147,13 +147,26 @@ not a verdict. A recurring shape with no rule behind it is a candidate detection
 `docs/planned-rules.md` with an id allocated per `docs/rule-verification.md` — **never invent an id**
 and never reuse one from a backlog row (see that file's ID-reconciliation table for why).
 
-## 6. Write the report
+## 6. Write the report — internally, never committed
 
-`docs/corpus-sweeps/<date>-<source>.md`, under ~120 lines, following
-`docs/corpus-sweeps/README.md`. It carries: what was fetched (source, count, date), the verdict mix
-and top rules, the diff against the previous sweep, the three insight lists, and what was filed
-(issue numbers, backlog rows). Counts, rule ids, bundle slugs, paths and escaped excerpts only —
-no bundle content.
+`evaluation/reports/sweeps/<date>-<source>.md`, under ~120 lines. That path is **git-ignored, and
+deliberately so**: a sweep report is working material for improving scan quality, not a project
+document. It is a point-in-time reading of somebody else's skills, it names third-party bundles and
+quotes their content, and publishing a list of "suspicious" community skills from an automated pass
+is not a thing this project does. The report exists so the *next* sweep of the same source has a
+baseline, and so a rule-polish cycle has the evidence already gathered.
+
+What the report carries: what was fetched (source, count, date), the verdict mix and top rules, the
+diff against the previous sweep, the three insight lists from §5, and what was filed. Counts, rule
+ids, bundle slugs, file paths and **escaped** excerpts only — never bundle content.
+
+What leaves this machine is only what §5 filed: GitHub issues describing *patterns*, and
+`docs/planned-rules.md` rows. Those carry the evidence inline (counts, tallies, a sanitized
+excerpt), because the report they came from is not somewhere a reader can follow. Never cite the
+report path in an issue.
+
+Keep the previous sweep's `stats_sweep_<source>.json` next to the report so §4 has something to
+diff against; both are under the same git-ignored tree.
 
 ## 7. Delete the quarantine
 
@@ -164,19 +177,26 @@ git status --short          # must show no fetched content
 
 Do this **before** shipping, not after. The report is the durable artifact; the samples are not.
 
-## 8. Ship
+## 8. Ship — usually nothing to ship
 
-Ship per **`sg-maintain` §Ship it**, with:
+Because the report is internal (§6), **most sweep cycles open no PR at all**. That is the expected
+ending, not a failed cycle: the cycle's output is the issues it filed and the calibration it gave
+the next rule-polish run.
 
-- **branch** `sweep/<date>-<source>` · **label** `corpus-sweep` · **paths**
-  `docs/corpus-sweeps/<date>-<source>.md` and, when §5 produced one, `docs/planned-rules.md`
-- **commit** `docs(sweep): <source> corpus sweep <date> — <N> bundles`
-- **evidence** for the body: bundle count, verdict mix, the headline diff line, and the issues /
-  backlog rows filed
+A PR happens only when §5 produced a **`docs/planned-rules.md`** row. Then ship per
+**`sg-maintain` §Ship it**, with:
 
-Confined to `docs/**`, this is a **non-code** PR — merge it once CI is green rather than leaving it
-for the owner. If a cycle also needed a script fix, that is a *separate* code PR; do not mix them,
-because the whole point of the docs-only shape is that sweep reports land without waiting.
+- **branch** `sweep/<date>-<source>` · **label** `corpus-sweep` · **paths** `docs/planned-rules.md`
+- **commit** `docs(backlog): add <SG-ID> — <gap> found by the <source> sweep`
+- **evidence** for the body: the gap, how it was sighted, the corpus prevalence measured, and the
+  tracking issue number — inline, since the sweep report is not published
 
-Update `state.json` → `corpus_last_swept["<source>"]` = now. Report the PR link, the headline
-numbers, and what the next cycle should look at.
+Confined to `docs/**`, that is a **non-code** PR: merge it once CI is green. If a cycle also needed
+a script fix, that is a *separate* code PR; do not mix them.
+
+Update `state.json` → `corpus_last_swept["<source>"]` = now, and record in
+`.claude/maintenance/log.md` the headline numbers plus the issues filed, so a later cycle can find
+this sweep without the report being in git.
+
+Report to the loop: bundle count, verdict mix, the headline diff line, what was filed, and what the
+next cycle should look at.
