@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/SVGreg/surfaceguard/compare/v0.4.0...v0.4.1) (2026-09-07)
+
+
+### Bug Fixes
+
+* **cli:** report the real version when not built by GoReleaser ([#244](https://github.com/SVGreg/surfaceguard/issues/244)) ([b311472](https://github.com/SVGreg/surfaceguard/commit/b3114721850039cd9a0ca53231c6939f897b0f2d))
+
 ## [0.4.0](https://github.com/SVGreg/surfaceguard/compare/v0.3.0...v0.4.0) (2026-09-07)
 
 
