@@ -1,6 +1,6 @@
 ---
 name: sg-maintain
-description: Run one surfaceguard self-maintenance cycle — pick a single activity (rule polishing, threat research, rule implementation, code review, or GitHub issue triage/implementation), run it, and log the result. This is the entry point for the scheduled maintenance loop. Use when asked to run a maintenance cycle, tend the project, or when invoked on a schedule via /loop.
+description: Run one surfaceguard self-maintenance cycle — pick a single activity (rule polishing, threat research, rule implementation, code review, corpus sweeping, or GitHub issue triage/implementation), run it, and log the result. This is the entry point for the scheduled maintenance loop. Use when asked to run a maintenance cycle, tend the project, or when invoked on a schedule via /loop.
 ---
 
 # surfaceguard maintenance dispatcher
@@ -61,6 +61,7 @@ enforces them.
     - `research` — a backlog/threat entry from `sg-threat-research`
     - `code-review` — a fix from `sg-code-review`
     - `triage` — a backlog PR from `sg-issue-triage`
+    - `corpus-sweep` — a fresh-corpus sweep report from `sg-corpus-sweep`
 
     When a `rule-implement` PR ships a rule that was **originally filed by `sg-threat-research`**,
     add `research` as a **second** type label so the source is visible (e.g.
@@ -138,6 +139,7 @@ exist — create them.
     "rule_last_polished": {},
     "source_last_researched": {},
     "review_area_cursor": 0,
+    "corpus_last_swept": {},
     "implement_streak": 0
   }
   ```
@@ -174,10 +176,13 @@ the skipped GitHub check in the log.
 2 → sg-threat-research
 3 → sg-rule-implement
 4 → sg-code-review
+5 → sg-corpus-sweep
 ```
 
 `sg-rule-implement` appears **twice** in the ring (slots 1 and 3) so implementation keeps pace with
-research and triage — it runs on 2 of every 5 proactive cycles. `sg-llm-polish` is intentionally
+research and triage — it runs on 2 of every 6 proactive cycles. `sg-corpus-sweep` (slot 5) is the
+only activity that measures the scanner against *current* real-world skills rather than the pinned
+corpus; it fetches into quarantine, scans, files what it finds, and deletes the samples. `sg-llm-polish` is intentionally
 **not** in the ring while the LLM engine is unimplemented; it is only invoked on demand until then
 (it self-checks and no-ops — see its SKILL.md).
 
@@ -208,7 +213,7 @@ owner.
 ## 4. Record the cycle
 
 1. Update `state.json`: bump `cycle`, set `last_activity`, advance `round_robin_cursor`
-   (**wrap mod 5** — the ring has five slots) if a round-robin activity ran, and update the relevant
+   (**wrap mod 6** — the ring has six slots) if a round-robin activity ran, and update the relevant
    timestamp map.
    **Carry-over bookkeeping (§2):** when the cycle ran `sg-rule-implement` and the backlog is still
    deep, leave `round_robin_cursor` **where it is** and set `implement_streak` to `1` (or `2`);
@@ -229,7 +234,7 @@ owner.
 
 Every `sg-*` activity skill finishes here, supplying its own `<branch>`, `<paths>`, `<commit>`,
 `<type-label>` and `<evidence>`. Only `<evidence>` — what the PR body must prove — is genuinely
-skill-specific; the rest is identical every time, which is why it lives here and not in nine files.
+skill-specific; the rest is identical every time, which is why it lives here and not in ten files.
 
 **1. Preflight** — guardrail 5 in full: `gofmt -l .` empty · `go vet ./...` · `go test ./...` ·
 exit-code smoke (`scan testdata/malicious`→1, `scan testdata/benign`→0) · `scan` every skill you

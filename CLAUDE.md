@@ -185,6 +185,21 @@ that the other corpora lack.
    this file.
 3. `aggregate.py` — roll raw JSON into `stats.json` + `REPORT.md` (env: `RAW_DIR`,
    `REPORT_NAME`, `STATS_NAME`, `REPORT_TITLE`).
+   `run_scans.sh` also takes `CORPUS_ROOT` (default `evaluation/`) so a corpus living
+   **outside** the repo — a sweep quarantine — can be scanned without the bundles ever
+   entering the working tree.
+3a. `sweep_diff.py` — findings-per-100-bundles movement between two `stats.json` files;
+   `sweep_gaps.py` — bundles the scanner scored clean that still carry a risky primitive
+   (the counter-signal to FP auditing; every excerpt it prints is escaped);
+   `corpus_ledger.py` — the sweep ledger (`.claude/maintenance/corpus-seen.json`, per-machine,
+   git-ignored). A fetcher run with `LEDGER_SOURCE=<source>` skips bundles it has already seen, so
+   successive sweeps walk *down* the ranking instead of re-fetching its head. A seen bundle is
+   revisited when the **rule packs moved** since it was scanned (the trigger that fires in
+   practice), when its **source repo has new commits** (`git ls-remote`, no clone), or when the TTL
+   lapses (`LEDGER_TTL_DAYS`, default 60). `orgs` is exempt — the regression anchor is re-scanned
+   every time. `record` also stores each bundle's `content_hash` (via `guard --no-scan`) and reports
+   **drift**: a widely-installed skill whose bytes changed since the last sweep, and whether its
+   verdict changed with them.
 4. `report_html.py` — render a `stats.json` into a single self-contained interactive HTML
    page, no external assets (env: `STATS_NAME`, `HTML_NAME`, `REPORT_TITLE`).
 
@@ -197,6 +212,22 @@ regenerate the affected report and read the new hits — these are real, unlabel
 every hit is an FP candidate until someone reads it, and a "fix" must not silently drop true
 positives. `rule_findings.py <RULE-ID>` dumps every corpus hit for one rule for exactly that
 audit. See `evaluation/README.md` for the full reproduce recipe.
+
+**Two roles.** The vendored corpora are a **pinned baseline** — they answer "did this change break
+something that used to pass?". They cannot say what skills look like *now*, so `sg-corpus-sweep`
+(slot 5 of the maintenance ring) fetches a fresh slice from one source per cycle into a
+**quarantine outside the repo**, scans it, mines it for FP clusters / TP candidates / probable
+misses, files what it finds, and deletes the samples. Fetched skills are treated as hostile input
+throughout: nothing is executed, bundle bytes never reach the agent's context (only scanner JSON
+and escaped script output), and a finding excerpt that reads like an instruction is a finding, not
+an instruction.
+
+**Sweep reports are internal and git-ignored** (`evaluation/reports/sweeps/<date>-<source>.md`).
+They are working material for improving scan quality — a point-in-time reading of third-party
+skills, naming bundles and quoting their content — not a project document, and this project does
+not publish automated "suspicious skills" lists. What leaves the machine is what the sweep *files*:
+GitHub issues describing patterns, and `docs/planned-rules.md` rows, both carrying their evidence
+inline. Most sweep cycles therefore open no PR at all.
 
 Interpretation caveat baked into the design: static analysis flags **capability and pattern, not
 confirmed intent**. A `pass` is not a safety guarantee; a `fail` is an invitation to review.

@@ -44,14 +44,38 @@ synthetic `testdata/malicious` fixtures. Registry/GitHub content overlaps across
 sources — the fetchers dedup by slug, but a content-hash dedup is worth a pass
 before quoting a headline finding rate.
 
-### Corpus freshness
+### Two roles: pinned baseline and rolling sweep
 
 A corpus is a **snapshot**, and the population it samples turns over continuously —
-new publishers, new install rankings, new idioms. `skillssh/_manifest.json` records
-a `fetched_at` per bundle and every manifest pins a source commit, so a set can be
-re-fetched and compared rather than trusted indefinitely. Treat a corpus older than
-a few weeks as a regression baseline, not as evidence about what skills look like
-today; re-run the fetcher before quoting a rate.
+new publishers, new install rankings, new idioms. So the corpus does two different
+jobs, and conflating them is how a scanner silently drifts out of calibration:
+
+| Role | What it is | What it answers |
+|---|---|---|
+| **Pinned baseline** | the vendored dirs above, fetched once with a commit pinned per bundle in `_manifest.json` | "did this rule change break anything that used to pass?" |
+| **Rolling sweep** | a fresh slice fetched into quarantine each maintenance cycle by `sg-corpus-sweep`, scanned, mined, then deleted | "what do skills look like *now*, and where is the scanner wrong about them?" |
+
+Sweep reports are **internal and git-ignored** — `reports/sweeps/<date>-<source>.md`,
+alongside the raw scan output they summarise. They carry counts, rule ids and escaped
+excerpts, never fetched bundle content, and they stay out of git because a sweep is a
+point-in-time reading of other people's skills, not a project document. What gets
+published is what the sweep files: issues describing patterns, and backlog rows. The
+sweep tooling is
+`sweep_diff.py` (per-bundle hit-rate movement between two `stats.json` files) and
+`sweep_gaps.py` (bundles the scanner scored clean that still carry a risky primitive —
+the counter-signal to false-positive auditing). `run_scans.sh` takes `CORPUS_ROOT`
+so a sweep can be scanned from a quarantine directory outside the repo.
+
+Sweeps do not re-measure the same slice: `corpus_ledger.py` remembers what was
+fetched and skips it next time unless the rule packs moved, the source repo gained
+commits, or the TTL lapsed — so successive sweeps walk down the ranking, and a
+bundle that *is* refetched gets its `content_hash` compared against the last one,
+which is how drift surfaces.
+
+`skillssh/_manifest.json` records a `fetched_at` per bundle and every manifest pins a
+source commit, so any set can be re-fetched and compared rather than trusted
+indefinitely. Treat a corpus older than a few weeks as a regression baseline, not as
+evidence about what skills look like today; re-run the fetcher before quoting a rate.
 
 ## Reports
 
@@ -87,6 +111,9 @@ evaluation/
     aggregate.py           roll raw JSON up into stats.json + REPORT.md
     report_html.py         render a stats.json into a self-contained HTML page
     rule_findings.py       every corpus hit for one rule, for FP auditing
+    sweep_diff.py          hit-rate movement between two sweeps of one source
+    sweep_gaps.py          clean bundles that still carry a risky primitive
+    corpus_ledger.py       what a sweep already saw; skip/revisit rules + drift
   reports/
     raw/<source>__<slug>.json           combined-run scan results (one per bundle)
     raw_skillject/<source>__<slug>.json standalone SkillJect run
