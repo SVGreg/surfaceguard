@@ -3,7 +3,10 @@
 #
 # Usage: evaluation/scripts/run_scans.sh [PARALLELISM]
 # Env:
-#   CORPUS_DIRS  space-separated corpus dirs under evaluation/ (default: "clawhub anthropic")
+#   CORPUS_DIRS  space-separated corpus dirs under CORPUS_ROOT (default: "clawhub anthropic")
+#   CORPUS_ROOT  where those dirs live (default: evaluation/). Point it at a
+#                quarantine directory outside the repo to scan a freshly fetched
+#                sweep without the bundles ever touching the working tree.
 #   RAW_DIR      output dir for raw JSON, relative to evaluation/reports/ (default: "raw")
 set -uo pipefail
 
@@ -12,6 +15,7 @@ BIN="$ROOT/surfaceguard"
 RAW="$ROOT/evaluation/reports/${RAW_DIR:-raw}"
 JOBS="${1:-$(nproc 2>/dev/null || echo 4)}"
 CORPUS_DIRS="${CORPUS_DIRS:-clawhub anthropic}"
+CORPUS_ROOT="${CORPUS_ROOT:-$ROOT/evaluation}"
 
 [ -x "$BIN" ] || { echo "building surfaceguard ..."; (cd "$ROOT" && go build -o surfaceguard ./cmd/surfaceguard) || exit 1; }
 
@@ -20,15 +24,15 @@ rm -rf "$RAW"; mkdir -p "$RAW"
 # Discover skill bundle dirs: any directory directly containing a SKILL.md.
 LIST="$(mktemp)"
 CORPUS_PATHS=""
-for c in $CORPUS_DIRS; do CORPUS_PATHS="$CORPUS_PATHS $ROOT/evaluation/$c"; done
+for c in $CORPUS_DIRS; do CORPUS_PATHS="$CORPUS_PATHS $CORPUS_ROOT/$c"; done
 find $CORPUS_PATHS \
   -name SKILL.md -not -path '*/.git/*' -exec dirname {} \; | sort -u > "$LIST"
 
 echo "found $(wc -l < "$LIST" | tr -d ' ') skill bundles; scanning with -P$JOBS ..."
 
 scan_one() {
-  local dir="$1" bin="$2" raw="$3" root="$4"
-  local rel="${dir#"$root"/evaluation/}"      # e.g. clawhub/github
+  local dir="$1" bin="$2" raw="$3" corpus_root="$4"
+  local rel="${dir#"$corpus_root"/}"          # e.g. clawhub/github
   local source="${rel%%/*}"                    # clawhub | anthropic
   local slug="${rel#*/}"; slug="${slug//\//_}" # nested-safe
   local out="$raw/${source}__${slug}.json"
@@ -52,7 +56,7 @@ PY
 }
 export -f scan_one
 
-tr '\n' '\0' < "$LIST" | xargs -0 -P"$JOBS" -I{} bash -c 'scan_one "$@"' _ {} "$BIN" "$RAW" "$ROOT"
+tr '\n' '\0' < "$LIST" | xargs -0 -P"$JOBS" -I{} bash -c 'scan_one "$@"' _ {} "$BIN" "$RAW" "$CORPUS_ROOT"
 rm -f "$LIST"
 
 echo "raw reports written to $RAW ($(ls "$RAW"/*.json | wc -l | tr -d ' ') files)"
