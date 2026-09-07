@@ -149,12 +149,16 @@ rulepacks with **no policy/waivers**, so results reflect out-of-the-box behavior
 | Folder | Source | Count |
 |--------|--------|------:|
 | `clawhub/` | Top skills by downloads from the ClawHub registry | 500 |
+| `skillssh/` | Top skills by **installs** from the skills.sh registry | ~200 |
 | `skillsmp/` | GitHub-indexed skills from SkillsMP (`sort=recent`, ≤5 per repo) | ~200 |
-| `orgs/` | Vendor repos via skills.rest — `trailofbits`, `stripe`, `supabase`, `tinybird` | 111 |
+| `orgs/` | Vendor repos via skills.rest — `trailofbits`, `stripe`, `supabase`, `tinybird` — plus `vercel-labs/agent-skills` | 120 |
 | `anthropic/` | Example skills from `github.com/anthropics/skills` | 17 |
 | `skillject/` | `data/skills_sample` from `github.com/jiaxiaojunQAQ/SkillJect` | 100 |
 
-`skillject/` holds the **carrier** skills a published malicious-skill research framework
+The `orgs/` bundles are curated and heavily installed, which makes them the corpus's
+**regression anchor** — a finding there is a false positive until proven otherwise (the run
+that added `vercel-labs/agent-skills` produced 8 `pass` and 1 `fail`, and the `fail` is
+tracked as a known FP). `skillject/` holds the **carrier** skills a published malicious-skill research framework
 injects into at run time — real community skills, not pre-injected attacks; the payloads
 (`data/bash_scripts/`) are deliberately not vendored. Treat it like the other sources (an
 unlabeled FP corpus) but re-scan it whenever injection rules change, since it is the exact
@@ -165,6 +169,12 @@ that the other corpora lack.
 
 1. `fetch_clawhub.py` — pull top-N skills by download count from `clawhub.ai` (env: `WANT`,
    `OUTDIR`, `SKIP_DIRS`); only bundles containing a `SKILL.md` are kept.
+   `fetch_skillssh.py` is its install-ranked sibling: it sweeps `skills.sh/api/search` (no
+   list-all endpoint exists), ranks the union by `installs`, then shallow-clones each source
+   repo once and copies out the bundle. It never executes fetched content — hooks off, no
+   submodules, symlinks refused, per-file/per-bundle/file-count caps — and takes `OUTROOT` as
+   well as `WANT`/`OUTDIR`/`SKIP_DIRS`, so the same fetcher can write into a quarantine dir
+   outside the repo.
 2. `run_scans.sh [PARALLELISM]` — discover every dir containing a `SKILL.md` and scan it in
    parallel to `reports/<RAW_DIR>/<source>__<slug>.json`, each annotated with `_source`,
    `_slug`, `_exit`, `_path` (env: `CORPUS_DIRS`, `RAW_DIR`). Defaults to `nproc` when

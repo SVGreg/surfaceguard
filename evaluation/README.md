@@ -5,16 +5,17 @@ of **real Agent Skills** and aggregates the results into a stats report.
 
 ## Corpus
 
-Five sources, chosen for complementary coverage — a download-ranked registry, a
-GitHub index, org/vendor repos, Anthropic's examples, and a security-research
-sample — so the false-positive picture reflects many independent authors, not one
-house style.
+Six sources, chosen for complementary coverage — a download-ranked registry, an
+install-ranked registry, a GitHub index, org/vendor repos, Anthropic's examples,
+and a security-research sample — so the false-positive picture reflects many
+independent authors, not one house style.
 
 | Folder | Source | Skills |
 |--------|--------|------:|
 | `clawhub/` | Top skills by download count from the [ClawHub](https://clawhub.ai) registry (500 distinct publishers) | 500 |
+| `skillssh/` | Top skills by **install count** from the [skills.sh](https://skills.sh) registry | ~200 |
 | `skillsmp/` | GitHub-indexed skills from [SkillsMP](https://skillsmp.com), `sort=recent` for author diversity, ≤5 per repo | ~200 |
-| `orgs/` | Organization/vendor repos surfaced by [skills.rest](https://skills.rest) — `trailofbits`, `stripe`, `supabase`, `tinybird` | 111 |
+| `orgs/` | Organization/vendor repos surfaced by [skills.rest](https://skills.rest) — `trailofbits`, `stripe`, `supabase`, `tinybird` — plus [`vercel-labs/agent-skills`](https://github.com/vercel-labs/agent-skills), the official collection behind skills.sh | 120 |
 | `anthropic/` | Example skills from [`github.com/anthropics/skills`](https://github.com/anthropics/skills) | 17 |
 | `skillject/` | `data/skills_sample` from [SkillJect](https://github.com/jiaxiaojunQAQ/SkillJect), a malicious-skill research framework | 100 |
 
@@ -43,6 +44,15 @@ synthetic `testdata/malicious` fixtures. Registry/GitHub content overlaps across
 sources — the fetchers dedup by slug, but a content-hash dedup is worth a pass
 before quoting a headline finding rate.
 
+### Corpus freshness
+
+A corpus is a **snapshot**, and the population it samples turns over continuously —
+new publishers, new install rankings, new idioms. `skillssh/_manifest.json` records
+a `fetched_at` per bundle and every manifest pins a source commit, so a set can be
+re-fetched and compared rather than trusted indefinitely. Treat a corpus older than
+a few weeks as a regression baseline, not as evidence about what skills look like
+today; re-run the fetcher before quoting a rate.
+
 ## Reports
 
 | Report | Scope |
@@ -63,12 +73,14 @@ owner handle + download count; Anthropic source commit).
 ```
 evaluation/
   clawhub/<slug>/          fetched skill bundles  (+ _manifest.json)
+  skillssh/<owner__repo__skill>/  install-ranked skills.sh bundles (+ _manifest.json)
   skillsmp/<owner__repo__skill>/  GitHub-indexed bundles (+ _manifest.json)
   orgs/<org__repo__skill>/ vendor-repo bundles    (+ _manifest.json)
   anthropic/<slug>/        copied skill bundles   (+ _manifest.json)
   skillject/<slug>/        SkillJect carrier bundles (+ _manifest.json)
   scripts/
     fetch_clawhub.py       pull top-N skills by downloads from clawhub.ai
+    fetch_skillssh.py      pull top-N skills by installs from skills.sh -> skillssh/
     fetch_skillsmp.py      pull skills via the SkillsMP API -> GitHub bundles (gh)
     fetch_orgs.sh          clone vendor repos (skills.rest set) -> orgs/
     run_scans.sh           scan every bundle in parallel -> reports/<RAW_DIR>/*.json
@@ -92,6 +104,8 @@ go build -o surfaceguard ./cmd/surfaceguard
 # 2. load the corpus
 WANT=500 python3 evaluation/scripts/fetch_clawhub.py                      # ClawHub top-500 -> clawhub/
 WANT=200 SKIP_DIRS=clawhub,anthropic,orgs \
+  python3 evaluation/scripts/fetch_skillssh.py                            # skills.sh top-200 by installs -> skillssh/
+WANT=200 SKIP_DIRS=clawhub,anthropic,orgs,skillssh \
   python3 evaluation/scripts/fetch_skillsmp.py                            # SkillsMP (recent) -> skillsmp/
 evaluation/scripts/fetch_orgs.sh                                         # vendor repos -> orgs/
 git clone --depth 1 https://github.com/anthropics/skills /tmp/anthropic-skills
@@ -100,10 +114,10 @@ git clone --depth 1 https://github.com/jiaxiaojunQAQ/SkillJect /tmp/skillject
 #   then copy /tmp/skillject/data/skills_sample/*/ into evaluation/skillject/
 #   (_manifest.json is built from each bundle's skill-report.json "meta" block)
 
-# 3a. combined report (all five sources) -> reports/REPORT.md + stats.json
+# 3a. combined report (all six sources) -> reports/REPORT.md + stats.json
 # (parallelism defaults to nproc; pass a number to override, but keep it at or
 # below your core count — oversubscribing has hung the workstation before)
-CORPUS_DIRS="clawhub skillsmp orgs anthropic skillject" evaluation/scripts/run_scans.sh
+CORPUS_DIRS="clawhub skillssh skillsmp orgs anthropic skillject" evaluation/scripts/run_scans.sh
 python3 evaluation/scripts/aggregate.py
 python3 evaluation/scripts/report_html.py                 # -> reports/REPORT.html
 

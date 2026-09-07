@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
 # Fetch organization-authored Agent Skills into evaluation/orgs/.
 #
-# These are the vendor/org repositories surfaced by the skills.rest directory —
-# professionally-authored skills (a security firm, a payments API, a database
-# vendor) that form a distinct, higher-signal slice of the corpus than the
-# download/star-ranked registries. Each is a public GitHub repo, so `git clone`
+# These are the vendor/org repositories surfaced by the skills.rest directory,
+# plus the official collection behind skills.sh — professionally-authored skills
+# (a security firm, a payments API, a database vendor, a deployment platform)
+# that form a distinct, higher-signal slice of the corpus than the
+# download/star-ranked registries. Because they are curated and widely installed,
+# they double as a **regression anchor**: a finding here is a false positive
+# until proven otherwise. Each is a public GitHub repo, so `git clone`
 # is reproducible and the license is visible.
 #
 # For each repo we shallow-clone, find every SKILL.md, and copy its containing
@@ -18,7 +21,7 @@ set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 OUTDIR="${OUTDIR:-orgs}"
 DEST="$HERE/../$OUTDIR"
-ORG_REPOS="${ORG_REPOS:-trailofbits/skills stripe/agent-toolkit supabase/agent-skills tinybirdco/tinybird-agent-skills}"
+ORG_REPOS="${ORG_REPOS:-trailofbits/skills stripe/agent-toolkit supabase/agent-skills tinybirdco/tinybird-agent-skills vercel-labs/agent-skills}"
 
 mkdir -p "$DEST"
 MANIFEST="$DEST/_manifest.json"
