@@ -141,7 +141,8 @@ func TestLoadAcceptsValidPolicies(t *testing.T) {
 	}{
 		{"empty file", ""},
 		{"comments only", "# nothing to see here\n"},
-		{"apiVersion only", "apiVersion: skillguard.net/policy.v1\n"},
+		{"apiVersion only", "apiVersion: " + APIVersion + "\n"},
+		{"legacy apiVersion", "apiVersion: " + LegacyAPIVersion + "\n"},
 		{"README trust roster", "apiVersion: skillguard.net/policy.v1\ntrust:\n  keys:\n    - keyid: sg-8f7164b591be\n      algorithm: ed25519\n      public_key: xllKlT5UIVX+Pw1QC+W2SDzM8mYCeebWrW+mOuA2/aM=\n      identity: oidc:you@example.com\n  revoked: []\n"},
 		{"thresholds and a waiver", "fail_on: critical\nwarn_on: low\nwaivers:\n  - rule: SG-NET-001\n    path: scripts/*.sh\n    reason: reviewed\n    expires: 2999-01-01\n"},
 		{"empty include/pack_keys/scoring are harmless", "scoring: {}\ntrust:\n  include: []\n  pack_keys: []\n"},

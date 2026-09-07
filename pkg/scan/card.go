@@ -13,7 +13,10 @@ import (
 // CardType is the card's schema identifier. It carries the schema version, so a
 // consumer can refuse a card it does not understand rather than silently
 // misreading one; the schema itself is documented in docs/skill-card-schema.md.
-const CardType = "skillguard.net/skill-card/v1"
+const (
+	CardType       = "https://surfaceguard.svgreg.net/skill-card/v1"
+	LegacyCardType = "skillguard.net/skill-card/v1"
+)
 
 // Card is the machine-readable verdict (design §9). The card body is the
 // reproducible part; emission metadata (timestamps) lives in the envelope

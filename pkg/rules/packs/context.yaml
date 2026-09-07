@@ -1,6 +1,6 @@
-apiVersion: skillguard.net/rulepack.v1
+apiVersion: surfaceguard.svgreg.net/rulepack.v1
 name: context
-version: 1.0.0
+version: 1.0.1
 description: >
   Context rules — they emit no finding of their own and instead cap the severity
   of findings anchored in their span (docs/design-note-demotion.md §4).

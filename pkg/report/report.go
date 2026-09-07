@@ -183,9 +183,9 @@ func SkillCard(w io.Writer, rep *scan.Report, opt Options) error {
 	out := map[string]any{
 		"card": rep.Card,
 		"envelope": map[string]any{
-			"scanned_at":         time.Now().UTC().Format(time.RFC3339),
-			"source":             opt.Source,
-			"skillguard_version": opt.Version,
+			"scanned_at":           time.Now().UTC().Format(time.RFC3339),
+			"source":               opt.Source,
+			"surfaceguard_version": opt.Version,
 		},
 	}
 	enc := json.NewEncoder(w)

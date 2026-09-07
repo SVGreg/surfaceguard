@@ -1,6 +1,6 @@
-apiVersion: skillguard.net/rulepack.v1
+apiVersion: surfaceguard.svgreg.net/rulepack.v1
 name: core-exec
-version: 1.2.0
+version: 1.2.1
 description: Dangerous commands, code execution, privilege escalation, persistence (rule-verification.md §3).
 rules:
   - id: SG-EXE-001

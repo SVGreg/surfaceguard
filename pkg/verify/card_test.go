@@ -96,7 +96,7 @@ func TestParseCardAcceptsBothShapes(t *testing.T) {
 	}
 	wrapped, err := json.Marshal(map[string]any{
 		"card":     card,
-		"envelope": map[string]any{"scanned_at": "2026-09-01T00:00:00Z", "source": "x", "skillguard_version": "test"},
+		"envelope": map[string]any{"scanned_at": "2026-09-01T00:00:00Z", "source": "x", "surfaceguard_version": "test"},
 	})
 	if err != nil {
 		t.Fatal(err)
