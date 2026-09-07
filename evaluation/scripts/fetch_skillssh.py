@@ -6,6 +6,13 @@ count per skill, which is a different popularity signal from ClawHub's download
 count and from GitHub stars — so this corpus is a third independent slice, not a
 re-cut of `clawhub/`.
 
+The install ranking is dominated by multi-skill vendor bundles: an uncapped
+top-150 measured 25 distinct repos, with five of them supplying 83 bundles. That
+makes rates per *bundle* rather than per *author*, and lets one publisher's house
+style move a rule by tens of points. MAX_PER_REPO caps how many skills any single
+repo contributes, the same way `fetch_skillsmp.py` does, trading a little install
+fidelity for the author diversity a false-positive corpus actually needs.
+
 Pipeline:
   1. GET /api/search?q=<term>&limit=100 for each seed term -> ranked candidates
      (there is no list-all endpoint; a seed sweep is how you approximate one)
@@ -21,6 +28,7 @@ Safety (this fetches third-party content that may be hostile):
 
 Env:
   WANT        how many skills to keep          (default 200)
+  MAX_PER_REPO  cap of skills taken from any one repo (default 5; 0 = no cap)
   OUTROOT     root the corpus dir lives under  (default evaluation/)
   OUTDIR      corpus dir name under OUTROOT    (default skillssh)
   SKIP_DIRS   comma-separated corpus dirs whose slugs are already loaded
@@ -44,6 +52,7 @@ OUT_ROOT = os.environ.get("OUTROOT") or os.path.join(HERE, "..")
 OUT_NAME = os.environ.get("OUTDIR", "skillssh")
 OUT_DIR = os.path.join(OUT_ROOT, OUT_NAME)
 WANT = int(os.environ.get("WANT", "200"))
+MAX_PER_REPO = int(os.environ.get("MAX_PER_REPO", "5"))
 SKIP_DIRS = [d for d in os.environ.get("SKIP_DIRS", "").split(",") if d]
 
 # The search API needs a query of >= 2 characters and has no "list everything"
@@ -170,16 +179,29 @@ def copy_bundle(src, dest):
 def main():
     os.makedirs(OUT_DIR, exist_ok=True)
     skip = load_skip()
+    # With a per-repo cap most candidates are discarded, so the ranked pool has to
+    # be far larger than WANT or the sweep comes up short.
     pool = WANT + len(skip) + 40
-    print(f"[*] sweeping {len(SEEDS)} seed terms; want {WANT} skills by installs "
+    if MAX_PER_REPO:
+        pool = max(pool, WANT * 4)
+    print(f"[*] sweeping {len(SEEDS)} seed terms; want {WANT} skills by installs, "
+          f"max {MAX_PER_REPO or 'unlimited'}/repo "
           f"(skipping {len(skip)} already loaded) -> {OUT_DIR}", flush=True)
     candidates = ranked(pool)
     print(f"[*] {len(candidates)} distinct candidates ranked", flush=True)
 
-    # Group by repo so a repo publishing 30 skills is cloned once, not 30 times.
+    # Group by repo so a repo publishing 30 skills is cloned once, not 30 times,
+    # then cap each repo's contribution. Entries arrive install-ranked, so the cap
+    # keeps each publisher's most-installed skills and drops its long tail.
     by_repo = {}
     for sid, src, skill_id, installs in candidates:
-        by_repo.setdefault(src, []).append((sid, skill_id, installs))
+        entries = by_repo.setdefault(src, [])
+        if MAX_PER_REPO and len(entries) >= MAX_PER_REPO:
+            continue
+        entries.append((sid, skill_id, installs))
+    if MAX_PER_REPO:
+        print(f"[*] {sum(len(v) for v in by_repo.values())} candidates after the "
+              f"{MAX_PER_REPO}/repo cap, across {len(by_repo)} repos", flush=True)
 
     manifest, ok = [], 0
     tmp = tempfile.mkdtemp(prefix="sg-skillssh-")
