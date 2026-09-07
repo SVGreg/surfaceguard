@@ -188,9 +188,18 @@ that the other corpora lack.
    `run_scans.sh` also takes `CORPUS_ROOT` (default `evaluation/`) so a corpus living
    **outside** the repo — a sweep quarantine — can be scanned without the bundles ever
    entering the working tree.
-3a. `sweep_diff.py` — per-bundle hit-rate movement between two `stats.json` files;
+3a. `sweep_diff.py` — findings-per-100-bundles movement between two `stats.json` files;
    `sweep_gaps.py` — bundles the scanner scored clean that still carry a risky primitive
-   (the counter-signal to FP auditing; every excerpt it prints is escaped).
+   (the counter-signal to FP auditing; every excerpt it prints is escaped);
+   `corpus_ledger.py` — the sweep ledger (`.claude/maintenance/corpus-seen.json`, per-machine,
+   git-ignored). A fetcher run with `LEDGER_SOURCE=<source>` skips bundles it has already seen, so
+   successive sweeps walk *down* the ranking instead of re-fetching its head. A seen bundle is
+   revisited when the **rule packs moved** since it was scanned (the trigger that fires in
+   practice), when its **source repo has new commits** (`git ls-remote`, no clone), or when the TTL
+   lapses (`LEDGER_TTL_DAYS`, default 60). `orgs` is exempt — the regression anchor is re-scanned
+   every time. `record` also stores each bundle's `content_hash` (via `guard --no-scan`) and reports
+   **drift**: a widely-installed skill whose bytes changed since the last sweep, and whether its
+   verdict changed with them.
 4. `report_html.py` — render a `stats.json` into a single self-contained interactive HTML
    page, no external assets (env: `STATS_NAME`, `HTML_NAME`, `REPORT_TITLE`).
 

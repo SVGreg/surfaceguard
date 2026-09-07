@@ -29,6 +29,9 @@ Safety (this fetches third-party content that may be hostile):
 Env:
   WANT        how many skills to keep          (default 200)
   MAX_PER_REPO  cap of skills taken from any one repo (default 5; 0 = no cap)
+  LEDGER_SOURCE when set (e.g. "skillssh"), consult the sweep ledger and skip
+                bundles already seen — see corpus_ledger.py. Unset by default,
+                so building a pinned corpus stays deterministic.
   OUTROOT     root the corpus dir lives under  (default evaluation/)
   OUTDIR      corpus dir name under OUTROOT    (default skillssh)
   SKIP_DIRS   comma-separated corpus dirs whose slugs are already loaded
@@ -44,6 +47,9 @@ import time
 import urllib.parse
 import urllib.request
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import corpus_ledger  # noqa: E402  (same directory, not a package)
+
 API = "https://skills.sh/api/search"
 UA = "surfaceguard-eval/0.1"
 
@@ -54,6 +60,7 @@ OUT_DIR = os.path.join(OUT_ROOT, OUT_NAME)
 WANT = int(os.environ.get("WANT", "200"))
 MAX_PER_REPO = int(os.environ.get("MAX_PER_REPO", "5"))
 SKIP_DIRS = [d for d in os.environ.get("SKIP_DIRS", "").split(",") if d]
+LEDGER_SOURCE = os.environ.get("LEDGER_SOURCE") or None
 
 # The search API needs a query of >= 2 characters and has no "list everything"
 # mode, so popularity is approximated by sweeping broad terms and ranking the
@@ -97,6 +104,11 @@ def ranked(want):
                          h.get("installs") or 0)
         time.sleep(0.15)
     return sorted(seen.values(), key=lambda r: -r[3])[:want]
+
+
+def slug_for(sid):
+    """Directory name for a skill id — also the ledger key, so the two agree."""
+    return "".join(c if (c.isalnum() or c in "_.-") else "_" for c in sid.replace("/", "__"))
 
 
 def load_skip():
@@ -184,6 +196,10 @@ def main():
     pool = WANT + len(skip) + 40
     if MAX_PER_REPO:
         pool = max(pool, WANT * 4)
+    if LEDGER_SOURCE:
+        # Most of the top of the ranking is already in the ledger, so the sweep
+        # walks *down* it — that only works if the pool reaches far enough down.
+        pool = max(pool, WANT * 8)
     print(f"[*] sweeping {len(SEEDS)} seed terms; want {WANT} skills by installs, "
           f"max {MAX_PER_REPO or 'unlimited'}/repo "
           f"(skipping {len(skip)} already loaded) -> {OUT_DIR}", flush=True)
@@ -203,12 +219,57 @@ def main():
         print(f"[*] {sum(len(v) for v in by_repo.values())} candidates after the "
               f"{MAX_PER_REPO}/repo cap, across {len(by_repo)} repos", flush=True)
 
-    manifest, ok = [], 0
+    led = packs = None
+    if LEDGER_SOURCE:
+        led = corpus_ledger.load()["skills"]
+        packs = corpus_ledger.pack_versions()
+        print(f"[*] ledger: {len(led)} skills known, "
+              f"{sum(1 for k in led if k.startswith(LEDGER_SOURCE + '/'))} from this source",
+              flush=True)
+
+    manifest, ok, skipped = [], 0, 0
     tmp = tempfile.mkdtemp(prefix="sg-skillssh-")
     try:
         for repo, entries in by_repo.items():
             if ok >= WANT:
                 break
+
+            # Ledger pass, cheapest first. Everything decidable without the
+            # network is decided here; `ls-remote` runs once per repo, and only
+            # if some bundle in it is still undecided.
+            if led is not None:
+                pending, head_needed = [], False
+                for sid, skill_id, installs in entries:
+                    key = f"{LEDGER_SOURCE}/{slug_for(sid)}"
+                    fetch, why = corpus_ledger.decide(key, led.get(key), packs,
+                                                      repo_head=None, source=LEDGER_SOURCE)
+                    if fetch:
+                        pending.append((sid, skill_id, installs, why))
+                    else:
+                        head_needed = True
+                        pending.append((sid, skill_id, installs, None))
+                if head_needed:
+                    head = corpus_ledger.repo_head(repo)
+                    resolved = []
+                    for sid, skill_id, installs, why in pending:
+                        if why is not None:
+                            resolved.append((sid, skill_id, installs, why))
+                            continue
+                        key = f"{LEDGER_SOURCE}/{slug_for(sid)}"
+                        fetch, why = corpus_ledger.decide(key, led.get(key), packs,
+                                                          repo_head=head, source=LEDGER_SOURCE)
+                        if fetch:
+                            resolved.append((sid, skill_id, installs, why))
+                        else:
+                            skipped += 1
+                    pending = resolved
+                if not pending:
+                    continue                     # whole repo already seen and unchanged
+                entries = [(sid, skill_id, installs) for sid, skill_id, installs, _ in pending]
+                reasons = {sid: why for sid, _, _, why in pending}
+            else:
+                reasons = {}
+
             repo_dir = os.path.join(tmp, repo.replace("/", "__"))
             if not clone(repo, repo_dir):
                 print(f"    - {repo:<40} SKIP (clone failed)")
@@ -217,8 +278,7 @@ def main():
             for sid, skill_id, installs in entries:
                 if ok >= WANT:
                     break
-                slug = sid.replace("/", "__")
-                slug = "".join(c if (c.isalnum() or c in "_.-") else "_" for c in slug)
+                slug = slug_for(sid)
                 if slug in skip:
                     continue
                 bundle = find_bundle(repo_dir, skill_id)
@@ -241,14 +301,20 @@ def main():
                     "registry": "skills.sh",
                     "fetched_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                 })
-                print(f"[{ok:>3}] {sid:<50} OK  ({installs:,} installs)")
+                note = f"  [{reasons[sid]}]" if reasons.get(sid) else ""
+                print(f"[{ok:>3}] {sid:<50} OK  ({installs:,} installs){note}")
             shutil.rmtree(repo_dir, ignore_errors=True)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
     with open(os.path.join(OUT_DIR, "_manifest.json"), "w") as f:
         json.dump(manifest, f, indent=2)
-    print(f"\n[done] {ok} bundles saved -> {OUT_DIR}")
+    tail = f", {skipped} skipped as already-seen-and-unchanged" if LEDGER_SOURCE else ""
+    print(f"\n[done] {ok} bundles saved{tail} -> {OUT_DIR}")
+    if LEDGER_SOURCE:
+        print("[*] record the results afterwards: "
+              f"corpus_ledger.py record --source {LEDGER_SOURCE} --raw-dir <RAW_DIR> "
+              f"--manifest {os.path.join(OUT_DIR, '_manifest.json')}")
 
 
 if __name__ == "__main__":
