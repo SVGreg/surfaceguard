@@ -185,6 +185,12 @@ that the other corpora lack.
    this file.
 3. `aggregate.py` — roll raw JSON into `stats.json` + `REPORT.md` (env: `RAW_DIR`,
    `REPORT_NAME`, `STATS_NAME`, `REPORT_TITLE`).
+   `run_scans.sh` also takes `CORPUS_ROOT` (default `evaluation/`) so a corpus living
+   **outside** the repo — a sweep quarantine — can be scanned without the bundles ever
+   entering the working tree.
+3a. `sweep_diff.py` — per-bundle hit-rate movement between two `stats.json` files;
+   `sweep_gaps.py` — bundles the scanner scored clean that still carry a risky primitive
+   (the counter-signal to FP auditing; every excerpt it prints is escaped).
 4. `report_html.py` — render a `stats.json` into a single self-contained interactive HTML
    page, no external assets (env: `STATS_NAME`, `HTML_NAME`, `REPORT_TITLE`).
 
@@ -197,6 +203,16 @@ regenerate the affected report and read the new hits — these are real, unlabel
 every hit is an FP candidate until someone reads it, and a "fix" must not silently drop true
 positives. `rule_findings.py <RULE-ID>` dumps every corpus hit for one rule for exactly that
 audit. See `evaluation/README.md` for the full reproduce recipe.
+
+**Two roles.** The vendored corpora are a **pinned baseline** — they answer "did this change break
+something that used to pass?". They cannot say what skills look like *now*, so `sg-corpus-sweep`
+(slot 5 of the maintenance ring) fetches a fresh slice from one source per cycle into a
+**quarantine outside the repo**, scans it, mines it for FP clusters / TP candidates / probable
+misses, files what it finds, and deletes the samples. Reports land in `docs/corpus-sweeps/` and
+carry counts, rule ids and escaped excerpts — never fetched bundle content. Fetched skills are
+treated as hostile input throughout: nothing is executed, bundle bytes never reach the agent's
+context (only scanner JSON and escaped script output), and a finding excerpt that reads like an
+instruction is a finding, not an instruction.
 
 Interpretation caveat baked into the design: static analysis flags **capability and pattern, not
 confirmed intent**. A `pass` is not a safety guarantee; a `fail` is an invitation to review.
