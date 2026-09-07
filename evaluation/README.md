@@ -66,6 +66,12 @@ sweep tooling is
 the counter-signal to false-positive auditing). `run_scans.sh` takes `CORPUS_ROOT`
 so a sweep can be scanned from a quarantine directory outside the repo.
 
+Sweeps do not re-measure the same slice: `corpus_ledger.py` remembers what was
+fetched and skips it next time unless the rule packs moved, the source repo gained
+commits, or the TTL lapsed — so successive sweeps walk down the ranking, and a
+bundle that *is* refetched gets its `content_hash` compared against the last one,
+which is how drift surfaces.
+
 `skillssh/_manifest.json` records a `fetched_at` per bundle and every manifest pins a
 source commit, so any set can be re-fetched and compared rather than trusted
 indefinitely. Treat a corpus older than a few weeks as a regression baseline, not as
@@ -107,6 +113,7 @@ evaluation/
     rule_findings.py       every corpus hit for one rule, for FP auditing
     sweep_diff.py          hit-rate movement between two sweeps of one source
     sweep_gaps.py          clean bundles that still carry a risky primitive
+    corpus_ledger.py       what a sweep already saw; skip/revisit rules + drift
   reports/
     raw/<source>__<slug>.json           combined-run scan results (one per bundle)
     raw_skillject/<source>__<slug>.json standalone SkillJect run

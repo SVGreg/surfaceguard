@@ -79,8 +79,28 @@ previous cycle died mid-way.
 ## 2. Fetch
 
 ```sh
-OUTROOT="$SWEEP" OUTDIR=<source> WANT=150 SKIP_DIRS="" python3 evaluation/scripts/fetch_<source>.py
+OUTROOT="$SWEEP" OUTDIR=<source> WANT=150 LEDGER_SOURCE=<source> \
+  python3 evaluation/scripts/fetch_<source>.py
 ```
+
+`LEDGER_SOURCE` turns on the **sweep ledger** (`evaluation/scripts/corpus_ledger.py`,
+state in `.claude/maintenance/corpus-seen.json`). Without it a sweep re-fetches almost the same
+bundles every cycle, because an install ranking barely moves; with it, a bundle already seen is
+skipped unless one of three things changed, and the sweep walks *down* the ranking instead. Fetching
+is also capped per repo (`MAX_PER_REPO`, default 5), so one publisher's mega-bundle cannot fill a
+sweep.
+
+A seen bundle is re-fetched when:
+
+1. **the rule packs moved** since it was scanned — the trigger that fires in practice, because it is
+   the one that asks "would we score this differently now?";
+2. **its source repo has new commits** (`git ls-remote`, one round trip per repo, no clone) — a
+   coarse drift signal that over-fetches rather than under-fetches, which is the safe direction;
+3. **the TTL lapsed** (`LEDGER_TTL_DAYS`, default 60) — the backstop, not the main rule.
+
+`orgs` is exempt: it is the regression anchor and must be re-scanned every time.
+
+Record what you got: bundles fetched, bundles **skipped**, and how many repos they came from.
 
 `fetch_orgs.sh` takes `OUTDIR` under `evaluation/` rather than `OUTROOT`; for that source, sweep by
 re-running it into a scratch `OUTDIR` and moving the result under `$SWEEP` — or skip `orgs` when the
@@ -103,6 +123,17 @@ RAW_DIR="sweep-$(date -u +%F)-<source>" \
 `CORPUS_ROOT` is what lets `run_scans.sh` read a corpus that lives outside the repo; the raw JSON
 still lands under `evaluation/reports/` (git-ignored), which is fine — reports are our output, not
 fetched content.
+
+Then fold the results back into the ledger, **before deleting the quarantine** (it needs the bundles
+on disk to hash them):
+
+```sh
+python3 evaluation/scripts/corpus_ledger.py record --source <source> \
+  --raw-dir "sweep-$(date -u +%F)-<source>" --manifest "$SWEEP/<source>/_manifest.json"
+```
+
+This stores each bundle's `content_hash` (from `guard --no-scan`, ~2 ms each), its repo commit, the
+pack versions it was scanned under, and its verdict — and prints the **drift** section §5D reads.
 
 ## 4. Diff against the last sweep
 
@@ -147,6 +178,16 @@ not a verdict. A recurring shape with no rule behind it is a candidate detection
 `docs/planned-rules.md` with an id allocated per `docs/rule-verification.md` — **never invent an id**
 and never reuse one from a backlog row (see that file's ID-reconciliation table for why).
 
+**D. Drift.** `corpus_ledger.py record` prints every bundle whose `content_hash` differs from the
+one the ledger last saw, and marks the ones whose **verdict** changed with it. Read those first:
+a widely-installed skill whose bytes moved since the last sweep is the most security-relevant thing
+a repeated sweep can produce, and it is this project's own argument made concrete — a scan result
+binds to a content hash, not to a name, so it goes stale silently the moment the content drifts.
+
+A verdict that changed from `pass` to `fail` is either a real change in the skill or a change in our
+rules; the ledger records the pack versions each scan ran under, so check that before assuming the
+skill did something. Nothing here is an accusation — publishers update skills constantly.
+
 ## 6. Write the report — internally, never committed
 
 `evaluation/reports/sweeps/<date>-<source>.md`, under ~120 lines. That path is **git-ignored, and
@@ -157,8 +198,14 @@ is not a thing this project does. The report exists so the *next* sweep of the s
 baseline, and so a rule-polish cycle has the evidence already gathered.
 
 What the report carries: what was fetched (source, count, date), the verdict mix and top rules, the
-diff against the previous sweep, the three insight lists from §5, and what was filed. Counts, rule
+diff against the previous sweep, the four insight lists from §5, and what was filed. Counts, rule
 ids, bundle slugs, file paths and **escaped** excerpts only — never bundle content.
+
+**Skipped bundles are never merged into the population stats.** The report covers what this sweep
+actually scanned, and states skips separately ("N fetched, M skipped as unchanged since <date>").
+Folding cached verdicts into a rate would quietly describe a corpus that was never scanned in this
+run — and since the ledger makes each sweep a *different* slice, rates are only comparable when the
+report says which slice they came from.
 
 What leaves this machine is only what §5 filed: GitHub issues describing *patterns*, and
 `docs/planned-rules.md` rows. Those carry the evidence inline (counts, tallies, a sanitized
