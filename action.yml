@@ -1,9 +1,9 @@
 # The marketplace listing name, which must be unique across GitHub Marketplace
-# and is not the tool's name: "surfaceguard" is already listed by an unrelated
-# project (vaibhavtupe/surfaceguard-action, published before this one), and a
-# second listing cannot reuse it. The binary, the repo, the module path and the
-# `uses: SVGreg/surfaceguard@v0` line are all unaffected — only this string is
-# the listing's identity.
+# and is not the tool's name. It is spelled out rather than reusing the brand
+# because marketplace search is keyword-driven; "SurfaceGuard" alone says less
+# about what the action does. The binary, the repo, the module path and the
+# `uses: SVGreg/surfaceguard@v0` line are unaffected — only this string is the
+# listing's identity.
 name: Agent Skill Security Scan
 description: Scan Agent Skills (SKILL.md bundles) against the OWASP Agentic Skills Top 10 and upload the findings to code scanning.
 author: SVGreg

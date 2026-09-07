@@ -4,14 +4,84 @@ package main
 import (
 	"fmt"
 	"os"
+	"regexp"
+	"runtime/debug"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
 
-// Version is the binary version (set via -ldflags at release).
-var Version = "0.1.0-dev"
+// Version is the binary version. Release builds set it via -ldflags; every
+// other build resolves it from the module's build info at startup.
+var Version = devVersion
+
+// devVersion is the compiled-in placeholder, and the signal that no -ldflags
+// version was supplied.
+const devVersion = "0.1.0-dev"
+
+// resolveVersion reports the version to print and to stamp into skill cards and
+// SARIF logs.
+//
+// Only GoReleaser passes -X main.Version, so `go install <mod>/cmd/surfaceguard@v0.4.0`
+// produced a binary claiming to be "0.1.0-dev" — a version that has never been
+// released. That is not cosmetic: the string reaches a skill card's
+// skillguard_version and SARIF's tool.driver.version, both of which are
+// provenance. Metadata about what scanned a bundle has to name what actually
+// ran, so the module's own build info answers when the ldflag is absent.
+func resolveVersion(ldflag string) string {
+	if ldflag != devVersion {
+		return ldflag // a release build already knows
+	}
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		return ldflag
+	}
+	return versionFrom(ldflag, info)
+}
+
+// pseudoVersion matches the timestamp-and-revision tail Go appends when a
+// module has no tag at the built commit, e.g.
+// v0.3.1-0.20260907131511-7426ae32609e. Its leading component is derived from
+// the previous tag, so it names a version that was never released — fine as a
+// module identifier, misleading in a field that says which scanner ran.
+var pseudoVersion = regexp.MustCompile(`[-.][0-9]{14}-[0-9a-f]{12}`)
+
+// versionFrom is the pure half of resolveVersion, so the mapping can be tested
+// without building binaries.
+func versionFrom(ldflag string, info *debug.BuildInfo) string {
+	// A module installed by version reports its tag ("v0.4.0"); a build from a
+	// local tree reports "(devel)", nothing, or a pseudo-version. Trim the "v"
+	// so a real tag matches the bare form GoReleaser injects.
+	if v := info.Main.Version; v != "" && v != "(devel)" && !pseudoVersion.MatchString(v) {
+		return strings.TrimPrefix(v, "v")
+	}
+	// A local build has no version to report, but it does have a commit, and
+	// naming it turns "0.1.0-dev" from a fiction into something a bug report
+	// can be tied back to a tree.
+	var rev string
+	var dirty bool
+	for _, s := range info.Settings {
+		switch s.Key {
+		case "vcs.revision":
+			rev = s.Value
+		case "vcs.modified":
+			dirty = s.Value == "true"
+		}
+	}
+	if rev == "" {
+		return ldflag
+	}
+	if len(rev) > 12 {
+		rev = rev[:12]
+	}
+	if dirty {
+		rev += "-dirty"
+	}
+	return ldflag + "+" + rev
+}
 
 func main() {
+	Version = resolveVersion(Version)
 	root := &cobra.Command{
 		Use:   "surfaceguard <command> <path>",
 		Short: "Security, signing & provenance toolchain for Agent Skills (SKILL.md)",
