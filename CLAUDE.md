@@ -7,8 +7,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 `surfaceguard` (formerly `skill-guard`, renamed in v0.4.0) scans, signs, and verifies
 artifacts that enter an agent's context — today Agent Skills (`SKILL.md` bundles) against the
 **OWASP Agentic Skills Top 10** (`AST01`–`AST10`), with other agent-facing sources planned.
-**The `SG-` rule-id prefix, `SGMT-1`, `.skillsig` and the `skillguard.net/*` schema ids are
-frozen wire contracts and did not change with the rename** — see `docs/rename-migration.md`. It ships as a CLI and as a reusable Go
+**The `SG-` rule-id prefix, `SGMT-1` and `.skillsig` are frozen wire contracts and did not change
+with the rename.** The schema ids did, in 0.5.0: they now live under `surfaceguard.svgreg.net/*`
+(`apiVersion` in the bare Kubernetes shape; `_type` as a resolvable URI; DSSE `payloadType` as an
+`application/vnd.surfaceguard.*` media type). Identifiers are compared as strings and **never
+fetched** — nothing in `pkg/` or `cmd/` performs network I/O. Attestations signed before 0.5 must be
+re-signed (the payload type is inside the DSSE PAE, so it is signed material); `verify` accepts the
+old type until v1 and reports `SG-PRV-008`. See `docs/rename-migration.md`. It ships as a CLI and as a reusable Go
 library. Nothing in a scanned skill is ever executed — a bundle is parsed into an inert
 model and matched against static rules. Requires **Go 1.26+**; deps are only `cobra` and
 `yaml.v3`, everything else stdlib.

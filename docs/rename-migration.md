@@ -19,22 +19,69 @@ Two reasons, and the second is the one that matters long-term.
 
 ## What did **not** change
 
-These are wire contracts. They appear in signatures, SARIF logs and skill cards
-that already exist in the world, and renaming them would invalidate artifacts
-nobody can regenerate. They keep the `SG`/`skillguard` spelling **by design** —
-`SG` now reads as *SurfaceGuard*.
-
 | Identifier | Example | Where it lives |
 |---|---|---|
 | Rule ids | `SG-INJ-001`, `SG-PRV-003` (89 ids) | every finding, SARIF result, policy waiver |
-| Merkle format | `SGMT-1` | every attestation |
+| Merkle format | `SGMT-1` | attestation prose and CLI help — it is a format *name*, not a field value |
 | Attestation file | `SKILL.md.skillsig` | signed bundles |
-| DSSE payload type | `application/vnd.skillguard.attestation.v1+json` | every signature |
-| Schema ids | `skillguard.net/skill-card/v1`, `…/rulepack.v1`, `…/policy.v1`, `…/attestation/v1` | cards, rule packs, policies |
-| SARIF properties | `metadata.skillguard.risk_tier`, `skillguard_version` | emitted SARIF and card envelopes |
+| Key-id prefix | `sg-8f7164b591be` | trust rosters |
+| OMS / Sigstore identifiers | `application/vnd.in-toto+json`, `https://in-toto.io/Statement/v1`, `https://model_signing/signature/v1.0` | `skill.oms.sig` — these belong to other specifications and are not ours to rename |
 
 **A signature made by skill-guard v0.3.0 verifies under SurfaceGuard v0.4.0**, and
 a policy written against the old rule ids still gates the same findings.
+
+## Schema identifiers: renamed in 0.5.0
+
+v0.4.0's table above also listed the schema ids and the DSSE payload type as
+frozen. **That changed in 0.5.0**, deliberately and once: the project's
+identifiers now live under a namespace it owns, which is what makes them
+globally unique and what lets them resolve to a specification later.
+
+| | Before | After | Shape it follows |
+|---|---|---|---|
+| Rule-pack `apiVersion` | `skillguard.net/rulepack.v1` | `surfaceguard.svgreg.net/rulepack.v1` | Kubernetes: bare `authority/name.vN`, never dereferenced |
+| Policy `apiVersion` | `skillguard.net/policy.v1` | `surfaceguard.svgreg.net/policy.v1` | as above |
+| Skill-card `_type` | `skillguard.net/skill-card/v1` | `https://surfaceguard.svgreg.net/skill-card/v1` | in-toto: a resolvable URI answering *what is this document* |
+| Attestation `_type` | `skillguard.net/attestation/v1` | `https://surfaceguard.svgreg.net/attestation/v1` | as above |
+| DSSE `payloadType` | `application/vnd.skillguard.attestation.v1+json` | `application/vnd.surfaceguard.attestation.v1+json` | DSSE/in-toto: a media type answering *how do I parse this* |
+| USF `payloadType` | `application/vnd.skillguard.usf-fields.v1` | `application/vnd.surfaceguard.usf-fields.v1` | as above |
+| Version field | `skillguard_version` | `surfaceguard_version` | attestation `scan` block, SARIF and card envelopes |
+
+Two different conventions on purpose. `payloadType` and `_type` are **not**
+interchangeable and must never converge: `pkg/verify` uses the payload type to
+stop a USF field signature — published in plaintext in `SKILL.md` front-matter —
+being replayed as a full attestation.
+
+### What this costs you
+
+**Signatures must be re-issued.** The DSSE payload type is inside the
+pre-authentication encoding, so it is *signed material*: an attestation made
+under the old spelling is not merely mislabelled, its signature is over
+different bytes. Run `surfaceguard sign` again on anything you have signed.
+
+Until v1, verification still **accepts** the old payload type and reports
+`SG-PRV-008` (medium, "Legacy attestation payload type") instead of failing —
+the signature is checked against the type the envelope itself declares, so it
+verifies exactly as it was made. At v1 that acceptance is removed and the same
+envelope reports `SG-PRV-002` (critical). Old **skill cards** stay readable with
+no deprecation finding; only their identifier changed.
+
+**Rule packs now declare a version, and it is checked.** `apiVersion` was parsed
+and ignored before; it is now validated, and a pack that declares neither the
+current id nor the pre-0.5 one is refused (`unsupported rule-pack apiVersion`).
+This is the same fail-closed posture the engine registry already had. If you
+maintain an external `--rulepack`, add:
+
+```yaml
+apiVersion: surfaceguard.svgreg.net/rulepack.v1
+```
+
+**Policies are not gated.** A `.surfaceguard.yaml` is *your* file: both ids are
+read, and `apiVersion` remains optional.
+
+**Nothing is ever fetched.** These identifiers are compared as strings. The
+scanner performs no network I/O at all — the only networking in the project is
+the separate `keyless/` module's Sigstore client.
 
 ## What changed
 

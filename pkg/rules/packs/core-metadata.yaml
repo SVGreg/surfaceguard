@@ -1,6 +1,6 @@
-apiVersion: skillguard.net/rulepack.v1
+apiVersion: surfaceguard.svgreg.net/rulepack.v1
 name: core-metadata
-version: 1.1.0
+version: 1.1.1
 description: Manifest integrity and over-privilege (rule-verification.md §4).
 rules:
   - id: SG-MTA-001

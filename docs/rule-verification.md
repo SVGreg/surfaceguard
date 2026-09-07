@@ -1735,7 +1735,7 @@ case, and an ordinary ```` ```bash ```` block containing `curl … | bash` that 
   would have matched in 777 real bundles is documentation teaching people to avoid them.
 
 ### SG-MTA-002 — Front-matter schema violation  (AST04, medium/low)
-- **Signals (T0):** validate against pinned agentskills.io schema — missing/empty `name` or `description`, `name` not `^[a-z0-9-]+$`, wrong types, duplicate keys, front-matter not closed. Unknown **top-level** keys → low (spec evolves). `metadata.*` is open by spec → never flagged. Recognize reserved `signature`/`content_hash` and `metadata.skillguard.*`.
+- **Signals (T0):** validate against pinned agentskills.io schema — missing/empty `name` or `description`, `name` not `^[a-z0-9-]+$`, wrong types, duplicate keys, front-matter not closed. Unknown **top-level** keys → low (spec evolves). `metadata.*` is open by spec → never flagged. Recognize reserved `signature`/`content_hash` and `metadata.surfaceguard.*`.
 - **FP carve-outs:** don't flag spec-legal optional fields (`license`, `compatibility`, `allowed-tools`); version the schema so a newer skill isn't punished under an old schema.
 - **Confidence:** missing required field 0.9 (deterministic); unknown top-level key 0.3.
 - **Fixtures:** TP: SKILL.md with no `description`. FP: SKILL.md with `metadata: {author: x, custom: y}`.
@@ -1843,7 +1843,7 @@ case, and an ordinary ```` ```bash ```` block containing `curl … | bash` that 
 - **Fixtures:** TP: name `anthropic-official-helper`, unsigned. FP: `markdown-formatter` describing "works with Slack".
 
 ### SG-MTA-006 — Declared risk-tier mismatch  (AST04, medium) — inactive unless declared
-- **Signals:** compare `metadata.skillguard.risk_tier` (author-declared) to computed tier (§9 scoring). Flag under-declaration (claims L0, computes L2+).
+- **Signals:** compare `metadata.surfaceguard.risk_tier` (author-declared) to computed tier (§9 scoring). Flag under-declaration (claims L0, computes L2+).
 - **FP carve-outs:** rule **off** when the key is absent (don't invent obligations). Small tier gaps tolerated.
 - **Confidence:** claims safe, computes dangerous 0.7.
 - **Fixtures:** TP: `risk_tier: L0` on a skill with a credential read. FP: no `risk_tier` key.
@@ -2121,7 +2121,7 @@ Recording the measurement so no later cycle re-derives it.
 
 ### SG-DEP-005 — SBOM / hash coverage gap  (AST02, medium) — provenance engine
 - **Signals:** files present in the bundle not covered by the attestation `files[]`/Merkle; missing SBOM when policy requires one.
-- **FP carve-outs:** intentionally-ignored files listed in `.skillguardignore`.
+- **FP carve-outs:** intentionally-ignored files listed in `.surfaceguardignore`.
 - **Confidence:** uncovered executable file 0.7; uncovered asset 0.4.
 - **Fixtures:** TP: a script added after signing (Merkle gap). FP: fully-covered bundle.
 
@@ -2551,6 +2551,7 @@ These are **not** pattern rules; they are outcomes of §7 verification in the de
 - **SG-PRV-005 (unverified identity, medium):** no bound identity claim. FP-free.
 - **SG-PRV-006 (integrity-only, low):** `scan: null` — informational; never a gate.
 - **SG-PRV-007 (skill card does not describe this bundle, critical):** emitted only by `verify --card`. The card's `content_hash` is compared with the SGMT-1 root recomputed from the bundle on disk; a mismatch means the card was written for a different skill, or the skill changed after the card was written. Same FP posture and same normalization dependency as SG-PRV-003 — it is the same comparison, against a claim in an unsigned card rather than in a signed statement. Deliberately **not** a re-scan: a card's `verdict`/`risk_score` are products of the emitter's policy, so re-deriving them under the verifier's policy would report a policy difference as tampering. Malformed or foreign card documents are usage errors (exit 3), not findings — a file that is not a card makes no claim to be wrong about. Schema: `docs/skill-card-schema.md`.
+- **SG-PRV-008 (legacy attestation payload type, medium):** the envelope's DSSE `payloadType` is the pre-0.5 spelling `application/vnd.skillguard.attestation.v1+json`. The signature still verifies — the PAE is rebuilt from the envelope's own declared type, so the bytes checked are the bytes signed — and the finding exists to say the attestation predates the identifier rename and should be re-issued. FP-free: it is an exact string comparison against a value this project itself minted. **Accepting it is only safe because the accepted set contains attestation types alone.** The USF field signature (`application/vnd.surfaceguard.usf-fields.v1`, and its legacy spelling) is published in plaintext in `SKILL.md` front-matter, and the payloadType gate is what stops that signature being replayed as a full attestation; a legacy entry must never widen the set beyond attestations. Support is removed at v1, after which the same envelope reports SG-PRV-002 (critical). See `docs/rename-migration.md`.
 
 *No LLM, no widening — precision comes from correct crypto + normalization, tested by vectors (design §13), not from patterns.*
 

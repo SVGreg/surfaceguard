@@ -61,7 +61,11 @@ func ParseCard(data []byte) (*scan.Card, error) {
 	if card.Type == "" {
 		return nil, fmt.Errorf("%w: no _type field", ErrNotACard)
 	}
-	if card.Type != scan.CardType {
+	// A card is a published artifact someone else may be holding, so the pre-0.5
+	// schema id is still read. The body shape did not change with the rename —
+	// only the identifier — so nothing downstream needs to branch on which one
+	// arrived.
+	if card.Type != scan.CardType && card.Type != scan.LegacyCardType {
 		return nil, fmt.Errorf("%w: %q (this build understands %q)", ErrUnsupportedSchema, card.Type, scan.CardType)
 	}
 	if card.ContentHash == "" {

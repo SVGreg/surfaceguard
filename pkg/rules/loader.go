@@ -1,6 +1,7 @@
 package rules
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 
@@ -66,6 +67,24 @@ type condDTO struct {
 	Confidence      *float64      `yaml:"confidence"`
 }
 
+// APIVersion is the rule-pack schema id, LegacyAPIVersion the pre-0.5 spelling.
+// Both are accepted; anything else is refused. The bare `authority/name.vN`
+// shape (no scheme) is the Kubernetes convention this field follows — the
+// domain makes the name globally unique through DNS ownership, and is never
+// dereferenced. Nothing in this binary performs network I/O.
+const (
+	APIVersion       = "surfaceguard.svgreg.net/rulepack.v1"
+	LegacyAPIVersion = "skillguard.net/rulepack.v1"
+)
+
+// ErrAPIVersion is returned for a pack whose apiVersion this build does not
+// understand — including a missing one. The engine registry is already
+// fail-closed on an unknown `engine:` (design §8.1); leaving apiVersion
+// unchecked meant a pack written against a *future* schema would silently load
+// under today's semantics, which is the same class of bug with a wider blast
+// radius. External packs (`--rulepack`) must declare one.
+var ErrAPIVersion = errors.New("unsupported rule-pack apiVersion")
+
 // LoadPack parses and compiles a rule-pack from YAML bytes.
 func LoadPack(data []byte) (*Pack, error) {
 	var dto packDTO
@@ -74,6 +93,14 @@ func LoadPack(data []byte) (*Pack, error) {
 	}
 	if dto.Name == "" {
 		return nil, fmt.Errorf("pack missing name")
+	}
+	switch dto.APIVersion {
+	case APIVersion, LegacyAPIVersion:
+	case "":
+		return nil, fmt.Errorf("%w: pack %q declares none (want %q)", ErrAPIVersion, dto.Name, APIVersion)
+	default:
+		return nil, fmt.Errorf("%w: %q in pack %q (this build understands %q)",
+			ErrAPIVersion, dto.APIVersion, dto.Name, APIVersion)
 	}
 	p := &Pack{APIVersion: dto.APIVersion, Name: dto.Name, Version: dto.Version}
 	for _, rd := range dto.Rules {

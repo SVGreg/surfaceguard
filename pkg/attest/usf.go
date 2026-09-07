@@ -9,8 +9,15 @@ import (
 	"github.com/SVGreg/surfaceguard/pkg/skill"
 )
 
-// USFPayloadType is the DSSE payloadType for the USF manifest-field signature.
-const USFPayloadType = "application/vnd.skillguard.usf-fields.v1"
+// USFPayloadType is the DSSE payloadType for the USF manifest-field signature,
+// and LegacyUSFPayloadType the pre-0.5 spelling. This namespace must stay
+// disjoint from PayloadType: the USF signature is published in plaintext in
+// SKILL.md front-matter, and the payloadType is what stops it being replayed as
+// a full attestation.
+const (
+	USFPayloadType       = "application/vnd.surfaceguard.usf-fields.v1"
+	LegacyUSFPayloadType = "application/vnd.skillguard.usf-fields.v1"
+)
 
 // USFFields computes the OWASP Universal Skill Format fields (design §7.5):
 // content_hash = SGMT-1 root (normalized SKILL.md), signature = ed25519 over the

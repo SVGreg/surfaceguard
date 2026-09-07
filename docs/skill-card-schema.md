@@ -1,6 +1,6 @@
 # surfaceguard skill card — schema v1
 
-**`_type: skillguard.net/skill-card/v1`** · emitted by `surfaceguard scan --format skill-card`
+**`_type: https://surfaceguard.svgreg.net/skill-card/v1`** · emitted by `surfaceguard scan --format skill-card`
 · checked by `surfaceguard verify --card <file>`
 
 A skill card is surfaceguard's machine-readable summary of one scanned bundle: what the skill
@@ -36,10 +36,10 @@ too: without it there is nothing to check.
 
 ```json
 {
-  "card": { "_type": "skillguard.net/skill-card/v1", "...": "..." },
+  "card": { "_type": "https://surfaceguard.svgreg.net/skill-card/v1", "...": "..." },
   "envelope": {
     "scanned_at": "2026-09-01T13:59:44Z",
-    "skillguard_version": "0.2.1",
+    "surfaceguard_version": "0.2.1",
     "source": "testdata/benign"
   }
 }
@@ -89,7 +89,7 @@ surfaceguard verify ./my-skill --card card.json
 ```
 card: "card.json"
 subject: "./my-skill"
-schema: skillguard.net/skill-card/v1
+schema: https://surfaceguard.svgreg.net/skill-card/v1
 content hash: MATCH
   card:   sha256:df97944f0c4772c981608e5a728cd5c4e469b83f3de97d5df29afac0f9bf0854
   bundle: sha256:df97944f0c4772c981608e5a728cd5c4e469b83f3de97d5df29afac0f9bf0854

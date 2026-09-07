@@ -152,7 +152,11 @@ func TestGuardTamperedSignatureDenies(t *testing.T) {
 			t.Fatalf("write: %v", err)
 		}
 	}
-	// A syntactically valid attestation over different content.
+	// A syntactically valid attestation over different content. Deliberately left
+	// in the pre-0.5 spelling (`application/vnd.skillguard.attestation.v1+json`):
+	// it doubles as the guard-level check that a legacy envelope is still parsed
+	// and still denied on the Merkle mismatch, rather than being waved through or
+	// rejected as malformed.
 	stale := `{"payloadType":"application/vnd.skillguard.attestation.v1+json","payload":"eyJfdHlwZSI6InNraWxsZ3VhcmQubmV0L2F0dGVzdGF0aW9uL3YxIiwic3ViamVjdCI6eyJuYW1lIjoiZGVtbyIsIm1lcmtsZV9yb290Ijoic2hhMjU2OmRlYWRiZWVmIiwiZmlsZV9jb3VudCI6MSwibWFuaWZlc3Rfc2hhMjU2Ijoic2hhMjU2OmFiYyJ9LCJmaWxlcyI6W10sInNjYW4iOm51bGwsInByZWRpY2F0ZSI6eyJpc3N1ZWRfYXQiOiIyMDI2LTAxLTAxVDAwOjAwOjAwWiIsImV4cGlyZXNfYXQiOiIyMDk5LTAxLTAxVDAwOjAwOjAwWiIsImJ1aWxkZXIiOiJza2lsbC1ndWFyZCIsInJlcHJvZHVjaWJsZSI6ZmFsc2V9LCJwdWJsaXNoZXIiOnsiaWRlbnRpdHkiOiJvaWRjOmRlbW8iLCJrZXlpZCI6InNnLTAwMDAwMDAwMDAwMCJ9fQ==","signatures":[{"keyid":"sg-000000000000","sig":"AA=="}]}`
 	if err := os.WriteFile(filepath.Join(dir, "SKILL.md.skillsig"), []byte(stale), 0o644); err != nil {
 		t.Fatalf("write signature: %v", err)

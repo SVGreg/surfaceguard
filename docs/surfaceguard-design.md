@@ -293,6 +293,7 @@ Connect **sources** (env, credential reads, conversation, clipboard, network inp
 - **SG-PRV-005** Publisher identity unverified (no bound identity claim). `provenance`, medium.
 - **SG-PRV-006** Attestation is integrity-only (`scan: null`, signed with `--no-scan`) — skill was never scanned at signing time. `provenance`, low.
 - **SG-PRV-007** Skill card does not describe this bundle — the card's `content_hash` is not the bundle's recomputed SGMT-1 root (`verify --card`; exit 2, §10.5). `provenance`, critical. Schema and semantics: `docs/skill-card-schema.md`.
+- **SG-PRV-008** Attestation carries the pre-0.5 DSSE `payloadType`; it still verifies, but should be re-signed. Removed at v1 (then SG-PRV-002). `provenance`, medium.
 
 ### 5.10 Opt-in advanced engines
 - **SG-YARA-\*** (`static`, opt-in) Bundled YARA signatures for known malware — reverse shells, webshells, C2 frameworks, info-stealers, crypto-miners, exploit tools. High precision, critical on match; versioned ruleset in the pack.
@@ -428,7 +429,7 @@ The signed payload is a JSON **statement** (no signature material inside):
 
 ```json
 {
-  "_type": "skillguard.net/attestation/v1",
+  "_type": "https://surfaceguard.svgreg.net/attestation/v1",
   "subject": {
     "name": "pdf-extractor",
     "merkle_root": "sha256:9f2b…",
@@ -462,7 +463,7 @@ The detached attestation file is a **DSSE envelope** (https://github.com/secure-
 
 ```json
 {
-  "payloadType": "application/vnd.skillguard.attestation.v1+json",
+  "payloadType": "application/vnd.surfaceguard.attestation.v1+json",
   "payload": "<base64(statement JSON exactly as serialized at signing)>",
   "signatures": [ { "keyid": "author-2026", "sig": "<base64(ed25519 sig)>" } ]
 }
@@ -499,7 +500,7 @@ OWASP's USF places `content_hash: "sha256:…"` and `signature: "ed25519:…"` *
 
 - **Normalized `SKILL.md`** = the file's raw bytes with the front-matter lines for the two reserved keys removed. Both keys MUST be written as single-line, top-level plain/quoted scalars (writer enforces; verifier rejects multi-line or nested forms). Removal is line-based: drop lines matching `^content_hash:` and `^signature:` inside the front-matter block only.
 - **`content_hash`** = the SGMT-1 `merkle_root` computed with `SKILL.md`'s leaf using its **normalized** content hash. For a single-file skill this degenerates to the hash of the normalized `SKILL.md` — satisfying both readings of the OWASP text.
-- **`signature`** = `"ed25519:" || base64(sig)` where the signed bytes are the DSSE PAE of §7.3 with `payloadType = "application/vnd.skillguard.usf-fields.v1"` and `payload = content_hash` string bytes. (Same crypto path, no second scheme.)
+- **`signature`** = `"ed25519:" || base64(sig)` where the signed bytes are the DSSE PAE of §7.3 with `payloadType = "application/vnd.surfaceguard.usf-fields.v1"` and `payload = content_hash` string bytes. (Same crypto path, no second scheme.)
 - Emitted by `sign --emit-manifest-fields`; verified whenever present. The detached `.skillsig` remains the richer, preferred artifact (carries scan results, expiry, identity); USF fields are the lowest-common-denominator for registries that only read the manifest. **"signature and content_hash together enable Merkle-root registry verification (AST01/AST02)"** — this design makes that sentence concretely implementable.
 
 ### 7.6 Format evolution
@@ -512,8 +513,16 @@ OWASP's USF places `content_hash: "sha256:…"` and `signature: "ed25519:…"` *
 
 ### 8.1 Format (`rulepack.v1`)
 
+`apiVersion` is **validated**: a pack must declare `surfaceguard.svgreg.net/rulepack.v1` (or the
+pre-0.5 `skillguard.net/rulepack.v1`, accepted for one release), and anything else — including a
+missing value — is refused with `ErrAPIVersion`. This is the same fail-closed posture as an unknown
+`engine:`; before 0.5 the field was parsed and ignored, so a pack written against a future schema
+would silently run under today's semantics. The id is compared as a string and never dereferenced;
+the bare `authority/name.vN` shape is the Kubernetes convention, where the domain buys global
+uniqueness through DNS ownership rather than addressing a document.
+
 ```yaml
-apiVersion: skillguard.net/rulepack.v1
+apiVersion: surfaceguard.svgreg.net/rulepack.v1
 name: core-injection
 version: 1.4.0
 description: Prompt-injection and instruction-layer attacks.
@@ -576,7 +585,7 @@ Two layers, resolving the determinism/timestamp conflict:
 
 ```json
 {
-  "_type": "skillguard.net/skill-card/v1",
+  "_type": "https://surfaceguard.svgreg.net/skill-card/v1",
   "card": {
     "name": "pdf-extractor",
     "description": "Extracts tables from PDFs.",
@@ -660,7 +669,7 @@ Serialized verdict values are lowercase strings: **`pass` | `warn` | `fail`** (G
 ### 10.4 Policy file (`.surfaceguard.yaml`) — one file, includes trust
 
 ```yaml
-apiVersion: skillguard.net/policy.v1
+apiVersion: surfaceguard.svgreg.net/policy.v1
 fail_on: high
 warn_on: medium
 attestation: { required: false, warn_if_missing: true }

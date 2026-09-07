@@ -1,6 +1,6 @@
-apiVersion: skillguard.net/rulepack.v1
+apiVersion: surfaceguard.svgreg.net/rulepack.v1
 name: core-network
-version: 1.1.0
+version: 1.1.1
 description: Data exfiltration, egress, SSRF (rule-verification.md §3).
 rules:
   - id: SG-NET-002
