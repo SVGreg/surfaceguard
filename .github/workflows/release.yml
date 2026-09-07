@@ -71,7 +71,7 @@ jobs:
         env:
           TAG: ${{ needs.release-please.outputs.tag_name }}
         run: |
-          major="${TAG%%.*}"          # v0.3.0 -> v0
+          major="${TAG%%.*}"          # v0.4.1 -> v0
           case "$major" in
             v[0-9]*) ;;
             *) echo "::error::unexpected tag $TAG; not moving a major tag"; exit 1 ;;

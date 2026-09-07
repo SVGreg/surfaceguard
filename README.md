@@ -56,7 +56,7 @@ curl -fsSL https://raw.githubusercontent.com/SVGreg/surfaceguard/main/install.sh
 
 The script detects your OS/architecture (macOS/Linux, amd64/arm64), verifies the release
 checksum, and installs to `/usr/local/bin` (override with `INSTALL_DIR`; pin a release with
-`VERSION=v0.3.0`). On Windows, download the `.zip` from the
+`VERSION=v0.4.1`). On Windows, download the `.zip` from the
 [releases page](https://github.com/SVGreg/surfaceguard/releases) and put `surfaceguard.exe`
 on your `PATH`.
 
@@ -1052,12 +1052,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4      # the action scans the workspace
-      - uses: SVGreg/surfaceguard@v0    # or @v0.3.0 to pin exactly
+      - uses: SVGreg/surfaceguard@v0    # or @v0.4.1 to pin exactly
         with:
           path: ./my-skill
 ```
 
-**Pinning.** `@v0` follows the newest `0.x` release; `@v0.3.0` pins exactly. Either
+**Pinning.** `@v0` follows the newest `0.x` release; `@v0.4.1` pins exactly. Either
 way the action installs **the surfaceguard release matching its own ref**, so a
 pinned workflow keeps running the binary it was tested against — set
 `version: latest` to opt out of that, or `version: preinstalled` to use a

@@ -58,7 +58,8 @@ tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
 echo "Downloading $BINARY $VERSION ($os/$arch)..."
-curl -fsSL -o "$tmp/$asset" "$base/$asset" 2>/dev/null || err "download failed: $base/$asset"
+curl -fsSL -o "$tmp/$asset" "$base/$asset" 2>/dev/null || err "download failed: $base/$asset
+(releases before v0.4.0 published a differently named asset and cannot be installed by this script)"
 curl -fsSL -o "$tmp/checksums.txt" "$base/checksums.txt" || err "download failed: $base/checksums.txt"
 
 (
