@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.4.0](https://github.com/SVGreg/surfaceguard/compare/v0.3.0...v0.4.0) (2026-09-07)
+
+
+### ⚠ BREAKING CHANGES
+
+* the Go module path is now github.com/SVGreg/surfaceguard and the binary is `surfaceguard`. Module paths have no redirect; update imports. The repo URL and `uses:` refs redirect on GitHub.
+
+### Code Refactoring
+
+* rename skill-guard to SurfaceGuard ([#242](https://github.com/SVGreg/surfaceguard/issues/242)) ([7426ae3](https://github.com/SVGreg/surfaceguard/commit/7426ae32609ebc5bf85f8b2e1fdab45102aa0ebb))
+
 ## [0.3.0](https://github.com/SVGreg/skill-guard/compare/v0.2.2...v0.3.0) (2026-09-04)
 
 
