@@ -23,9 +23,9 @@ jobs:
       - uses: actions/setup-go@v5
         with: { go-version: "1.26" }
 
-      - name: Build skill-guard from this checkout
+      - name: Build surfaceguard from this checkout
         run: |
-          go build -o "$RUNNER_TEMP/bin/skill-guard" ./cmd/skill-guard
+          go build -o "$RUNNER_TEMP/bin/surfaceguard" ./cmd/surfaceguard
           echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
 
       # The malicious fixture must fail the gate. continue-on-error keeps the
@@ -81,7 +81,7 @@ jobs:
           test "${{ steps.benign.outputs.output-file }}" = "benign.sarif" \
             || { echo "output-file was '${{ steps.benign.outputs.output-file }}'"; exit 1; }
 
-      # The action's own guardrails. Each of these used to reach skill-guard and
+      # The action's own guardrails. Each of these used to reach surfaceguard and
       # come back as a usage error, which reads like the scanner's fault rather
       # than the workflow's.
       - name: A bad format is rejected before anything runs
@@ -136,7 +136,7 @@ jobs:
           path: testdata/benign
           output: released.sarif
           version: ${{ matrix.version }}
-          category: skill-guard:demo-${{ matrix.version }}
+          category: surfaceguard:demo-${{ matrix.version }}
           upload-sarif: "false"
 
       - name: The released binary must have produced a clean scan
@@ -148,7 +148,7 @@ jobs:
           test "${{ steps.released.outputs.verdict }}" = "pass" \
             || { echo "expected verdict pass, got '${{ steps.released.outputs.verdict }}'"; exit 1; }
           test -s released.sarif || { echo "no SARIF was written"; exit 1; }
-          installed=$(skill-guard version | head -1)
+          installed=$(surfaceguard version | head -1)
           echo "$installed"
           # An exact tag must install exactly that; "latest" only has to install
           # something, since the newest release moves.
@@ -172,13 +172,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with: { go-version: "1.26" }
-      - name: Build skill-guard from this checkout
+      - name: Build surfaceguard from this checkout
         run: |
-          go build -o "$RUNNER_TEMP/bin/skill-guard" ./cmd/skill-guard
+          go build -o "$RUNNER_TEMP/bin/surfaceguard" ./cmd/surfaceguard
           echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
       - uses: ./
         continue-on-error: true
         with:
           path: testdata/malicious
-          output: skill-guard.sarif
+          output: surfaceguard.sarif
           version: preinstalled

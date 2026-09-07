@@ -1,6 +1,6 @@
-# OWASP Agentic Skills Top 10 — Taxonomy & skill-guard Mapping
+# OWASP Agentic Skills Top 10 — Taxonomy & surfaceguard Mapping
 
-**Status:** reference. Source of truth for how skill-guard rule IDs map to OWASP
+**Status:** reference. Source of truth for how surfaceguard rule IDs map to OWASP
 Agentic Skills Top 10 risks (`AST01`–`AST10`).
 
 This document consolidates, per risk: the OWASP definition, what is **in scope**,
@@ -13,7 +13,7 @@ Sources (fetched 2026-07-19):
 - Checklist — <https://owasp.org/www-project-agentic-skills-top-10/checklist.html>
 - Per-risk detail — `https://owasp.org/www-project-agentic-skills-top-10/astNN.html`
 
-> **Why this matters.** skill-guard is a **static scanner of a skill's own
+> **Why this matters.** surfaceguard is a **static scanner of a skill's own
 > bundle** (`SKILL.md` front-matter + body + bundled scripts/configs). The OWASP
 > boundaries are precise about *where* a risk lives — in the skill's own content,
 > its metadata, an external reference, the registry, the runtime sandbox, or the
@@ -348,7 +348,7 @@ manifest with all security fields.
 
 ## Reconciliation principles
 
-skill-guard statically inspects a skill's own bundle, so a finding is filed by
+surfaceguard statically inspects a skill's own bundle, so a finding is filed by
 **where the pattern lives and how it acts**:
 
 - **P1 — In-skill text that steers the agent → AST01, never AST05.** AST05 is only
@@ -409,7 +409,7 @@ skill-guard statically inspects a skill's own bundle, so a finding is filed by
 
 ## Coverage: which ASTs a static bundle scan can reach
 
-| AST | Covered by skill-guard `scan`? | Notes |
+| AST | Covered by surfaceguard `scan`? | Notes |
 |---|---|---|
 | AST01 Malicious Skills | **Yes** — primary | code + `SKILL.md` prose patterns, including the agent-relayed-command (ClickFix) delivery path via `SG-INJ-011` |
 | AST02 Supply Chain | Partial — provenance + static rules | `sign`/`verify` attestation, plus the `core-supply` pack: `SG-DEP-007` (remote-package auto-execution via `npx -y`/`uvx`/`pipx run`) and `SG-DEP-001` (unpinned/floating dependency specs — `*`/`latest`/`@latest`/`@main`/`:latest`), `SG-DEP-008` (install redirected to a non-default registry/index/proxy — dependency-confusion delivery), `SG-DEP-009` (dependency sourced from a raw VCS URL or bare archive — no registry, so no version resolution, integrity hash, or yank path), `SG-DEP-011` (fetches or decodes an opaque binary and marks it executable in one command — RCE delivery), `SG-DEP-010` (a package.json install-lifecycle hook that auto-runs a command on `npm install` — the declarative sibling of SG-CFG-001), and, in `core-exec`, `SG-CFG-001` (a bundled agent-hook config that auto-executes commands — shipping the config *is* the supply-chain delivery) and `SG-CFG-002` (a repo-scoped agent settings file whose `env` block binds an interpreter preload variable, so the named file runs at launch, or redirects `ANTHROPIC_BASE_URL`/peers to a non-vendor host so every request carries the API key there — Check Point CVE-2025-59536 / CVE-2026-21852); the rest of the SG-DEP family remains planned |
@@ -418,7 +418,7 @@ skill-guard statically inspects a skill's own bundle, so a finding is filed by
 | AST05 Untrusted External Instr. | **Yes** | three carriers implemented — `SG-REF-003` (runtime instruction fetch / "external brain"), `SG-REF-004` (external ruleset declared authoritative over the skill) and `SG-REF-005` (self-ingested: the agent's own log/transcript as the carrier); the reference-inventory (`SG-REF-001`) and unpinned-ref (`SG-REF-002`) rules remain planned |
 | AST06 Weak Isolation | Weak/partial | only visible signals (bind-all listeners); the sandbox itself is a runtime property |
 | AST07 Update Drift | Weak/partial (static signal) | mostly runtime/registry, but `SG-DEP-001` flags floating specs (`latest`/`@main`) that invite silent drift; otherwise addressed by pinning + `verify` re-scan |
-| AST08 Poor Scanning | Partial | embedded-secret detection, plus `SG-INJ-007` (terminal/ANSI escape sequences — encoding evasion that hides text from the reviewer and breaks regex leaves) and `SG-EVA-002` (encrypted/password-protected payload container — the "archives" encoding-evasion case named in scope above, where the passphrase ships in the skill's own prose); `SG-EVA-003` (a bundled image or PDF used as an instruction carrier — the payload is a modality the scanner cannot read, so the rule matches the pointer; the explicit-imperative half only, see its spec); and `SG-EVA-001` (self-extracting payload staged in a scanner-skipped location — `.git/` or a `*.skillsig` name — detected via the decoder, which is always in a scanned file); skill-guard is itself an AST08 mitigation. Still open: the *provenance* half of `SG-EVA-001` — skipped files are outside the Merkle root, so a signed bundle's staged blob can be rewritten after signing (issue #17) |
+| AST08 Poor Scanning | Partial | embedded-secret detection, plus `SG-INJ-007` (terminal/ANSI escape sequences — encoding evasion that hides text from the reviewer and breaks regex leaves) and `SG-EVA-002` (encrypted/password-protected payload container — the "archives" encoding-evasion case named in scope above, where the passphrase ships in the skill's own prose); `SG-EVA-003` (a bundled image or PDF used as an instruction carrier — the payload is a modality the scanner cannot read, so the rule matches the pointer; the explicit-imperative half only, see its spec); and `SG-EVA-001` (self-extracting payload staged in a scanner-skipped location — `.git/` or a `*.skillsig` name — detected via the decoder, which is always in a scanned file); surfaceguard is itself an AST08 mitigation. Still open: the *provenance* half of `SG-EVA-001` — skipped files are outside the Merkle root, so a signed bundle's staged blob can be rewritten after signing (issue #17) |
 | AST09 No Governance | No | organisational; out of a single-bundle scan's scope |
 | AST10 Cross-Platform Reuse | No | multi-registry/platform; out of scope |
 

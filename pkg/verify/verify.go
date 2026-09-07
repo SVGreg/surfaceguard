@@ -13,10 +13,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/SVGreg/skill-guard/pkg/attest"
-	"github.com/SVGreg/skill-guard/pkg/model"
-	"github.com/SVGreg/skill-guard/pkg/policy"
-	"github.com/SVGreg/skill-guard/pkg/skill"
+	"github.com/SVGreg/surfaceguard/pkg/attest"
+	"github.com/SVGreg/surfaceguard/pkg/model"
+	"github.com/SVGreg/surfaceguard/pkg/policy"
+	"github.com/SVGreg/surfaceguard/pkg/skill"
 )
 
 // Signature formats a Result can describe. A consumer reads Format to know
@@ -76,7 +76,7 @@ func Verify(b *skill.Bundle, env *attest.Envelope, roster policy.Trust) *Result 
 		res.Findings = append(res.Findings, prv("SG-PRV-001", model.SevMedium,
 			"No attestation present",
 			"The bundle has no .skillsig; integrity and publisher cannot be verified.",
-			"Sign the skill: skill-guard sign <path>."))
+			"Sign the skill: surfaceguard sign <path>."))
 		return res
 	}
 	res.Present = true
@@ -90,7 +90,7 @@ func Verify(b *skill.Bundle, env *attest.Envelope, roster policy.Trust) *Result 
 		res.Findings = append(res.Findings, prv("SG-PRV-002", model.SevCritical,
 			"Unexpected attestation payload type",
 			"The envelope's payloadType is not "+attest.PayloadType+"; it was signed for a different purpose.",
-			"Re-sign the bundle: skill-guard sign <path>."))
+			"Re-sign the bundle: surfaceguard sign <path>."))
 		return res
 	}
 
@@ -183,13 +183,13 @@ func Verify(b *skill.Bundle, env *attest.Envelope, roster policy.Trust) *Result 
 		res.Findings = append(res.Findings, prv("SG-PRV-004", model.SevHigh,
 			"Attestation has no expiry",
 			"The statement's predicate omits expires_at, so freshness cannot be established.",
-			"Re-sign the bundle: skill-guard sign <path>."))
+			"Re-sign the bundle: surfaceguard sign <path>."))
 	case err != nil:
 		res.Expired = true
 		res.Findings = append(res.Findings, prv("SG-PRV-004", model.SevHigh,
 			"Attestation expiry unreadable",
 			"expires_at is not an RFC3339 timestamp ("+strconv.Quote(st.Predicate.ExpiresAt)+"), so freshness cannot be established.",
-			"Re-sign the bundle: skill-guard sign <path>."))
+			"Re-sign the bundle: surfaceguard sign <path>."))
 	case time.Now().After(exp.Add(2 * time.Minute)): // small clock-skew tolerance
 		res.Expired = true
 		res.Findings = append(res.Findings, prv("SG-PRV-004", model.SevHigh,

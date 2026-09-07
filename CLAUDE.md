@@ -4,8 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-`skill-guard` scans, signs, and verifies Agent Skills (`SKILL.md` bundles) against the
-**OWASP Agentic Skills Top 10** (`AST01`–`AST10`). It ships as a CLI and as a reusable Go
+`surfaceguard` (formerly `skill-guard`, renamed in v0.4.0) scans, signs, and verifies
+artifacts that enter an agent's context — today Agent Skills (`SKILL.md` bundles) against the
+**OWASP Agentic Skills Top 10** (`AST01`–`AST10`), with other agent-facing sources planned.
+**The `SG-` rule-id prefix, `SGMT-1`, `.skillsig` and the `skillguard.net/*` schema ids are
+frozen wire contracts and did not change with the rename** — see `docs/rename-migration.md`. It ships as a CLI and as a reusable Go
 library. Nothing in a scanned skill is ever executed — a bundle is parsed into an inert
 model and matched against static rules. Requires **Go 1.26+**; deps are only `cobra` and
 `yaml.v3`, everything else stdlib.
@@ -13,7 +16,7 @@ model and matched against static rules. Requires **Go 1.26+**; deps are only `co
 ## Commands
 
 ```sh
-go build -o skill-guard ./cmd/skill-guard   # build the binary
+go build -o surfaceguard ./cmd/surfaceguard   # build the binary
 go build ./...                              # build everything
 go test ./...                               # full test suite
 go test ./pkg/scan/ -run TestScan -v        # single package / single test
@@ -21,13 +24,13 @@ gofmt -l .                                  # formatting check (must be empty)
 go vet ./...                                # static checks
 
 # end-to-end smoke test against fixtures (also the exit-code contract)
-go run ./cmd/skill-guard scan testdata/malicious   # verdict: fail, exit 1
-go run ./cmd/skill-guard scan testdata/benign      # verdict: pass, exit 0
+go run ./cmd/surfaceguard scan testdata/malicious   # verdict: fail, exit 1
+go run ./cmd/surfaceguard scan testdata/benign      # verdict: pass, exit 0
 ```
 
 Exit codes are part of the contract and are asserted in the smoke test: `0` ok · `1` scan
 verdict fail · `2` verification failed (bad signature / tampered content) · `3` usage error
-· `4` internal error. They are produced via `exitErr{code,msg}` in `cmd/skill-guard/main.go` —
+· `4` internal error. They are produced via `exitErr{code,msg}` in `cmd/surfaceguard/main.go` —
 return one from a command rather than calling `os.Exit` directly.
 
 > `testdata/malicious/setup.sh` is an exfiltration/injection corpus used **only** as scanner
@@ -35,7 +38,7 @@ return one from a command rather than calling `os.Exit` directly.
 
 ## Architecture
 
-The CLI (`cmd/skill-guard`) is a thin cobra wrapper; all logic lives in `pkg/*`. Data flows
+The CLI (`cmd/surfaceguard`) is a thin cobra wrapper; all logic lives in `pkg/*`. Data flows
 in one direction through the scan pipeline:
 
 ```
@@ -56,7 +59,7 @@ Package responsibilities:
 | `pkg/skill` | parse a `SKILL.md` bundle into an inert model (nothing executed); file walk + language detection |
 | `pkg/rules` | rule-pack schema, YAML loader, matcher primitives, confidence/context math |
 | `pkg/scan` | orchestrate rules → findings, dedup, waivers, verdict, risk score, skill-card |
-| `pkg/policy` | `.skillguard.yaml` model, thresholds, waivers, allowlists, trust roster |
+| `pkg/policy` | `.surfaceguard.yaml` model, thresholds, waivers, allowlists, trust roster |
 | `pkg/attest` | SGMT-1 Merkle root, DSSE signing, USF fields, Ed25519 keygen |
 | `pkg/verify` | attestation verification, Merkle integrity, trust → `SG-PRV-*` findings |
 | `pkg/report` | text / JSON / skill-card formatters |
@@ -77,16 +80,16 @@ through an `ast_references` map so tooling never hard-codes the taxonomy.
 
 **Every pack edit bumps that pack's `version:`, in the same commit.** Each pack carries its own
 semver (line 3 of the file), independent of the binary version and of the other packs; it is what
-`skill-guard version` reports, and the consumer's only answer to "which detections did this scan
+`surfaceguard version` reports, and the consumer's only answer to "which detections did this scan
 run?". Decide the bump by which way the change moves detection surface — **minor** if the pack can
 now produce more or higher-severity findings (new rule, new `any:` branch, new `targets:` entry,
 raised `severity`/`confidence`), **patch** if it can only produce fewer or lower-severity ones or
 none at all (new `suppress:` carve-out, tightened regex, lowered `confidence`, `rationale`/`fix`
 wording), **major** only when a rule `id` is removed/renamed or `apiVersion` changes. One bump per
 PR; a PR that both widens and narrows takes the higher one. Full table in
-`docs/skill-guard-design.md §8.1`.
+`docs/surfaceguard-design.md §8.1`.
 
-**`docs/rule-verification.md` (with `docs/skill-guard-design.md §5`) is the authority for what an
+**`docs/rule-verification.md` (with `docs/surfaceguard-design.md §5`) is the authority for what an
 `SG-` id means.** Allocate a new id by taking the next free number in its family *and* adding a
 section there — never by picking a number in a backlog row or an issue. `docs/planned-rules.md`
 tracks status/priority for ids defined in the authority docs; it once invented its own meanings for
@@ -130,14 +133,14 @@ target and `scan.Scan` adds it back (`f.StartLine += t.lineOffset`) so findings 
 
 Trust is **local and decentralized** — there is no key server or identity authority. The
 `--identity` passed to `sign` is a self-asserted label. A signature only "verifies" when the
-consumer has added the signing key to `trust.keys` in *their* `.skillguard.yaml`. `verify`
+consumer has added the signing key to `trust.keys` in *their* `.surfaceguard.yaml`. `verify`
 reports states as `SG-PRV-*` findings (unverified / invalid / revoked / merkle-mismatch). See
 the README's "Publisher identity & trust" section — don't reintroduce assumptions of a global
 authority.
 
 ## Evaluation methodology (`evaluation/`)
 
-`evaluation/` is a reproducible quality harness that runs `skill-guard scan` over a corpus of
+`evaluation/` is a reproducible quality harness that runs `surfaceguard scan` over a corpus of
 **real Agent Skills** and rolls the results into stats + human reports. It uses only the built-in
 rulepacks with **no policy/waivers**, so results reflect out-of-the-box behavior.
 
@@ -190,6 +193,6 @@ confirmed intent**. A `pass` is not a safety guarantee; a `fail` is an invitatio
 
 ## Reference docs
 
-- `docs/skill-guard-design.md` — full design + roadmap; source code comments cite its sections (`design §X`).
+- `docs/surfaceguard-design.md` — full design + roadmap; source code comments cite its sections (`design §X`).
 - `docs/rule-verification.md` — the detection approach and confidence math behind each rule.
 - `PROGRESS.md` — implementation status/handoff; M1 (scan) + M2 (sign/verify) are done.

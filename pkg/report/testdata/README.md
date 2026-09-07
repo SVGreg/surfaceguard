@@ -3,7 +3,7 @@
 ## `sarif-schema-2.1.0.json`
 
 The official SARIF 2.1.0 JSON schema, vendored so the emitter can be validated
-**offline** — skill-guard's determinism principle means the test suite must not
+**offline** — surfaceguard's determinism principle means the test suite must not
 need the network, in CI or in an air-gapped review.
 
 | | |

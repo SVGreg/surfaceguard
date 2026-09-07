@@ -1,10 +1,10 @@
-# skill-guard — Rule Verification & Detection Engineering Guide
+# surfaceguard — Rule Verification & Detection Engineering Guide
 
-> Companion to `skill-guard-design.md` (§5 ruleset). Defines, for **every** rule, how to maximize malicious-case coverage while minimizing false positives.
+> Companion to `surfaceguard-design.md` (§5 ruleset). Defines, for **every** rule, how to maximize malicious-case coverage while minimizing false positives.
 > **Status:** Design v1 — ready for implementation. Each rule below is the authoring spec for its rule-pack entry (§8 of the design doc) and its test fixtures.
 > **Reference:** methodology informed by NVIDIA SkillSpector's analyzer design (Apache-2.0, https://github.com/NVIDIA/SkillSpector/tree/main/src/skillspector/nodes/analyzers) — studied as prior art, not copied. Where SkillSpector covers a class we lacked, it is added in §4.
 > **AST mapping:** the `(ASTxx)` tag in each rule heading is authoritative-by-reference to [`owasp-ast-taxonomy.md`](owasp-ast-taxonomy.md), which defines each OWASP risk's scope/boundary and records the reconciled rule→AST mapping and the principles behind it.
-> **Rule-id authority:** this document, together with [`skill-guard-design.md`](skill-guard-design.md) §5, defines what each `SG-` id **means**. Every rule shipped in `pkg/rules/packs/` matches the id used here. A new id is allocated by taking the next free number in its family **and adding a section here** — never by picking a number in a backlog or an issue. `docs/planned-rules.md` tracks *status and priority* for ids defined here; when the two disagree, this file wins (see that file's ID-reconciliation table and issue #54).
+> **Rule-id authority:** this document, together with [`surfaceguard-design.md`](surfaceguard-design.md) §5, defines what each `SG-` id **means**. Every rule shipped in `pkg/rules/packs/` matches the id used here. A new id is allocated by taking the next free number in its family **and adding a section here** — never by picking a number in a backlog or an issue. `docs/planned-rules.md` tracks *status and priority* for ids defined here; when the two disagree, this file wins (see that file's ID-reconciliation table and issue #54).
 
 ---
 
@@ -48,7 +48,7 @@ For each rule below: **Signals** (what to match, widened), **FP carve-outs** (wh
 ### 1.4 Two universal false-positive guards (applied before any rule runs)
 
 1. **Documentation-intent detector.** Many skills legitimately *document* dangerous things ("this scanner detects `curl | bash`"). A shared classifier marks a span as `documentary` when it is inside a code fence introduced by descriptive prose, a markdown table of examples, or within N tokens of `example`, `e.g.`, `for instance`, `do not`, `never`, `detect`, `flag`, `insecure:` . `documentary` spans get the −0.4 modifier on *text/instruction* rules — but **not** on structural rules (a real zero-width char or `!!python/object` in "documentation" is still real).
-2. **Self-reference guard.** `skill-guard`'s own rule-packs, this doc, and files matching `**/testdata/**`/`**/*.fixture.*` are exempt from scanning by default so the tool doesn't flag its own signatures.
+2. **Self-reference guard.** `surfaceguard`'s own rule-packs, this doc, and files matching `**/testdata/**`/`**/*.fixture.*` are exempt from scanning by default so the tool doesn't flag its own signatures.
 
 ---
 
@@ -117,7 +117,7 @@ The rule had never been audited for precision on the corpus; it had only ever be
 prompt-injection detector's README/test-suite, and a defensive scanner — hold 121 of them (83%),
 and their files genuinely contain `ignore previous instructions` as a literal. There is no signal
 that separates a detector's denylist entry from a payload; suppressing the canonical string would
-delete the rule's core true positive. This is the known benign-but-flagged class, and skill-guard's
+delete the rule's core true positive. This is the known benign-but-flagged class, and surfaceguard's
 stated reading — *capability and pattern, not confirmed intent* — is that a bundle shipping those
 strings does put them in the agent's context. Left flagged, recorded here so the next cycle does
 not re-audit it.
@@ -981,7 +981,7 @@ bare-flag form.
 ```
 
 At the pattern level these are correct matches — the file genuinely contains a full reverse-shell
-string — and skill-guard's stated reading is capability and pattern, not confirmed intent. The
+string — and surfaceguard's stated reading is capability and pattern, not confirmed intent. The
 documentary modifier is already applying (they land at 0.65–0.7, not 0.95). Removing them would
 mean either muting the prose register generally or suppressing by bundle name, and a known,
 documented FP beats a silent recall loss.
@@ -1303,7 +1303,7 @@ payload. One hit is not worth a broad, bypassable mechanism.
   CVSS 5.3, information disclosure in the project-load flow that lets a malicious repository
   exfiltrate data including the Anthropic API key) names **three** abused mechanisms in a
   repo-checked-in `.claude/settings.json`: **hooks, MCP integrations, and environment variables**.
-  skill-guard covers **one of the three**. The framing that matters — *"repository-controlled
+  surfaceguard covers **one of the three**. The framing that matters — *"repository-controlled
   configuration files now function as part of the execution layer"* — is why this is `AST02` first:
   the payload arrives through the distribution channel and fires before any consent dialog.
 - **Two signal families, both `configs`-scoped:**
@@ -1428,7 +1428,7 @@ Backtick and `*` are excluded from the redirect-target character class for the r
   *"each dynamic context command executes immediately (before Claude sees anything)"* — the shell
   command runs during **preprocessing**, at render time, and its stdout is spliced into the prompt.
 - **Why this is a distinct rule and not "a command in a skill".** Every other execution rule in
-  skill-guard models a command the *agent may choose to run* (`SG-NET-002`, `SG-EXE-001`) or that a
+  surfaceguard models a command the *agent may choose to run* (`SG-NET-002`, `SG-EXE-001`) or that a
   *human* is talked into running (`SG-INJ-011`). This one runs **unconditionally, before any model
   turn** — so every model-level defence, every permission prompt, and every "the agent would refuse"
   argument is bypassed **by construction**, exactly like `SG-CFG-001`'s bundled hook config but in
@@ -1453,7 +1453,7 @@ Backtick and `*` are excluded from the redirect-target character class for the r
   slash-command-only one: the *Extend Claude with skills* page lists "dynamic context injection" among
   the features Claude Code adds to the Agent Skills standard, and states *"Each `` !`<command>` ``
   executes immediately (before Claude sees anything) … This is preprocessing, not something Claude
-  executes."* So the artifact skill-guard scans is the artifact that carries the execution. It is
+  executes."* So the artifact surfaceguard scans is the artifact that carries the execution. It is
   **live in the corpus** — `skillsmp/benjamcalvin__bootstraps__draft-issue/SKILL.md` uses
   `` !`gh issue list …` `` and `` !`git branch --show-current` `` for exactly the benign purpose below.
 - **Signals (proposed) — two syntaxes, both documented.** Gated on what is inside the span: a network
@@ -2134,7 +2134,7 @@ Recording the measurement so no later cycle re-derives it.
 ### SG-DEP-008 — Package install redirected to a non-default registry  (AST02/AST07, high) — **implemented** (`core-supply`)
 - **Signals (shipped):** an install pointed at a **non-default index/registry/proxy** — `pip|uv pip|python -m pip install … --index-url|--extra-index-url|--trusted-host`, `PIP_(EXTRA_)INDEX_URL=`, `npm|pnpm|yarn (install|add) … --registry`, `npm config set registry`, an `.npmrc` `registry=https://…` line (including scoped `@scope:registry=`), `NPM_CONFIG_REGISTRY=`, `go env -w GOPROXY|GOPRIVATE|GONOSUMDB|GOSUMDB=`, and a Cargo `replace-with = "…"` source replacement.
 - **Scope, decided by measurement.** The backlog row read "`pip install`/`npm install`/`curl | sh` bootstrap", but **71 of the 217 corpus skills mention a plain install command** — a rule on that fires on a third of all skills and is unusable. `curl … | sh` is already SG-NET-002 (critical), `sudo <pkg-manager>` is already SG-EXE-003 (`^\s*sudo\s+\w`, high), and `npx -y`/`uvx` is SG-DEP-007. What was left uncovered, and what actually carries the attack, is the **index redirect**: the delivery half of dependency confusion and typosquatting. Corpus prevalence of that subset: **0 of 217**.
-- **FP carve-outs:** the canonical public indexes are suppressed (`registry.npmjs.org`, `pypi.org/simple`, `proxy.golang.org`) — pointing at the default is not a redirect. `/path/to/` placeholders. A legitimate corporate mirror will match by design; the `fix` text directs those to a `.skillguard.yaml` waiver rather than a looser rule.
+- **FP carve-outs:** the canonical public indexes are suppressed (`registry.npmjs.org`, `pypi.org/simple`, `proxy.golang.org`) — pointing at the default is not a redirect. `/path/to/` placeholders. A legitimate corporate mirror will match by design; the `fix` text directs those to a `.surfaceguard.yaml` waiver rather than a looser rule.
 - **Confidence — every leaf is 0.9, and the flatness is forced, not chosen.** `docKeywords` includes `example`, so a match anywhere near an `example.com` / `.example` URL takes the documentary −0.4, and a `scripts`/`configs` target has no +0.15 instruction bonus to absorb it. At 0.85 the `PIP_INDEX_URL`, `.npmrc` and `GOPROXY` leaves failed their own tests for that reason alone. Signal-strength gradation is currently unusable on non-body targets — see the engine-backlog row (SG-MCP-001 hit the same cliff independently).
 - **Corpus:** **0 findings / 240 skills**, verdicts unchanged (209/22/9).
 - **Fixtures:** TP `testdata/malicious/setup.sh` (`pip install … --index-url https://pkgs.internal-mirror.test/simple`). FP: `pip install -r requirements.txt`, `npm install --save-dev typescript`, and both canonical registries. See `TestIndexRedirectCoversDependencyConfusion` (8 TP, 6 benign).
@@ -2302,10 +2302,10 @@ break — the newline-crossing-gap class tracked in the engine backlog.
   harmless tree; at first agent execution the decoder rematerializes the payload (typically as
   `WORKFLOW.md`) and the agent follows it. Measured to bypass **≥90% of every static scanner tested,
   ≥99.8% on five of six**.
-- **Verified against skill-guard before implementing — two blind spots, not one.** `skipNames` in
+- **Verified against surfaceguard before implementing — two blind spots, not one.** `skipNames` in
   `pkg/skill/skill.go` drops `.git`, *and* the same walk drops every `*.skillsig` (the attestation
   sidecar). Both bundles — `.git/skillpack.dat` + decoder, and `payload.skillsig` + decoder — scanned
-  **`pass` / 0 findings** on `main`. The second one is skill-guard's own convention being used against
+  **`pass` / 0 findings** on `main`. The second one is surfaceguard's own convention being used against
   it and was not in the filed issue.
 - **The rule matches the decoder, not the blob — and that is the point, not a compromise.** A rule
   cannot read a file the walk never opens, but it does not have to: the blob is inert without the
@@ -2324,7 +2324,7 @@ break — the newline-crossing-gap class tracked in the engine backlog.
   paths are deliberately **not** suppressed by name — a path carve-out would document the rule's own
   bypass (`base64 -d .git/objects/x`). The one suppress is DSSE inspection: an attestation envelope's
   `.payload` really is base64, so a documented "decode the attestation" line stays clean, hinged on an
-  attestation noun (`dsse`, `.payload`, `skill-guard verify|sign|attest`) so it cannot be abused.
+  attestation noun (`dsse`, `.payload`, `surfaceguard verify|sign|attest`) so it cannot be abused.
 - **Confidence:** 0.85 for the `.git/` leaves and the instruction-file redirect, 0.8 for the
   `*.skillsig` decoder. Corpus: **0 hits / 777 skills**, measured with the broadest verb set tried.
 - **Not shipped — the provenance half of issue #17, left open on purpose.** Because

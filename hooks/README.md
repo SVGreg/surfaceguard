@@ -1,8 +1,8 @@
-# skill-guard hooks
+# surfaceguard hooks
 
 Gate **Agent Skill invocations** at the moment an agent tries to use them. When a
 model calls a skill, the hook resolves it to a local bundle, runs
-`skill-guard guard --format json` against your policy, and allows or blocks the
+`surfaceguard guard --format json` against your policy, and allows or blocks the
 call based on the configured enforcement mode.
 
 `guard` is the load-time gate: it verifies whichever signature formats the bundle
@@ -29,8 +29,8 @@ stdlib** (3.8+); there is nothing to `pip install`.
 
 | File | Purpose |
 |------|---------|
-| `skillguard_hook.py` | The `PreToolUse` hook. Reads the event on stdin, decides on stdout. |
-| `config.example.json` | Copy to `.claude/skillguard-hook.config.json` and edit. |
+| `surfaceguard_hook.py` | The `PreToolUse` hook. Reads the event on stdin, decides on stdout. |
+| `config.example.json` | Copy to `.claude/surfaceguard-hook.config.json` and edit. |
 | `settings.snippet.json` | The `hooks` block to paste into a Claude Code settings file. |
 | `install.py` | Idempotently add/remove the hook entry in a settings file. |
 | `tests/test_hook.py` | Unit tests for the decision logic (`python3 -m unittest`). |
@@ -38,15 +38,15 @@ stdlib** (3.8+); there is nothing to `pip install`.
 ## Quick start
 
 ```sh
-# 1. Make sure the skill-guard binary is on PATH (see repo root install.sh),
-#    or set "skill_guard_bin" in the config to an absolute path.
-skill-guard version
+# 1. Make sure the surfaceguard binary is on PATH (see repo root install.sh),
+#    or set "surfaceguard_bin" in the config to an absolute path.
+surfaceguard version
 
 # 2. Register the hook in this project's .claude/settings.json
 python3 hooks/install.py               # or: --user for ~/.claude/settings.json
 
 # 3. Configure it (optional — sensible defaults apply)
-cp hooks/config.example.json .claude/skillguard-hook.config.json
+cp hooks/config.example.json .claude/surfaceguard-hook.config.json
 ```
 
 `install.py` writes the same block found in `settings.snippet.json`; paste that
@@ -79,7 +79,7 @@ act on:
 > with skills you have never scanned.
 
 **Provenance outranks the verdict.** A signature that does not match its content
-denies whatever the scan found — see `skill-guard guard --help`.
+denies whatever the scan found — see `surfaceguard guard --help`.
 
 Two orthogonal knobs:
 
@@ -105,9 +105,9 @@ that can't be signed — they are always allowed and kept out of the noise.
 
 Resolution order (first found wins), merged over built-in defaults:
 
-1. `$SKILLGUARD_HOOK_CONFIG`
-2. `$CLAUDE_PROJECT_DIR/.claude/skillguard-hook.config.json`
-3. `~/.claude/skillguard-hook.config.json`
+1. `$SURFACEGUARD_HOOK_CONFIG`
+2. `$CLAUDE_PROJECT_DIR/.claude/surfaceguard-hook.config.json`
+3. `~/.claude/surfaceguard-hook.config.json`
 
 See `config.example.json` for every field. Paths support `${CLAUDE_PROJECT_DIR}`,
 `${HOME}`, `~`, and `$VAR`.
@@ -115,7 +115,7 @@ See `config.example.json` for every field. Paths support `${CLAUDE_PROJECT_DIR}`
 ## The audit log
 
 Every decision appends one JSON line to `log_file` (default
-`.claude/skillguard-hook.log`) — `skill`, `state`, `block`, `bundle`, `reason`,
+`.claude/surfaceguard-hook.log`) — `skill`, `state`, `block`, `bundle`, `reason`,
 `mode`, `session`, plus what the gate reported: `verdict`, `risk_score`,
 `content_hash`, `signature`, `cache_hit`, and the first few `rules` that drove
 the decision. The content hash is what ties a log line to exactly the bytes that
@@ -132,8 +132,8 @@ enforcing modes. It is `.gitignore`d.
 
 ## Other agents (Cursor & the Agent SDK)
 
-The gate (`skill-guard guard` → outcome → allow/deny) is agent-neutral. The
-`evaluate()` / `outcome_of()` / `decide()` functions in `skillguard_hook.py` are
+The gate (`surfaceguard guard` → outcome → allow/deny) is agent-neutral. The
+`evaluate()` / `outcome_of()` / `decide()` functions in `surfaceguard_hook.py` are
 pure and reusable. Ports:
 
 - **Claude Agent SDK (Python/TS).** The SDK exposes the same `PreToolUse` hook
@@ -144,15 +144,15 @@ pure and reusable. Ports:
 
 - **Cursor.** Cursor has no per-tool-call pre-execution hook today, so verify at
   the boundaries you *do* control:
-  - a **pre-commit / CI gate** (`skill-guard guard` over every bundle under
+  - a **pre-commit / CI gate** (`surfaceguard guard` over every bundle under
     `.cursor/` or your skills dir; a denial exits 1, so the build fails on it);
   - a **wrapper MCP server** that proxies skill/tool execution and calls
     `evaluate()` before forwarding;
-  - a Cursor **Rule** that instructs the agent to run `skill-guard guard` before
+  - a Cursor **Rule** that instructs the agent to run `surfaceguard guard` before
     using any third-party skill (advisory, not enforced — weaker than a hook).
 
 - **Any harness with shell hooks.** Point its pre-execution hook at
-  `skillguard_hook.py`; if its event JSON differs, adjust `trigger_tools` and the
+  `surfaceguard_hook.py`; if its event JSON differs, adjust `trigger_tools` and the
   small field lookups in `main()`.
 
 ## Testing
@@ -166,17 +166,17 @@ installed skills, in the default `block-invalid` mode:
 
 ```sh
 $ echo '{"tool_name":"Skill","tool_input":{"skill":"evil-skill"}}' \
-    | CLAUDE_PROJECT_DIR="$PROJ" python3 hooks/skillguard_hook.py
+    | CLAUDE_PROJECT_DIR="$PROJ" python3 hooks/surfaceguard_hook.py
 {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny",
- "permissionDecisionReason": "skill-guard blocked skill 'evil-skill': scan verdict: fail
+ "permissionDecisionReason": "surfaceguard blocked skill 'evil-skill': scan verdict: fail
  (critical findings, risk 100/100)"}, "systemMessage": "…"}
 
 $ echo '{"tool_name":"Skill","tool_input":{"skill":"good-skill"}}' \
-    | CLAUDE_PROJECT_DIR="$PROJ" python3 hooks/skillguard_hook.py
-{"systemMessage": "skill-guard: skill 'good-skill' allowed but no attestation present",
+    | CLAUDE_PROJECT_DIR="$PROJ" python3 hooks/surfaceguard_hook.py
+{"systemMessage": "surfaceguard: skill 'good-skill' allowed but no attestation present",
  "suppressOutput": true}
 ```
 
 The first call never reaches the model; the second proceeds with a heads-up. To
-exercise the provenance half, sign a skill, add its key to a `.skillguard.yaml`
+exercise the provenance half, sign a skill, add its key to a `.surfaceguard.yaml`
 trust roster, then edit a byte of the bundle and call it again.

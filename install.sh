@@ -1,7 +1,7 @@
 #!/bin/sh
-# Install skill-guard from GitHub Releases (no Go toolchain required).
+# Install surfaceguard from GitHub Releases (no Go toolchain required).
 #
-#   curl -fsSL https://raw.githubusercontent.com/SVGreg/skill-guard/main/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/SVGreg/surfaceguard/main/install.sh | sh
 #
 # Environment overrides:
 #   VERSION       release tag to install (e.g. v0.3.0); default: latest
@@ -11,8 +11,8 @@
 #                 assets themselves are public and fetched without it.
 set -eu
 
-REPO="SVGreg/skill-guard"
-BINARY="skill-guard"
+REPO="SVGreg/surfaceguard"
+BINARY="surfaceguard"
 INSTALL_DIR="${INSTALL_DIR:-/usr/local/bin}"
 
 err() { echo "install.sh: $*" >&2; exit 1; }
@@ -49,14 +49,31 @@ if [ -z "$VERSION" ]; then
 fi
 
 vnum="${VERSION#v}"
-asset="${BINARY}_${vnum}_${os}_${arch}.tar.gz"
 base="https://github.com/$REPO/releases/download/$VERSION"
+
+# The project was called skill-guard through v0.3.0, so releases up to that
+# point publish skill-guard_<v>_<os>_<arch>.tar.gz with a `skill-guard` binary
+# inside. Installing an older pinned version has to keep working — the GitHub
+# Action resolves `version:` to whatever ref a workflow pinned, which may well
+# predate the rename — so the legacy asset is tried when the current name 404s,
+# and whatever comes out is installed under the current name either way.
+asset="${BINARY}_${vnum}_${os}_${arch}.tar.gz"
+inner="$BINARY"
+legacy_asset="skill-guard_${vnum}_${os}_${arch}.tar.gz"
 
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
 echo "Downloading $BINARY $VERSION ($os/$arch)..."
-curl -fsSL -o "$tmp/$asset" "$base/$asset" || err "download failed: $base/$asset"
+if ! curl -fsSL -o "$tmp/$asset" "$base/$asset" 2>/dev/null; then
+  if curl -fsSL -o "$tmp/$legacy_asset" "$base/$legacy_asset" 2>/dev/null; then
+    echo "note: $VERSION predates the rename; installing its skill-guard asset as $BINARY"
+    asset="$legacy_asset"
+    inner="skill-guard"
+  else
+    err "download failed: $base/$asset"
+  fi
+fi
 curl -fsSL -o "$tmp/checksums.txt" "$base/checksums.txt" || err "download failed: $base/checksums.txt"
 
 (
@@ -71,14 +88,14 @@ curl -fsSL -o "$tmp/checksums.txt" "$base/checksums.txt" || err "download failed
   [ "$expected" = "$actual" ] || err "checksum mismatch for $asset"
 )
 
-tar -xzf "$tmp/$asset" -C "$tmp" "$BINARY"
+tar -xzf "$tmp/$asset" -C "$tmp" "$inner"
 
 echo "Installing to $INSTALL_DIR/$BINARY..."
 if [ -w "$INSTALL_DIR" ]; then
-  install -m 0755 "$tmp/$BINARY" "$INSTALL_DIR/$BINARY"
+  install -m 0755 "$tmp/$inner" "$INSTALL_DIR/$BINARY"
 else
   echo "$INSTALL_DIR is not writable; retrying with sudo..."
-  sudo install -m 0755 "$tmp/$BINARY" "$INSTALL_DIR/$BINARY"
+  sudo install -m 0755 "$tmp/$inner" "$INSTALL_DIR/$BINARY"
 fi
 
 echo "Installed: $("$INSTALL_DIR/$BINARY" version | head -1)"

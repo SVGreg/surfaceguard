@@ -31,7 +31,7 @@ const (
 	StatementType = "https://in-toto.io/Statement/v1"
 	PayloadType   = "application/vnd.in-toto+json"
 
-	// MethodFiles is the serialization method skill-guard produces; "shards"
+	// MethodFiles is the serialization method surfaceguard produces; "shards"
 	// exists for large model weights and is not useful for skill bundles.
 	MethodFiles  = "files"
 	MethodShards = "shards"

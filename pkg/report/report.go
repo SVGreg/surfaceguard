@@ -12,8 +12,8 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/SVGreg/skill-guard/pkg/model"
-	"github.com/SVGreg/skill-guard/pkg/scan"
+	"github.com/SVGreg/surfaceguard/pkg/model"
+	"github.com/SVGreg/surfaceguard/pkg/scan"
 )
 
 // ANSI colors (disabled when NoColor).
@@ -213,7 +213,7 @@ func SkillCard(w io.Writer, rep *scan.Report, opt Options) error {
 // The JSON and skill-card renderers need no equivalent — encoding/json escapes
 // control characters itself.
 //
-// cmd/skill-guard has a `safeText` that wraps strconv.Quote for the attestation
+// cmd/surfaceguard has a `safeText` that wraps strconv.Quote for the attestation
 // publisher label. That one is right for a standalone field; it is not usable
 // here because it also adds surrounding quotes, and File is printed in a
 // `path:line` position that must stay copy-pasteable.

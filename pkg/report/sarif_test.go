@@ -6,11 +6,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/SVGreg/skill-guard/pkg/model"
-	"github.com/SVGreg/skill-guard/pkg/policy"
-	"github.com/SVGreg/skill-guard/pkg/rules"
-	"github.com/SVGreg/skill-guard/pkg/scan"
-	"github.com/SVGreg/skill-guard/pkg/skill"
+	"github.com/SVGreg/surfaceguard/pkg/model"
+	"github.com/SVGreg/surfaceguard/pkg/policy"
+	"github.com/SVGreg/surfaceguard/pkg/rules"
+	"github.com/SVGreg/surfaceguard/pkg/scan"
+	"github.com/SVGreg/surfaceguard/pkg/skill"
 )
 
 // decodeSARIF renders a report and parses it back as generic JSON, which is how

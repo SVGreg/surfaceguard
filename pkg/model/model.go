@@ -1,5 +1,5 @@
 // Package model holds the shared, dependency-free core types (severity,
-// verdict, findings, reports) used across every skill-guard package. Keeping
+// verdict, findings, reports) used across every surfaceguard package. Keeping
 // them here avoids import cycles between skill, rules, scan, and report.
 package model
 

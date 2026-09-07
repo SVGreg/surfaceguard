@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/SVGreg/skill-guard/pkg/model"
-	"github.com/SVGreg/skill-guard/pkg/policy"
-	"github.com/SVGreg/skill-guard/pkg/scan"
+	"github.com/SVGreg/surfaceguard/pkg/model"
+	"github.com/SVGreg/surfaceguard/pkg/policy"
+	"github.com/SVGreg/surfaceguard/pkg/scan"
 )
 
 var update = flag.Bool("update", false, "rewrite the golden SARIF files")

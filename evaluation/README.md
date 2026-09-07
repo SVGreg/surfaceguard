@@ -1,6 +1,6 @@
-# skill-guard — Quality Evaluation Session
+# surfaceguard — Quality Evaluation Session
 
-A reproducible security evaluation that runs `skill-guard scan` against a corpus
+A reproducible security evaluation that runs `surfaceguard scan` against a corpus
 of **real Agent Skills** and aggregates the results into a stats report.
 
 ## Corpus
@@ -87,7 +87,7 @@ evaluation/
 
 ```sh
 # 1. build the scanner
-go build -o skill-guard ./cmd/skill-guard
+go build -o surfaceguard ./cmd/surfaceguard
 
 # 2. load the corpus
 WANT=500 python3 evaluation/scripts/fetch_clawhub.py                      # ClawHub top-500 -> clawhub/
@@ -111,10 +111,10 @@ python3 evaluation/scripts/report_html.py                 # -> reports/REPORT.ht
 CORPUS_DIRS="skillject" RAW_DIR="raw_skillject" evaluation/scripts/run_scans.sh
 RAW_DIR="raw_skillject" REPORT_NAME="REPORT_skillject.md" \
   STATS_NAME="stats_skillject.json" \
-  REPORT_TITLE="skill-guard — SkillJect Sample Corpus Evaluation" \
+  REPORT_TITLE="surfaceguard — SkillJect Sample Corpus Evaluation" \
   python3 evaluation/scripts/aggregate.py
 STATS_NAME="stats_skillject.json" HTML_NAME="REPORT_skillject.html" \
-  REPORT_TITLE="skill-guard — SkillJect Sample Corpus Evaluation" \
+  REPORT_TITLE="surfaceguard — SkillJect Sample Corpus Evaluation" \
   python3 evaluation/scripts/report_html.py
 
 # 3c. audit one rule's precision — every hit it produced, to judge TP vs FP
@@ -135,7 +135,7 @@ evaluation/scripts/rule_findings.py SG-INJ-001 --all      # every hit
 ## Notes
 
 - The scan uses only the built-in rulepacks — no custom policy or waivers — so the
-  numbers reflect skill-guard's out-of-the-box behavior.
+  numbers reflect surfaceguard's out-of-the-box behavior.
 - Static analysis flags **capability and pattern**, not confirmed intent. A `pass`
   is not a safety guarantee and a `fail` is an invitation to review — see the
   "Methodology & caveats" section of the report.

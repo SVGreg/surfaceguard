@@ -1,6 +1,6 @@
 # SARIF 2.1.0 mapping
 
-How skill-guard concepts land in a SARIF log (`scan --format sarif`), and which
+How surfaceguard concepts land in a SARIF log (`scan --format sarif`), and which
 of those choices are contracts a consumer may rely on.
 
 The emitter lives in [`pkg/report/sarif.go`](../pkg/report/sarif.go); the wire
@@ -27,10 +27,10 @@ bundle produce byte-identical logs, so a diff always means a real change.
 
 ## Severity → `level`
 
-SARIF has three levels; skill-guard has five severities. The raw value is kept
+SARIF has three levels; surfaceguard has five severities. The raw value is kept
 in `properties.severity` so nothing is lost.
 
-| skill-guard | SARIF `level` |
+| surfaceguard | SARIF `level` |
 |---|---|
 | `critical` | `error` |
 | `high` | `error` |
@@ -92,7 +92,7 @@ but is not given a taxa reference, so no index ever dangles.
 
 ## Waivers → `suppressions`
 
-A finding waived by `.skillguard.yaml` policy is **emitted, not dropped**:
+A finding waived by `.surfaceguard.yaml` policy is **emitted, not dropped**:
 
 ```json
 "suppressions": [{ "kind": "external", "justification": "reviewed: internal mirror" }]

@@ -11,17 +11,17 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/SVGreg/skill-guard/pkg/attest"
-	"github.com/SVGreg/skill-guard/pkg/skill"
+	"github.com/SVGreg/surfaceguard/pkg/attest"
+	"github.com/SVGreg/surfaceguard/pkg/skill"
 )
 
 // Bundle assembly per OMS §6.7–§6.8: DSSE-sign the statement, then wrap the
 // envelope in a Sigstore bundle.
 
 const (
-	// SigFileName is where skill-guard writes the OMS bundle. The spec does not
+	// SigFileName is where surfaceguard writes the OMS bundle. The spec does not
 	// mandate a name — §9 asks only for a `.sig` extension beside the signed
-	// tree — so this is skill-guard's choice, and Enumerate excludes it from
+	// tree — so this is surfaceguard's choice, and Enumerate excludes it from
 	// its own manifest.
 	SigFileName = "skill.oms.sig"
 
@@ -91,7 +91,7 @@ func SignBundle(ctx context.Context, b *skill.Bundle, signer Signer, opt EnumOpt
 }
 
 // keyHint is the hex-encoded key fingerprint §4.1 asks producers to put in
-// publicKey.hint. skill-guard key ids are already a truncated SHA-256 of the
+// publicKey.hint. surfaceguard key ids are already a truncated SHA-256 of the
 // public key ("sg-<hex>"), so the hex part is used directly when present.
 func keyHint(signer Signer) string {
 	id := signer.KeyID()

@@ -1,9 +1,9 @@
-# skill-guard skill card — schema v1
+# surfaceguard skill card — schema v1
 
-**`_type: skillguard.net/skill-card/v1`** · emitted by `skill-guard scan --format skill-card`
-· checked by `skill-guard verify --card <file>`
+**`_type: skillguard.net/skill-card/v1`** · emitted by `surfaceguard scan --format skill-card`
+· checked by `surfaceguard verify --card <file>`
 
-A skill card is skill-guard's machine-readable summary of one scanned bundle: what the skill
+A skill card is surfaceguard's machine-readable summary of one scanned bundle: what the skill
 declares it can do, what the scan found, whether it is signed — and, uniquely, **which bundle
 the card is about**, as a hash a verifier can recompute.
 
@@ -75,15 +75,15 @@ Consumers must **ignore unknown fields**: v1 can gain fields without a version b
 
 ## 4. `content_hash` — what a card check proves
 
-`content_hash` is the bundle's **SGMT-1 Merkle root** (`docs/skill-guard-design.md §7.1`) — the
+`content_hash` is the bundle's **SGMT-1 Merkle root** (`docs/surfaceguard-design.md §7.1`) — the
 same value a `.skillsig` attestation signs — recomputed by the card emitter whether or not a
 signature exists, so it means the same thing either way. `SKILL.md` enters the tree in its
 *normalized* form, so adding USF `content_hash`/`signature` front-matter fields with
 `sign --emit-manifest-fields` does not invalidate a card emitted before signing.
 
 ```sh
-skill-guard scan ./my-skill --format skill-card --out card.json
-skill-guard verify ./my-skill --card card.json
+surfaceguard scan ./my-skill --format skill-card --out card.json
+surfaceguard verify ./my-skill --card card.json
 ```
 
 ```
@@ -106,7 +106,7 @@ re-presented over a modified one.
 
 - **Not authenticity.** A card is unsigned JSON; anyone can write one, including one whose
   `content_hash` is honestly computed over a malicious bundle. For "who says so", verify a
-  signature (`skill-guard verify`) — the card check answers "about what?", not "from whom?".
+  signature (`surfaceguard verify`) — the card check answers "about what?", not "from whom?".
   Card `name`/`description`/`verdict` are attacker-controlled strings and the CLI prints them
   quoted for that reason.
 - **Not the verdict.** `verify --card` deliberately does **not** re-scan. A card's `verdict` and
@@ -115,7 +115,7 @@ re-presented over a modified one.
   defect. To re-judge a skill, scan it.
 
 Exit codes: **0** the card describes the bundle · **2** it does not (`SG-PRV-007`) · **3** the
-file is unreadable, is not a skill-guard card, is a schema version this build does not know, or
+file is unreadable, is not a surfaceguard card, is a schema version this build does not know, or
 predates `content_hash`. A malformed document is a usage error, not a verification failure: it
 makes no claim to be wrong about.
 
@@ -131,6 +131,6 @@ A reviewer who sees a path here knows to go read it.
 
 - [`skill-card-notes.md`](skill-card-notes.md) — the M5-01 spike: what the ecosystem actually
   publishes, and why this schema is our own.
-- [`skill-guard-design.md`](skill-guard-design.md) §7.1 (SGMT-1), §9 (the card), §10.5 (exit codes).
+- [`surfaceguard-design.md`](surfaceguard-design.md) §7.1 (SGMT-1), §9 (the card), §10.5 (exit codes).
 - [`rule-verification.md`](rule-verification.md) — `SG-PRV-001…007`.
 - [`signature-formats.md`](signature-formats.md) — when to sign with SGMT-1 vs OMS.

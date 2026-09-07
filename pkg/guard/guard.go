@@ -2,7 +2,7 @@
 // context? — in a single call, for callers sitting in an agent loop or an
 // install step.
 //
-// It is the entrypoint `docs/skill-guard-design.md §11.1` specifies. Everything
+// It is the entrypoint `docs/surfaceguard-design.md §11.1` specifies. Everything
 // it does is already available from pkg/skill, pkg/scan and pkg/verify; what
 // this package adds is the *decision*, so every caller does not re-derive one
 // from a scan report and a verification result. The existing Claude Code hook
@@ -19,14 +19,14 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/SVGreg/skill-guard/pkg/attest"
-	"github.com/SVGreg/skill-guard/pkg/attest/oms"
-	"github.com/SVGreg/skill-guard/pkg/model"
-	"github.com/SVGreg/skill-guard/pkg/policy"
-	"github.com/SVGreg/skill-guard/pkg/rules"
-	"github.com/SVGreg/skill-guard/pkg/scan"
-	"github.com/SVGreg/skill-guard/pkg/skill"
-	"github.com/SVGreg/skill-guard/pkg/verify"
+	"github.com/SVGreg/surfaceguard/pkg/attest"
+	"github.com/SVGreg/surfaceguard/pkg/attest/oms"
+	"github.com/SVGreg/surfaceguard/pkg/model"
+	"github.com/SVGreg/surfaceguard/pkg/policy"
+	"github.com/SVGreg/surfaceguard/pkg/rules"
+	"github.com/SVGreg/surfaceguard/pkg/scan"
+	"github.com/SVGreg/surfaceguard/pkg/skill"
+	"github.com/SVGreg/surfaceguard/pkg/verify"
 )
 
 // Mode selects when the gate is being asked, which changes how a provenance
@@ -147,7 +147,7 @@ type Options struct {
 // Guard loads, verifies and scans a skill, and returns one decision.
 //
 // The default fail threshold is the policy's, which is `high` — the same bar
-// `skill-guard scan` applies (design §15 open question 1 recommends this, and a
+// `surfaceguard scan` applies (design §15 open question 1 recommends this, and a
 // gate that disagreed with the CLI would mean a skill that passes CI is blocked
 // at load, or worse, the reverse).
 func Guard(path string, opt Options) (*Decision, error) {

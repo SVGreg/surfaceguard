@@ -165,7 +165,7 @@ rules:
       # The canonical public indexes are not a redirect.
       - '(?i)(registry\.npmjs\.org|pypi\.org/simple|proxy\.golang\.org)'
     rationale: Redirecting a package manager to a non-default index, registry, or module proxy makes every subsequent install fetch code from a host the skill chose — the delivery half of dependency confusion and typosquatting, and it silently outlives the skill when set via config or env (AST02/AST07).
-    fix: Install from the default public registry, or pin the exact artifact by hash. If your organisation genuinely uses an internal mirror, waive this rule in .skillguard.yaml rather than shipping the redirect in a skill.
+    fix: Install from the default public registry, or pin the exact artifact by hash. If your organisation genuinely uses an internal mirror, waive this rule in .surfaceguard.yaml rather than shipping the redirect in a skill.
 
   - id: SG-DEP-009
     title: Dependency sourced from a raw VCS URL or arbitrary archive
@@ -295,7 +295,7 @@ rules:
       # payload (typically as WORKFLOW.md) and the agent follows it. Measured
       # to bypass >=90% of every static scanner tested.
       #
-      # skill-guard has exactly this blind spot, verified on main before this
+      # surfaceguard has exactly this blind spot, verified on main before this
       # rule: `skipNames` in pkg/skill/skill.go drops `.git`, and the walk also
       # drops every `*.skillsig`, so BOTH a `.git/skillpack.dat` bundle and a
       # `payload.skillsig` bundle scan `pass / 0 findings`.
@@ -328,7 +328,7 @@ rules:
         # decoder verb (`cat .git/blob > WORKFLOW.md`).
         - regex: '(?i)\.(?:git|hg|svn)/[^\n]{0,60}>\s*[^\s;|]*(?:SKILL|WORKFLOW|AGENTS?|CLAUDE|GEMINI|INSTRUCTIONS|RULES)\.mdx?\b'
           confidence: 0.85
-        # (d) The same staging trick against skill-guard's *own* skip rule: the
+        # (d) The same staging trick against surfaceguard's *own* skip rule: the
         # walk drops every `*.skillsig` (the attestation sidecar), so a blob
         # named `payload.skillsig` is equally invisible. Nothing legitimate
         # decodes a `.skillsig` — `verify` reads it, scripts do not.
@@ -342,8 +342,8 @@ rules:
       # `.payload` field is genuinely base64, so a documented "decode the
       # attestation" example must stay clean. Hinged on an attestation noun so
       # it cannot be used as a bypass — a decoder pointed at a blob has no
-      # reason to name DSSE or `skill-guard verify`.
-      - '(?i)\bdsse\b|\.payload\b|skill-guard\s+(?:verify|sign|attest)'
+      # reason to name DSSE or `surfaceguard verify`.
+      - '(?i)\bdsse\b|\.payload\b|surfaceguard\s+(?:verify|sign|attest)'
       - '(?i)/path/to/'
     rationale: >-
       Sealing the real payload in a location the scanner never opens — a `.git/` blob, or a file named

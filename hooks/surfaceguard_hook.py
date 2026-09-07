@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""skill-guard PreToolUse hook for Claude Code.
+"""surfaceguard PreToolUse hook for Claude Code.
 
 Gate Agent Skill invocations at load time. When the model calls a skill via the
 `Skill` tool, Claude Code fires a `PreToolUse` hook with `tool_name == "Skill"`
 and `tool_input == {"skill": <name>, "args": ...}`. This script resolves that
-skill name to a local bundle, runs `skill-guard guard --format json` against the
+skill name to a local bundle, runs `surfaceguard guard --format json` against the
 project policy, and either allows the call or denies it with a reason —
 depending on the configured enforcement mode.
 
@@ -58,9 +58,9 @@ DEFAULT_BUILTIN_ALLOWLIST = [
 DEFAULT_CONFIG: Dict[str, Any] = {
     # "log" | "block-invalid" | "enforce"  (see decide() for exact semantics)
     "mode": "block-invalid",
-    "skill_guard_bin": "skill-guard",
-    # Trust roster (.skillguard.yaml). Relative paths resolve against the project.
-    "policy": ".skillguard.yaml",
+    "surfaceguard_bin": "surfaceguard",
+    # Trust roster (.surfaceguard.yaml). Relative paths resolve against the project.
+    "policy": ".surfaceguard.yaml",
     # Where a skill name is resolved to a bundle dir, in priority order.
     "skill_dirs": [
         "${CLAUDE_PROJECT_DIR}/.claude/skills",
@@ -74,7 +74,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     # Fail-open by default so a broken hook never bricks the agent; enforce
     # deployments should set this to "deny".
     "on_error": "allow",
-    # Seconds to wait for `skill-guard guard`. The legacy key
+    # Seconds to wait for `surfaceguard guard`. The legacy key
     # "verify_timeout_seconds" is still honoured (see _timeout).
     "timeout_seconds": 20,
     # Decision cache directory. "-" means the user cache dir, "" disables it.
@@ -83,7 +83,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     # cannot answer yesterday's question. It is what keeps the load path off
     # the ~270 ms cold scan on every skill call.
     "cache_dir": "-",
-    "log_file": "${CLAUDE_PROJECT_DIR}/.claude/skillguard-hook.log",
+    "log_file": "${CLAUDE_PROJECT_DIR}/.claude/surfaceguard-hook.log",
     # Surface allow-with-warning / deny reasons to the user via systemMessage.
     "system_messages": True,
     # Tool names that carry a skill invocation. Kept configurable in case the
@@ -91,8 +91,18 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "trigger_tools": ["Skill"],
 }
 
-CONFIG_ENV = "SKILLGUARD_HOOK_CONFIG"
-CONFIG_BASENAME = "skillguard-hook.config.json"
+CONFIG_ENV = "SURFACEGUARD_HOOK_CONFIG"
+CONFIG_BASENAME = "surfaceguard-hook.config.json"
+
+# The project was called skill-guard through v0.3.0. An installed hook keeps its
+# old config file, env var, and key names until someone rewrites them, and a
+# rename that silently ignored them would drop a working configuration — the one
+# failure mode a security gate must not have. All three legacy spellings are
+# still read; the current ones win where both are present.
+LEGACY_CONFIG_ENV = "SKILLGUARD_HOOK_CONFIG"
+LEGACY_CONFIG_BASENAME = "skillguard-hook.config.json"
+LEGACY_KEYS = {"surfaceguard_bin": "skill_guard_bin"}
+LEGACY_POLICY = ".skillguard.yaml"
 
 
 def load_config() -> Dict[str, Any]:
@@ -104,8 +114,16 @@ def load_config() -> Dict[str, Any]:
                 with open(path, "r", encoding="utf-8") as fh:
                     cfg.update(json.load(fh))
             except (OSError, ValueError) as exc:  # pragma: no cover - defensive
-                _stderr(f"skillguard-hook: ignoring bad config {path}: {exc}")
+                _stderr(f"surfaceguard-hook: ignoring bad config {path}: {exc}")
             break
+    return _adopt_legacy_keys(cfg)
+
+
+def _adopt_legacy_keys(cfg: Dict[str, Any]) -> Dict[str, Any]:
+    """Read pre-rename key spellings so an existing config keeps working."""
+    for current, legacy in LEGACY_KEYS.items():
+        if legacy in cfg and current not in cfg:
+            cfg[current] = cfg.pop(legacy)
     return cfg
 
 
@@ -114,8 +132,11 @@ def _config_candidates() -> List[str]:
     home = os.path.expanduser("~")
     return [
         os.environ.get(CONFIG_ENV, ""),
+        os.environ.get(LEGACY_CONFIG_ENV, ""),
         os.path.join(project, ".claude", CONFIG_BASENAME),
+        os.path.join(project, ".claude", LEGACY_CONFIG_BASENAME),
         os.path.join(home, ".claude", CONFIG_BASENAME),
+        os.path.join(home, ".claude", LEGACY_CONFIG_BASENAME),
     ]
 
 
@@ -141,7 +162,7 @@ def expand(path: str) -> str:
 # Decision model
 # --------------------------------------------------------------------------- #
 
-# The three outcomes `skill-guard guard` returns. This is the whole of the
+# The three outcomes `surfaceguard guard` returns. This is the whole of the
 # gate's judgment: it has already weighed provenance against the scan verdict
 # against the policy, so the hook reads one field instead of reconstructing that
 # reasoning from finding ids.
@@ -172,7 +193,7 @@ class Decision:
 # --------------------------------------------------------------------------- #
 
 def outcome_of(rc: int, out: str) -> Tuple[str, Dict[str, Any]]:
-    """Read the outcome out of a `skill-guard guard --format json` run.
+    """Read the outcome out of a `surfaceguard guard --format json` run.
 
     Returns (state, decision). The decision is the parsed JSON, kept whole for
     the audit log and for the deny reason. `guard` exits 0 for allow and warn
@@ -258,16 +279,14 @@ def _timeout(cfg: Dict[str, Any]) -> int:
 
 
 def guard_command(cfg: Dict[str, Any], bundle: str) -> List[str]:
-    """Build the `skill-guard guard` argv. Pure, so the tests can read it."""
-    bin_path = shutil.which(expand(cfg["skill_guard_bin"])) or expand(cfg["skill_guard_bin"])
+    """Build the `surfaceguard guard` argv. Pure, so the tests can read it."""
+    bin_path = shutil.which(expand(cfg["surfaceguard_bin"])) or expand(cfg["surfaceguard_bin"])
     # --mode load: this hook fires as a skill enters the model's context, which
     # is exactly the load gate. Install-time strictness belongs to whatever
     # installs the skill, not here.
     cmd = [bin_path, "guard", bundle, "--format", "json", "--mode", "load"]
-    policy = expand(cfg.get("policy", ""))
-    if policy and not os.path.isabs(policy):
-        policy = os.path.join(_project_dir(), policy)
-    if policy and os.path.isfile(policy):
+    policy = _resolve_policy(cfg)
+    if policy:
         cmd += ["--policy", policy]
     cache_dir = expand(cfg.get("cache_dir", ""))
     if cache_dir:
@@ -275,8 +294,30 @@ def guard_command(cfg: Dict[str, Any], bundle: str) -> List[str]:
     return cmd
 
 
+def _resolve_policy(cfg: Dict[str, Any]) -> str:
+    """Absolute path of the policy to pass, or "" when there is none.
+
+    Falls back to the pre-rename filename: the default is a *path*, so a project
+    that still has .skillguard.yaml would otherwise be scanned with no policy at
+    all — silently losing its thresholds, waivers and trust roster rather than
+    failing loudly.
+    """
+    candidates = [cfg.get("policy", "")]
+    if candidates[0] == DEFAULT_CONFIG["policy"]:
+        candidates.append(LEGACY_POLICY)
+    for cand in candidates:
+        path = expand(cand)
+        if not path:
+            continue
+        if not os.path.isabs(path):
+            path = os.path.join(_project_dir(), path)
+        if os.path.isfile(path):
+            return path
+    return ""
+
+
 def run_guard(cfg: Dict[str, Any], bundle: str) -> Tuple[int, str, str]:
-    """Run `skill-guard guard` on a bundle. Returns (rc, stdout, stderr).
+    """Run `surfaceguard guard` on a bundle. Returns (rc, stdout, stderr).
 
     No .skillsig probe first: an unsigned bundle is a decision the gate makes
     under the policy, and probing for one signature format was how an OMS-signed
@@ -303,9 +344,9 @@ def evaluate(cfg: Dict[str, Any], skill: str) -> Decision:
     try:
         rc, out, err = run_guard(cfg, bundle)
     except FileNotFoundError:
-        return _error_decision(cfg, skill, bundle, "skill-guard binary not found")
+        return _error_decision(cfg, skill, bundle, "surfaceguard binary not found")
     except subprocess.TimeoutExpired:
-        return _error_decision(cfg, skill, bundle, "skill-guard guard timed out")
+        return _error_decision(cfg, skill, bundle, "surfaceguard guard timed out")
     except OSError as exc:  # pragma: no cover - defensive
         return _error_decision(cfg, skill, bundle, f"guard failed: {exc}")
 
@@ -340,7 +381,7 @@ def evaluate(cfg: Dict[str, Any], skill: str) -> Decision:
 
 def _rule_ids(gd: Dict[str, Any], limit: int = 5) -> List[str]:
     """The rule ids that drove the decision, for the audit log. Truncated: the
-    log is a trail, not a report — `skill-guard scan` is where the full list is.
+    log is a trail, not a report — `surfaceguard scan` is where the full list is.
     """
     findings = gd.get("findings") or []
     ids = []
@@ -378,7 +419,7 @@ def emit(cfg: Dict[str, Any], d: Decision) -> None:
     """Write the hook's stdout decision and exit."""
     warn_states = {WARN, UNRESOLVED}
     if d.block:
-        msg = f"skill-guard blocked skill '{d.skill}': {d.reason}"
+        msg = f"surfaceguard blocked skill '{d.skill}': {d.reason}"
         out: Dict[str, Any] = {
             "hookSpecificOutput": {
                 "hookEventName": "PreToolUse",
@@ -398,7 +439,7 @@ def emit(cfg: Dict[str, Any], d: Decision) -> None:
                 "no local bundle found to verify this skill"
                 if d.state == UNRESOLVED else d.state)
             print(json.dumps({
-                "systemMessage": f"skill-guard: skill '{d.skill}' allowed but {note}",
+                "systemMessage": f"surfaceguard: skill '{d.skill}' allowed but {note}",
                 "suppressOutput": True,
             }))
     sys.exit(0)

@@ -6,10 +6,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/SVGreg/skill-guard/pkg/attest"
-	"github.com/SVGreg/skill-guard/pkg/policy"
-	"github.com/SVGreg/skill-guard/pkg/skill"
-	sgverify "github.com/SVGreg/skill-guard/pkg/verify"
+	"github.com/SVGreg/surfaceguard/pkg/attest"
+	"github.com/SVGreg/surfaceguard/pkg/policy"
+	"github.com/SVGreg/surfaceguard/pkg/skill"
+	sgverify "github.com/SVGreg/surfaceguard/pkg/verify"
 )
 
 func verifyBundle(b *skill.Bundle, env *attest.Envelope, pol policy.Policy) *sgverify.Result {
@@ -62,10 +62,10 @@ func printVerify(res *sgverify.Result, noColor bool, sigPath, skillPath string, 
 		fmt.Printf("%s: absent (no %q)\n", label, sigPath)
 		switch {
 		case otherSignature:
-			fmt.Printf("  the skill carries the other signature format; add this one with:\n    skill-guard sign %q --key <key>%s\n",
+			fmt.Printf("  the skill carries the other signature format; add this one with:\n    surfaceguard sign %q --key <key>%s\n",
 				skillPath, omsFlagIf(res.Format == sgverify.FormatOMS))
 		case res.Format != sgverify.FormatOMS:
-			fmt.Printf("  this skill is unsigned. create an attestation with:\n    skill-guard sign %q --key <key>\n", skillPath)
+			fmt.Printf("  this skill is unsigned. create an attestation with:\n    surfaceguard sign %q --key <key>\n", skillPath)
 		}
 	case res.SignatureValid && res.Trusted:
 		fmt.Printf("%s: present, signature %sVALID%s (trusted key)\n", label, c(green), c(reset))
@@ -149,7 +149,7 @@ func printVerify(res *sgverify.Result, noColor bool, sigPath, skillPath string, 
 // SG-PRV-004 was previously absent, so `verify` exited 0 — success — on a
 // bundle signed by a key the consumer had explicitly revoked, and on an
 // attestation whose expiry had passed. A revocation list that does not fail the
-// command is decoration: CI gating on `skill-guard verify` would have accepted
+// command is decoration: CI gating on `surfaceguard verify` would have accepted
 // exactly the bundle the roster was edited to reject.
 //
 // SG-PRV-005 (no roster configured) and SG-PRV-006 (integrity-only) stay
@@ -171,7 +171,7 @@ func verificationFailed(res *sgverify.Result, pol policy.Policy) bool {
 // safeText renders a string that came out of an attestation statement. Those
 // fields are attacker-controlled until a signature verifies against a roster
 // key — and anyone can write a .skillsig, no key required — so printed raw they
-// can forge skill-guard's own output: an `identity` carrying "\n\033[32mmerkle
+// can forge surfaceguard's own output: an `identity` carrying "\n\033[32mmerkle
 // root: MATCH\033[0m\nsignature: VALID (trusted key)" prints two convincing
 // green lines directly under the real MISMATCH. Quoting escapes the control
 // characters and makes the tampering visible instead of invisible; pkg/report
@@ -196,7 +196,7 @@ func verifyCardFile(b *skill.Bundle, cardPath, skillPath string, noColor bool) e
 	data, err := os.ReadFile(cardPath)
 	if err != nil {
 		return fail(3, "cannot read card %q: %v\n"+
-			"  write one with: skill-guard scan %q --format skill-card --out card.json", cardPath, err, skillPath)
+			"  write one with: surfaceguard scan %q --format skill-card --out card.json", cardPath, err, skillPath)
 	}
 	card, err := sgverify.ParseCard(data)
 	if err != nil {

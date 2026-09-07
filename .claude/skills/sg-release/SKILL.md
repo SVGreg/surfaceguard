@@ -1,9 +1,9 @@
 ---
 name: sg-release
-description: Cut a skill-guard release — run preflight checks, determine the next version from conventional commits, push, then merge the release-please PR and verify the published binaries. Use when asked to release, cut/publish a version, or ship a release.
+description: Cut a surfaceguard release — run preflight checks, determine the next version from conventional commits, push, then merge the release-please PR and verify the published binaries. Use when asked to release, cut/publish a version, or ship a release.
 ---
 
-# Releasing skill-guard
+# Releasing surfaceguard
 
 Releases are driven by **release-please + GoReleaser** (`.github/workflows/release.yml`).
 You never create tags or GitHub Releases by hand. The flow is:
@@ -38,10 +38,10 @@ Run from the repo root:
 4. `go vet ./...` — clean.
 5. `go test ./...` — all pass.
 6. Exit-code smoke test (the release contract):
-   `go run ./cmd/skill-guard scan testdata/malicious` exits **1**;
-   `go run ./cmd/skill-guard scan testdata/benign` exits **0**.
-7. Dogfood: `go run ./cmd/skill-guard scan .claude/skills/sg-release` must pass —
-   skill-guard's own skills must survive skill-guard.
+   `go run ./cmd/surfaceguard scan testdata/malicious` exits **1**;
+   `go run ./cmd/surfaceguard scan testdata/benign` exits **0**.
+7. Dogfood: `go run ./cmd/surfaceguard scan .claude/skills/sg-release` must pass —
+   surfaceguard's own skills must survive surfaceguard.
 
 If any step fails, stop and fix before proceeding — the release workflow re-runs tests and
 will refuse to publish otherwise.
@@ -113,7 +113,7 @@ run: `gh run watch <id>`.
    ```sh
    VERSION=vX.Y.Z INSTALL_DIR=$(mktemp -d) sh install.sh
    ```
-   It must print `Installed: skill-guard X.Y.Z` — this proves asset naming, checksums, and
+   It must print `Installed: surfaceguard X.Y.Z` — this proves asset naming, checksums, and
    the ldflags version injection all line up.
 3. Report the release URL to the user.
 

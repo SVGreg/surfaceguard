@@ -1,6 +1,6 @@
 ---
 name: sg-plan
-description: Turn a research or roadmap document into skill-guard's executable development plan — reconcile it against the repo, expand the next milestone into one-PR tasks with acceptance checks, and keep docs/v1-dev-plan.md current. Planning only, never code. Use when asked to plan development work, break a roadmap into steps, expand or re-plan a milestone, or bootstrap the plan from a new research document.
+description: Turn a research or roadmap document into surfaceguard's executable development plan — reconcile it against the repo, expand the next milestone into one-PR tasks with acceptance checks, and keep docs/v1-dev-plan.md current. Planning only, never code. Use when asked to plan development work, break a roadmap into steps, expand or re-plan a milestone, or bootstrap the plan from a new research document.
 ---
 
 # Plan development work from a research document

@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/SVGreg/skill-guard/pkg/guard"
-	"github.com/SVGreg/skill-guard/pkg/model"
+	"github.com/SVGreg/surfaceguard/pkg/guard"
+	"github.com/SVGreg/surfaceguard/pkg/model"
 )
 
 // TestGuardCmdFormatValidation: an unknown format is a usage error, caught
@@ -50,7 +50,7 @@ func TestPrintDecisionTruncatesFindings(t *testing.T) {
 	if !strings.Contains(out, "and 7 more") {
 		t.Errorf("no summary line for the remaining findings:\n%s", out)
 	}
-	if !strings.Contains(out, "skill-guard scan") {
+	if !strings.Contains(out, "surfaceguard scan") {
 		t.Error("the truncation line should point at the command that shows everything")
 	}
 }

@@ -91,11 +91,11 @@ const maxFileSize = 16 << 20 // 16 MiB per-file cap (DoS guard)
 //
 // The per-file cap alone leaves memory unbounded: every file's Content is
 // retained for the lifetime of the scan, so a bundle of N files just under
-// maxFileSize costs ~N × 16 MiB of RSS with no ceiling. skill-guard exists to
+// maxFileSize costs ~N × 16 MiB of RSS with no ceiling. surfaceguard exists to
 // parse untrusted bundles, so that input is attacker-controlled by definition,
 // and the batch/registry-side scanning use case is where it bites.
 //
-// The ceiling is a fixed value rather than a .skillguard.yaml knob on purpose.
+// The ceiling is a fixed value rather than a .surfaceguard.yaml knob on purpose.
 // Everything in the policy file answers "how should I judge this skill?"
 // (fail_on, warn_on, waivers, trust); this answers "how much of it am I willing
 // to read", which must hold before and independent of any judgment — and

@@ -1,5 +1,6 @@
 # Binaries
-/skill-guard
+/surfaceguard
+/skill-guard   # pre-rename binary, so a stale one is never committed
 /dist/
 *.exe
 *.test
@@ -13,7 +14,7 @@
 !.claude/skills/**/*.skillsig
 
 # Hook runtime artifacts (config is intentionally committable for shared enforcement)
-skillguard-hook.log
+surfaceguard-hook.log
 __pycache__/
 *.pyc
 

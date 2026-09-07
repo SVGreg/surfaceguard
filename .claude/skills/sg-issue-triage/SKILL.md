@@ -1,6 +1,6 @@
 ---
 name: sg-issue-triage
-description: Triage open GitHub issues for skill-guard — close any whose ask already shipped, grade the rest on a fixed scale, apply the matching grade label (must-have / useful / nice-to-have / out-of-scope / needs-info), post one marker comment with the rationale and a possible approach, and never comment on the same issue twice. Use when asked to triage issues, review the issue backlog, or when the maintenance loop selects issue triage.
+description: Triage open GitHub issues for surfaceguard — close any whose ask already shipped, grade the rest on a fixed scale, apply the matching grade label (must-have / useful / nice-to-have / out-of-scope / needs-info), post one marker comment with the rationale and a possible approach, and never comment on the same issue twice. Use when asked to triage issues, review the issue backlog, or when the maintenance loop selects issue triage.
 ---
 
 # Triage open GitHub issues
@@ -82,13 +82,13 @@ Use this fixed scale — pick exactly one grade and justify it in one or two sen
 
 | Grade | Meaning |
 |-------|---------|
-| `must-have` | Real security gap or correctness bug within skill-guard's scope. |
+| `must-have` | Real security gap or correctness bug within surfaceguard's scope. |
 | `useful` | Worthwhile, roadmap-aligned improvement. |
 | `nice-to-have` | Valid but low priority. |
-| `out-of-scope` | Doesn't fit skill-guard's mission (static SKILL.md scanning + provenance). |
+| `out-of-scope` | Doesn't fit surfaceguard's mission (static SKILL.md scanning + provenance). |
 | `needs-info` | Underspecified — ask the reporter a concrete question. |
 
-Ground the grade in the actual codebase and docs (`docs/skill-guard-design.md`,
+Ground the grade in the actual codebase and docs (`docs/surfaceguard-design.md`,
 `docs/owasp-ast-taxonomy.md`, existing rules) — check whether the ask is already covered, already
 planned in `docs/planned-rules.md`, or genuinely new.
 

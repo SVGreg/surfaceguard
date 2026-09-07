@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/SVGreg/skill-guard/pkg/policy"
-	"github.com/SVGreg/skill-guard/pkg/scan"
-	"github.com/SVGreg/skill-guard/pkg/skill"
+	"github.com/SVGreg/surfaceguard/pkg/policy"
+	"github.com/SVGreg/surfaceguard/pkg/scan"
+	"github.com/SVGreg/surfaceguard/pkg/skill"
 )
 
 // emitCard writes the card `scan --format skill-card` would produce for a

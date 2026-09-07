@@ -1,4 +1,4 @@
-# `skill-guard-keyless`
+# `surfaceguard-keyless`
 
 Sign a skill with [Sigstore](https://www.sigstore.dev/): an ephemeral key, a
 short-lived Fulcio certificate bound to your OIDC identity, and a Rekor
@@ -6,22 +6,22 @@ transparency-log entry. **No long-lived key material is created or stored** —
 which is what makes signing in CI safe, since there is no secret to leak.
 
 The output is `skill.oms.sig`, the same OpenSSF Model Signing format
-`skill-guard sign --oms` produces, over a byte-identical statement. Only the
+`surfaceguard sign --oms` produces, over a byte-identical statement. Only the
 verification material differs: a certificate instead of a public key.
 
 ## Why this is a separate module
 
-The Sigstore client pulls in roughly **370 modules**. skill-guard's core is a
+The Sigstore client pulls in roughly **370 modules**. surfaceguard's core is a
 **two-dependency**, offline, single-static-binary tool, and that is a property
 people choose it for. Keeping the graph out here means
 
 ```sh
-go install github.com/SVGreg/skill-guard/cmd/skill-guard@latest
+go install github.com/SVGreg/surfaceguard/cmd/surfaceguard@latest
 ```
 
 downloads two dependencies whether or not anyone ever signs keylessly. CI
 asserts this: a job fails if the core module gains a direct dependency or if the
-`skill-guard` binary ever links Sigstore or protobuf code.
+`surfaceguard` binary ever links Sigstore or protobuf code.
 
 **Verifying** a keyless signature needs nothing from this module — it is in the
 core module's `pkg/verify` and uses only the standard library.
@@ -29,11 +29,11 @@ core module's `pkg/verify` and uses only the standard library.
 ## Install
 
 ```sh
-git clone https://github.com/SVGreg/skill-guard && cd skill-guard/keyless
-go build -o skill-guard-keyless ./cmd/skill-guard-keyless
+git clone https://github.com/SVGreg/surfaceguard && cd surfaceguard/keyless
+go build -o surfaceguard-keyless ./cmd/surfaceguard-keyless
 ```
 
-`go install …/keyless/cmd/skill-guard-keyless@latest` does not work yet: this
+`go install …/keyless/cmd/surfaceguard-keyless@latest` does not work yet: this
 module resolves the core module through a `replace` directive so it always
 builds against the adjacent source, and `go install` refuses a module with
 replaces. That goes away once a core release containing `pkg/attest/oms` is
@@ -42,7 +42,7 @@ tagged (plan row **M4-13**).
 ## Use
 
 ```sh
-skill-guard-keyless sign ./my-skill
+surfaceguard-keyless sign ./my-skill
 ```
 
 ```
@@ -50,7 +50,7 @@ wrote "my-skill/skill.oms.sig" (keyless, Fulcio + Rekor)
   identity: https://github.com/acme/tools/.github/workflows/release.yml@refs/heads/main
   issuer:   https://token.actions.githubusercontent.com
   logged:   2026-08-26T09:14:22Z
-  verify:   skill-guard verify "./my-skill" --policy .skillguard.yaml
+  verify:   surfaceguard verify "./my-skill" --policy .surfaceguard.yaml
 ```
 
 | Flag | Default | Description |
@@ -73,14 +73,14 @@ In a workflow, use the reusable
 ```yaml
 jobs:
   sign:
-    uses: SVGreg/skill-guard/.github/workflows/keyless-sign.yml@main
+    uses: SVGreg/surfaceguard/.github/workflows/keyless-sign.yml@main
     with:
       path: ./my-skill
 ```
 
 ## Network
 
-This is the **only** part of skill-guard that requires network access — it
+This is the **only** part of surfaceguard that requires network access — it
 contacts Fulcio and Rekor by necessity. Scanning and verifying never do:
 verification uses the roots you pinned and the proof that travels inside the
 bundle.
@@ -88,7 +88,7 @@ bundle.
 ## Verifying what it produces
 
 ```yaml
-# .skillguard.yaml
+# .surfaceguard.yaml
 trust:
   roots:
     - name: sigstore-public
@@ -99,9 +99,9 @@ trust:
 ```
 
 ```sh
-skill-guard verify ./my-skill --policy .skillguard.yaml
+surfaceguard verify ./my-skill --policy .surfaceguard.yaml
 ```
 
-skill-guard trusts no certificate authority by default, including Sigstore's.
+surfaceguard trusts no certificate authority by default, including Sigstore's.
 Pinning is the consumer's decision — see the main README's
 [Keyless (certificate-bound) signatures](../README.md#keyless-certificate-bound-signatures).

@@ -11,7 +11,7 @@ OUT = os.path.join(HERE, "..", "reports")
 REPORT_NAME = os.environ.get("REPORT_NAME", "REPORT.md")
 STATS_NAME = os.environ.get("STATS_NAME", "stats.json")
 TITLE = os.environ.get("REPORT_TITLE",
-                       "skill-guard — Skill Corpus Security Evaluation")
+                       "surfaceguard — Skill Corpus Security Evaluation")
 
 SEV_ORDER = ["critical", "high", "medium", "low", "info"]
 
@@ -113,7 +113,7 @@ def md(stats):
     A = L.append
     A(f"# {TITLE}\n")
     A(f"_Static scan of **{stats['total_skills']} real Agent Skills** "
-      "against the skill-guard ruleset (OWASP Agentic Skills Top 10)._\n")
+      "against the surfaceguard ruleset (OWASP Agentic Skills Top 10)._\n")
     SRC_DESC = {
         "clawhub": "top skills by download count from the ClawHub registry (`clawhub.ai`)",
         "clawhub_more": "ClawHub skills ranked #41–140 by download count (`clawhub.ai`)",
@@ -207,7 +207,7 @@ def md(stats):
 
     A("## Notable cases (top findings per high-risk skill)\n")
     A("What actually tripped the scanner on the riskiest skills. These are "
-      "**capability signals** mapped to OWASP AST, not proof of malice — skill-guard "
+      "**capability signals** mapped to OWASP AST, not proof of malice — surfaceguard "
       "is a static pre-load gate so a human or policy can decide.\n")
     for s in [x for x in stats["skills"] if x["risk_score"] > 0][:8]:
         A(f"**`{s['slug']}`** ({s['source']}) — risk {s['risk_score']} "
@@ -235,7 +235,7 @@ def md(stats):
                             for s in sorted(stats["by_source"]))
     A(f"- **Corpus**: {corpus_bits}. ClawHub slugs are resolved to each slug's "
       "top publisher by download count; provenance in each corpus's `_manifest.json`.")
-    A("- **Scan**: `skill-guard scan <bundle> --format json`, the built-in "
+    A("- **Scan**: `surfaceguard scan <bundle> --format json`, the built-in "
       "rulepacks only (no custom policy/waivers), run in parallel.")
     A("- **Static only**: findings indicate *capability and pattern*, not confirmed "
       "intent or runtime behavior. A `pass` is not a safety guarantee; a `fail` is a "

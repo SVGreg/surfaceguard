@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/SVGreg/skill-guard/pkg/scan"
+	"github.com/SVGreg/surfaceguard/pkg/scan"
 )
 
 // This file validates emitted SARIF against the vendored official schema
@@ -22,7 +22,7 @@ import (
 // SARIF schema actually uses (no allOf, oneOf, or not appear in it). Writing it
 // costs ~150 test-only lines and keeps the module at its two production
 // dependencies; pulling in a general-purpose validator to check one output
-// format would be a poor trade, and skill-guard's dependency thinness is a
+// format would be a poor trade, and surfaceguard's dependency thinness is a
 // stated selling point.
 
 type schemaValidator struct {

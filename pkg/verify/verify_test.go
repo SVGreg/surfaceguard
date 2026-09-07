@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/SVGreg/skill-guard/pkg/attest"
-	"github.com/SVGreg/skill-guard/pkg/policy"
-	"github.com/SVGreg/skill-guard/pkg/skill"
+	"github.com/SVGreg/surfaceguard/pkg/attest"
+	"github.com/SVGreg/surfaceguard/pkg/policy"
+	"github.com/SVGreg/surfaceguard/pkg/skill"
 )
 
 // signedFixture returns the benign bundle, a valid envelope over it, and a

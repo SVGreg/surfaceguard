@@ -1,4 +1,4 @@
-// Package policy models .skillguard.yaml: gating thresholds, waivers, allowlists,
+// Package policy models .surfaceguard.yaml: gating thresholds, waivers, allowlists,
 // and the trust roster (design §10.4). Trust and policy live in one document.
 package policy
 
@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/SVGreg/skill-guard/pkg/model"
+	"github.com/SVGreg/surfaceguard/pkg/model"
 	"gopkg.in/yaml.v3"
 )
 
@@ -78,7 +78,7 @@ type Trust struct {
 	Identities []IdentityRule `yaml:"identities"`
 	// Roots are the certificate authorities whose signing certificates may be
 	// trusted, for keyless (certificate-bound) signatures. **Empty by design:**
-	// skill-guard ships no root of trust, vendor or otherwise. A consumer who
+	// surfaceguard ships no root of trust, vendor or otherwise. A consumer who
 	// wants to accept Sigstore-issued certificates supplies the Fulcio roots
 	// themselves, in their own file, and can pin any other CA the same way.
 	Roots []Root `yaml:"roots"`
@@ -105,7 +105,7 @@ type Trust struct {
 // identity from an attestation's publisher block is never sufficient — anyone
 // can write any identity into a statement they sign with their own key.
 //
-// No issuer or root is built in. skill-guard has no vendor root of trust and
+// No issuer or root is built in. surfaceguard has no vendor root of trust and
 // will not acquire one: the consumer decides who they trust, in their own file.
 type IdentityRule struct {
 	// Pattern is matched against the identity claim. `*` matches any run of

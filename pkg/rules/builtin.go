@@ -29,7 +29,7 @@ var (
 // PROGRESS.md).
 //
 // Compilation happens once per process. The returned *slice* is a fresh copy —
-// callers append external --rulepack packs to it (cmd/skill-guard.loadRuleset),
+// callers append external --rulepack packs to it (cmd/surfaceguard.loadRuleset),
 // and appending into a shared backing array would let one caller's rule set
 // appear in another's. The *Pack values it points at are shared, and are
 // **read-only**: nothing in the tree mutates a compiled rule after loading, and

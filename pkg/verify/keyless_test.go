@@ -18,10 +18,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/SVGreg/skill-guard/pkg/attest"
-	"github.com/SVGreg/skill-guard/pkg/attest/oms"
-	"github.com/SVGreg/skill-guard/pkg/policy"
-	"github.com/SVGreg/skill-guard/pkg/skill"
+	"github.com/SVGreg/surfaceguard/pkg/attest"
+	"github.com/SVGreg/surfaceguard/pkg/attest/oms"
+	"github.com/SVGreg/surfaceguard/pkg/policy"
+	"github.com/SVGreg/surfaceguard/pkg/skill"
 )
 
 // keylessFixture builds a miniature Fulcio: a CA, a short-lived leaf carrying a
@@ -229,7 +229,7 @@ func TestKeylessVerifiesAgainstPinnedRoot(t *testing.T) {
 }
 
 // TestKeylessNeedsRootsConfigured: with no roots, the signature is reported as
-// unverifiable — never as valid. skill-guard ships no CA and must not invent one.
+// unverifiable — never as valid. surfaceguard ships no CA and must not invent one.
 func TestKeylessNeedsRootsConfigured(t *testing.T) {
 	f := newKeylessFixture(t, testIdentity, testIssuer, time.Now())
 	res := VerifyOMS(f.skill, f.bundle, policy.Trust{})

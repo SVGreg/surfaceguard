@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/SVGreg/skill-guard/pkg/model"
-	"github.com/SVGreg/skill-guard/pkg/scan"
+	"github.com/SVGreg/surfaceguard/pkg/model"
+	"github.com/SVGreg/surfaceguard/pkg/scan"
 )
 
 // TestTextEscapesControlCharsFromBundle is the regression test for terminal

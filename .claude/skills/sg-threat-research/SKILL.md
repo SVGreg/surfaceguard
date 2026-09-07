@@ -1,11 +1,11 @@
 ---
 name: sg-threat-research
-description: Research new Agent-Skill threats and vulnerabilities from public sources (OWASP Agentic/AI Top 10, Snyk, SkillScanner, GitHub advisories, security blogs), check whether skill-guard already covers them, and file genuinely-new gaps to the planned-rules backlog and as GitHub issues. Use when asked to investigate new threats, research vulnerabilities, or when the maintenance loop selects threat research.
+description: Research new Agent-Skill threats and vulnerabilities from public sources (OWASP Agentic/AI Top 10, Snyk, SkillScanner, GitHub advisories, security blogs), check whether surfaceguard already covers them, and file genuinely-new gaps to the planned-rules backlog and as GitHub issues. Use when asked to investigate new threats, research vulnerabilities, or when the maintenance loop selects threat research.
 ---
 
 # Research new threats and grow the backlog
 
-Goal: find one or two concrete, real threats to Agent Skills that skill-guard does **not** yet
+Goal: find one or two concrete, real threats to Agent Skills that surfaceguard does **not** yet
 cover, and turn them into actionable backlog entries + GitHub issues. This never touches rule code —
 it feeds `sg-rule-implement`.
 
@@ -40,11 +40,11 @@ Pull out 1–2 **specific, mechanism-level** threats (not vague categories). For
 
 ## 3. Check current coverage
 
-Determine whether skill-guard already handles it:
+Determine whether surfaceguard already handles it:
 
 - Implemented rules: `grep -rn 'id: SG-' pkg/rules/packs/`.
 - Already-planned: `docs/planned-rules.md`.
-- Designed coverage: `docs/skill-guard-design.md §5` and `docs/owasp-ast-taxonomy.md`.
+- Designed coverage: `docs/surfaceguard-design.md §5` and `docs/owasp-ast-taxonomy.md`.
 
 If it's already covered by an implemented rule → note it and stop (optionally suggest it to
 `sg-rule-polish` as a hardening case via a backlog note). If it's already in the backlog → don't
@@ -94,7 +94,7 @@ Ship per **`sg-maintain` §Ship it**, with:
 - **branch** `research/<slug>` · **label** `research` · **paths** `docs/planned-rules.md`
 - **commit** `docs(backlog): add <SG-ID> — <threat> from research`
 - **evidence** for the body: the threat, the source URL, the tracking issue number, and what
-  skill-guard does with it today (the coverage check from §3)
+  surfaceguard does with it today (the coverage check from §3)
 
 This is a **non-code** PR, so merge it once CI is green rather than leaving it for the owner.
 

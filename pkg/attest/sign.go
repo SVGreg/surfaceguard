@@ -10,10 +10,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/SVGreg/skill-guard/pkg/skill"
+	"github.com/SVGreg/surfaceguard/pkg/skill"
 )
 
-// PayloadType is the DSSE payloadType for skill-guard attestations.
+// PayloadType is the DSSE payloadType for surfaceguard attestations.
 const PayloadType = "application/vnd.skillguard.attestation.v1+json"
 
 // Signer abstracts the private-key operation (design §7.4).
@@ -97,7 +97,7 @@ func BuildStatement(b *skill.Bundle, scan *ScanSummary, signer Signer, identity 
 		},
 		Files:     files,
 		Scan:      scan,
-		Predicate: Predicate{IssuedAt: now.Format(time.RFC3339), ExpiresAt: now.Add(ttl).Format(time.RFC3339), Builder: "skill-guard", Reproducible: scan != nil},
+		Predicate: Predicate{IssuedAt: now.Format(time.RFC3339), ExpiresAt: now.Add(ttl).Format(time.RFC3339), Builder: "surfaceguard", Reproducible: scan != nil},
 		Publisher: Publisher{Identity: identity, KeyID: signer.KeyID()},
 	}
 }

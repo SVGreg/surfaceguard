@@ -1,6 +1,6 @@
 ---
 name: sg-llm-polish
-description: Improve skill-guard's optional LLM (T3 semantic) analysis prompt — fold in newly-discovered cases, harden it against hijack by scanned content, and check efficiency. Guarded stub while the LLM engine is unimplemented (M7); it self-checks and no-ops, accumulating prompt-design notes instead. Use when asked to polish the LLM prompt or improve semantic analysis.
+description: Improve surfaceguard's optional LLM (T3 semantic) analysis prompt — fold in newly-discovered cases, harden it against hijack by scanned content, and check efficiency. Guarded stub while the LLM engine is unimplemented (M7); it self-checks and no-ops, accumulating prompt-design notes instead. Use when asked to polish the LLM prompt or improve semantic analysis.
 ---
 
 # Polish the LLM (T3 semantic) prompt

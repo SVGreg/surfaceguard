@@ -27,7 +27,7 @@ SKIP_DIRS = [d for d in os.environ.get("SKIP_DIRS", "").split(",") if d]
 
 def get(url, timeout=25):
     req = urllib.request.Request(url, headers={"Accept": "application/json",
-                                               "User-Agent": "skill-guard-eval/0.1"})
+                                               "User-Agent": "surfaceguard-eval/0.1"})
     with urllib.request.urlopen(req, timeout=timeout) as r:
         return r.read()
 

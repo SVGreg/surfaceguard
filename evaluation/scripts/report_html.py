@@ -19,7 +19,7 @@ HERE = os.path.dirname(__file__)
 REPORTS = os.path.join(HERE, "..", "reports")
 STATS_NAME = os.environ.get("STATS_NAME", "stats.json")
 HTML_NAME = os.environ.get("HTML_NAME", "REPORT.html")
-TITLE = os.environ.get("REPORT_TITLE", "skill-guard — Corpus Security Evaluation")
+TITLE = os.environ.get("REPORT_TITLE", "surfaceguard — Corpus Security Evaluation")
 
 SRC_DESC = {
     "clawhub": "ClawHub registry — top skills by download count",
@@ -216,7 +216,7 @@ footer .note { max-width: 74ch; }
 
 <header>
   <div class="head-in">
-    <div class="brand"><span class="dot"></span>skill-guard <small>corpus eval</small></div>
+    <div class="brand"><span class="dot"></span>surfaceguard <small>corpus eval</small></div>
     <span class="spacer"></span>
     <button class="toggle" id="themeBtn" type="button">theme</button>
   </div>
@@ -304,7 +304,7 @@ const total = DATA.total_skills||0, npass = V.pass||0, nfail = V.fail||0, nwarn 
 const totFind = Object.values(ST).reduce((a,b)=>a+b,0);
 const nSources = Object.keys(DATA.by_source||{}).length;
 $("#h1").textContent = "Corpus Security Evaluation";
-$("#lede").innerHTML = `Static scan of <strong>${nf(total)} real Agent Skills</strong> across ${nSources} sources against the skill-guard ruleset. `
+$("#lede").innerHTML = `Static scan of <strong>${nf(total)} real Agent Skills</strong> across ${nSources} sources against the surfaceguard ruleset. `
   + `${nf(DATA.clean_skills||0)} produced zero findings; ${nf(totFind)} findings surfaced in total.`;
 
 const cards = [

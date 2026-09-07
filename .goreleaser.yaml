@@ -2,12 +2,12 @@
 # Docs: https://goreleaser.com
 version: 2
 
-project_name: skill-guard
+project_name: surfaceguard
 
 builds:
-  - id: skill-guard
-    main: ./cmd/skill-guard
-    binary: skill-guard
+  - id: surfaceguard
+    main: ./cmd/surfaceguard
+    binary: surfaceguard
     env:
       - CGO_ENABLED=0
     goos:
@@ -52,7 +52,7 @@ changelog:
 #       owner: SVGreg
 #       name: homebrew-tap
 #       token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
-#     homepage: https://github.com/SVGreg/skill-guard
+#     homepage: https://github.com/SVGreg/surfaceguard
 #     description: "Scan, sign, and verify Agent Skills (SKILL.md bundles)"
 #     test: |
-#       system "#{bin}/skill-guard version"
+#       system "#{bin}/surfaceguard version"

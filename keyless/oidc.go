@@ -3,7 +3,7 @@
 // transparency-log entry. No long-lived key material exists at any point, which
 // is the property that makes CI signing safe.
 //
-// This is a separate Go module from skill-guard's core. See go.mod for why.
+// This is a separate Go module from surfaceguard's core. See go.mod for why.
 package keyless
 
 import (

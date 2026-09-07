@@ -32,7 +32,7 @@ func TestBuiltinIsMemoized(t *testing.T) {
 }
 
 // TestBuiltinCallersCannotDisturbEachOther is the risk memoization introduces,
-// and the reason the returned slice is a copy. cmd/skill-guard.loadRuleset
+// and the reason the returned slice is a copy. cmd/surfaceguard.loadRuleset
 // appends external --rulepack packs to what Builtin() hands back; if that
 // appended into a shared backing array, one caller's extra pack would appear in
 // another caller's rule set — silently scanning with rules they never loaded.

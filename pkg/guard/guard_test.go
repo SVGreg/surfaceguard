@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/SVGreg/skill-guard/pkg/policy"
+	"github.com/SVGreg/surfaceguard/pkg/policy"
 )
 
 func fixture(t *testing.T, name string) string {

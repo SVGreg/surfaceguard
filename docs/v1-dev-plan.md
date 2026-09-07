@@ -1,4 +1,4 @@
-# skill-guard — v1.0 Development Plan (execution tracker)
+# surfaceguard — v1.0 Development Plan (execution tracker)
 
 > **What this file is.** The executable breakdown of `docs/v1-dev-roadmap.md` into tasks that
 > consecutive agent sessions can pick up, finish, and tick off without re-reading the whole
@@ -38,7 +38,7 @@ Roadmap §6.6 says: where the roadmap and the repo disagree, trust the repo and 
    `core-injection`, `core-network`, `core-exec`, `core-secret`, `core-metadata`,
    **`core-supply`** (AST02) and **`context.yaml`** (context/demotion rules). Plan text uses the
    repo's set.
-2. **Milestone numbering collides.** `docs/skill-guard-design.md §14` also has an M1–M5 ladder
+2. **Milestone numbering collides.** `docs/surfaceguard-design.md §14` also has an M1–M5 ladder
    whose M3/M4/M5 mean different things (cards+SARIF / embedding / advanced engines) than the
    roadmap's M3–M8. **This plan uses the roadmap numbering (M3–M8).** When a commit or doc says
    "M4", it means the roadmap's OMS milestone unless it cites `design §14`.
@@ -55,7 +55,7 @@ Roadmap §6.6 says: where the roadmap and the repo disagree, trust the repo and 
    *finished* it rather than starting it — replacing the part worth replacing, which was the hook
    re-deriving a decision from `verify`'s **text** output. Since #235 it reads `guard`'s JSON
    `outcome`.
-7. **The design already specifies this milestone's API.** `docs/skill-guard-design.md §11.1`
+7. **The design already specifies this milestone's API.** `docs/surfaceguard-design.md §11.1`
    defines `Guard()` as the agent-loop entrypoint and `WithVerdictCache` as merkle-root-keyed.
    M5-02/M5-03 implement that spec rather than inventing one, and §15's open question 1 (what
    `fail_on` `Guard()` defaults to) is surfaced on the M5-02 card as an owner decision.
@@ -96,7 +96,7 @@ Applies to **every** task; `sg-develop` checks it before opening any PR. From ro
 
 ## M3 — SARIF output and CI surface
 
-**Goal (roadmap §M3):** skill-guard findings render in the GitHub Security tab, with AST refs
+**Goal (roadmap §M3):** surfaceguard findings render in the GitHub Security tab, with AST refs
 visible per finding and waivers shown as suppressions.
 
 | ID | Task | Status | Deps | PR |
@@ -126,10 +126,10 @@ alert**. Raw `confidence`, `risk_score`, `engine`, `layer` go in `properties`.
 
 ### M3-02 — `--format sarif` on `scan`
 **Goal.** The emitter is reachable from the CLI without changing existing behavior.
-**Deliverables.** `sarif` added to `validFormats` (`cmd/skill-guard/ux.go`) and the `emit` switch
-(`cmd/skill-guard/commands.go`); `--format` help text and the `OUTPUT (--format)` block updated;
+**Deliverables.** `sarif` added to `validFormats` (`cmd/surfaceguard/ux.go`) and the `emit` switch
+(`cmd/surfaceguard/commands.go`); `--format` help text and the `OUTPUT (--format)` block updated;
 `--out` works as for JSON.
-**Acceptance.** `skill-guard scan testdata/malicious --format sarif --out x.sarif` exits **1**
+**Acceptance.** `surfaceguard scan testdata/malicious --format sarif --out x.sarif` exits **1**
 (verdict unchanged by format) and writes parseable JSON; an unknown format still exits 3.
 
 ### M3-03 — AST taxonomy in SARIF
@@ -160,9 +160,9 @@ PR body explaining why the two-dep policy bends.
 churn) and validates against the vendored schema with the network off.
 
 ### M3-06 — GitHub Action
-**Goal.** One copy-pasteable step gets skill-guard results into code scanning.
+**Goal.** One copy-pasteable step gets surfaceguard results into code scanning.
 **Deliverables.** A composite `action.yml` at the repo root (decision: ship in-repo first —
-`SVGreg/skill-guard@v0` — a separate `skill-guard-action` repo only if marketplace listing
+`SVGreg/surfaceguard@v0` — a separate `surfaceguard-action` repo only if marketplace listing
 requires it); inputs `path`, `format`, `fail-on`, `policy`, `sarif-file`; installs the released
 binary (no `go build` on the runner), runs the scan, always uploads SARIF via
 `github/codeql-action/upload-sarif` even when the scan fails the gate; documented exit-code
@@ -214,7 +214,7 @@ if effort must be cut, cut M6/M7, never this.**
 | M4-05 | ECDSA P-256 signing path (`keygen`/`sign`), Ed25519 kept for SGMT-1 | done | M4-01 | #217 |
 | M4-06 | OMS bundle writer — `skill.oms.sig` alongside `.skillsig` | done | M4-04, M4-05 | #218 |
 | M4-07 | OMS verifier + signature-type auto-detection in `verify` | done | M4-06 | #219 |
-| M4-08 | Identity-based trust policy in `.skillguard.yaml` | done | M4-07 | #220 |
+| M4-08 | Identity-based trust policy in `.surfaceguard.yaml` | done | M4-07 | #220 |
 | M4-09 | Keyless **verification**: pinned roots, cert identity, log-anchored time | done | M4-07, M4-08 | #221 |
 | M4-12 | Keyless **signing** in a separate `keyless/` module | done | M4-09 | #222 |
 | M4-13 | Drop `keyless/`'s replace directive once a core release ships `pkg/attest/oms` | blocked | M4-12 | |
@@ -230,7 +230,7 @@ one of them changes what `sign` must produce. Summary:
 - OMS v1.0 **is** fully specified — canonicalization (§6.1.2), symlinks (§6.1.1), exclusions
   (§6.2), root digest (§6.5.1) — so this is implementing a written spec, not reverse-engineering.
 - **Key algorithm is the real finding:** the `key`/`certificate` methods require **EC
-  P-256/384/521**. skill-guard signs with **Ed25519**, so an OMS bundle needs a new EC path.
+  P-256/384/521**. surfaceguard signs with **Ed25519**, so an OMS bundle needs a new EC path.
 - `sigstore-go` v1.3.0 pulls **90 modules** (measured). Fulcio/Rekor must be behind a build tag;
   the bundle format itself is stdlib-only JSON + DSSE + in-toto.
 - The spec ships **test vectors**, so interop testing is offline and cheap.
@@ -253,7 +253,7 @@ predicate type, resource count, and signing method — with the network off.
 non-UTF-8 names; collapse `./` and `//`; no trailing `/`; single-file bundles use the basename;
 byte-exact case-sensitive comparison; default exclusions `.git`, `.gitignore`, `.gitattributes`,
 `.github`, plus the signature files themselves; `allow_symlinks: false` (which matches
-skill-guard's existing refusal to follow symlinks). Shares the walk with SGMT-1, not the
+surfaceguard's existing refusal to follow symlinks). Shares the walk with SGMT-1, not the
 serialization.
 **Acceptance.** Table test covering every §6.1.2 rule, including the rejection cases; a bundle
 with a non-UTF-8 filename is refused rather than transcoded.
@@ -282,7 +282,7 @@ attestation still verifies unchanged.
 **Deliverables.** DSSE envelope (`payloadType: application/vnd.in-toto+json`, PAE, base64
 payload) wrapped in a Sigstore bundle with `verificationMaterial.publicKey` for the `key` method
 (hex fingerprint `hint`); written as `skill.oms.sig` **alongside** the existing `.skillsig`,
-never instead of it. Document that the filename is skill-guard's choice — the spec only asks for
+never instead of it. Document that the filename is surfaceguard's choice — the spec only asks for
 a `.sig` extension beside the bundle.
 **Acceptance.** `sign` produces both files; the OMS bundle validates against the OMS JSON schema;
 SGMT-1 output is byte-identical to before.
@@ -298,7 +298,7 @@ correctly; every vendored invalid vector is rejected; tamper still exits 2.
 
 ### M4-08 — Identity-based trust policy
 **Goal.** Trust an identity pattern, not only a key.
-**Deliverables.** `.skillguard.yaml` gains identity-pattern trust (e.g. `repo:org/*` OIDC
+**Deliverables.** `.surfaceguard.yaml` gains identity-pattern trust (e.g. `repo:org/*` OIDC
 identities) beside the key roster; multiple roots configurable; **no hard-coded vendor root**;
 documented precedence between roster and identity rules; revocation still wins.
 **Acceptance.** Table test: matching identity → trusted; near-miss → untrusted; revoked → untrusted.
@@ -311,7 +311,7 @@ Fulcio OID extensions; chain verification against **consumer-pinned** `trust.roo
 path, resolved relative to the policy file); validity anchored on the transparency-log integrated
 time; the bound identity admitted through M4-08's `trust.identities`.
 **Acceptance.** A certificate-bound bundle verifies against a pinned root and is refused without
-one; `go list -deps ./cmd/skill-guard` contains no Sigstore or protobuf package.
+one; `go list -deps ./cmd/surfaceguard` contains no Sigstore or protobuf package.
 
 ### M4-12 — Keyless signing (Fulcio/Rekor) — **needs an owner decision**
 **Goal.** Produce a keyless signature in CI with no stored secrets.
@@ -331,11 +331,11 @@ out, for the owner to pick:
    client — and the verification half (M4-09) already shows the shape is tractable.
 
 **Owner decision (2026-08-26): option 1, the separate module.**
-**Deliverables.** `keyless/` module (own `go.mod`), `skill-guard-keyless sign`, OIDC identity from
+**Deliverables.** `keyless/` module (own `go.mod`), `surfaceguard-keyless sign`, OIDC identity from
 `--token`/`--token-file`/GitHub Actions with no browser flow, a reusable signing workflow, and a CI
-job that **asserts** the core module stays at two direct dependencies and that the `skill-guard`
+job that **asserts** the core module stays at two direct dependencies and that the `surfaceguard`
 binary links no Sigstore or protobuf code.
-**Acceptance.** A workflow signs a skill keylessly with zero stored secrets, `skill-guard verify`
+**Acceptance.** A workflow signs a skill keylessly with zero stored secrets, `surfaceguard verify`
 reads the result, and the core dependency graph is unchanged.
 
 ### M4-13 — Drop the `replace` directive
@@ -343,7 +343,7 @@ reads the result, and the core dependency graph is unchanged.
 adjacent source. `go install` refuses a module with replaces, so installation is clone-and-build
 until a core release contains `pkg/attest/oms`. Once one is tagged, drop the replace, pin the
 release, and document `go install`.
-**Acceptance.** `go install github.com/SVGreg/skill-guard/keyless/cmd/skill-guard-keyless@latest`
+**Acceptance.** `go install github.com/SVGreg/surfaceguard/keyless/cmd/surfaceguard-keyless@latest`
 works from a clean machine.
 
 ### M4-10 — Rekor inclusion-proof checking
@@ -374,7 +374,7 @@ milliseconds on the cached path.
 | M5-01 | Spike: skill-card schemas against primary sources; rewrite M5-06 | done | — | #228 |
 | M5-02 | `Guard()` one-shot API — load + verify + scan + policy → one decision | done | — | #229 |
 | M5-03 | Verdict cache keyed by content hash, pluggable `Cache` interface | done | M5-02 | #230 |
-| M5-04 | `skill-guard guard` command: allow / deny / warn, JSON decision output | done | M5-02, M5-03 | #231 |
+| M5-04 | `surfaceguard guard` command: allow / deny / warn, JSON decision output | done | M5-02, M5-03 | #231 |
 | M5-05 | Install-time gate mode (`--mode install`) | done | M5-04 | #233 |
 | M5-06 | Skill cards: add `content_hash`, document our schema, make cards verifiable | done | M5-01 | #234 |
 | M5-07 | `hooks/` uses `guard` instead of `verify`; malicious skill blocked at load | done | M5-04 | #235 |
@@ -406,7 +406,7 @@ without that a card cannot be tied to the bundle it describes.
 subject — rather than a translation of a schema that does not exist (M5-01).
 **Deliverables.** `content_hash` on `scan.Card` (the SGMT-1 root where a signature exists, a
 recomputed root otherwise, so it means the same thing either way); a documented, versioned schema
-in `docs/skill-card-schema.md` with the `_type` version marker explained; `skill-guard verify
+in `docs/skill-card-schema.md` with the `_type` version marker explained; `surfaceguard verify
 --card <file>` checking a card against a bundle — content hash match, not merely schema validity;
 and a note in the card when the bundle ships a publisher-authored card of its own, without
 attempting to parse prose.
@@ -415,7 +415,7 @@ same bundle with one byte changed**; the emitted card validates against the docu
 
 ### M5-02 — `Guard()`: the agent-loop entrypoint
 **Goal.** One call that answers "may this skill enter the model's context?" — the API
-`docs/skill-guard-design.md §11.1` already specifies.
+`docs/surfaceguard-design.md §11.1` already specifies.
 **Deliverables.** `Guard(ctx, path, opts...) (*Decision, error)` in a new `pkg/guard`: load the
 bundle, verify whichever signatures are present (both formats — `pkg/verify` handles that since
 M4-07), scan unless the caller opts out, apply policy, and return one `Decision` carrying the
@@ -438,9 +438,9 @@ digest too: a policy change must invalidate, or the cache would answer yesterday
 **Acceptance.** Benchmark showing the second `Guard()` on an unchanged bundle skips scanning; a
 test proving one changed byte and one changed policy each miss.
 
-### M5-04 — `skill-guard guard`
+### M5-04 — `surfaceguard guard`
 **Goal.** The gate as a command, for callers that are not Go.
-**Deliverables.** `skill-guard guard <path>` with `--format json` emitting the `Decision`
+**Deliverables.** `surfaceguard guard <path>` with `--format json` emitting the `Decision`
 (outcome, reason, verdict, risk, signature state, cache hit) and exit codes distinguishing
 **allow (0)**, **warn (0 + warning)** and **deny (1)** — reusing the established contract rather
 than inventing codes, with `3`/`4` unchanged. `--policy`, `--no-scan`, `--cache-dir` flags.
@@ -473,7 +473,7 @@ modified one.
 ### M5-07 — Wire the existing hook to the gate
 **Goal.** The reference integration the roadmap asks for — mostly **already shipped**, and this
 card finishes it rather than starting it (see §0.6).
-**Deliverables.** `hooks/skillguard_hook.py` calls `skill-guard guard --format json` instead of
+**Deliverables.** `hooks/surfaceguard_hook.py` calls `surfaceguard guard --format json` instead of
 parsing `verify` text output, so the hook stops re-deriving a decision the binary already makes;
 its `classify()`/`decide()` collapse into reading one JSON field. Keep the pure-stdlib property
 and the existing config surface. Demonstrate a **malicious skill blocked at load** end to end.
@@ -578,8 +578,8 @@ both runner OSes so a broken asset name fails CI rather than a user's build.
 **What only the owner can do,** because it needs the repo's Settings and a release page:
 1. Releases → the latest release → **Edit** → tick *Publish this Action to the GitHub Marketplace*,
    accept the terms, pick the categories (Security / Code quality). The listing name is
-   **`Agent Skill Security Scan`**, not `skill-guard`: that one is already listed by an unrelated
-   project (`vaibhavtupe/skill-guard-action`, whose repo predates this one by four months), and
+   **`Agent Skill Security Scan`**, not `surfaceguard`: that one is already listed by an unrelated
+   project (`vaibhavtupe/surfaceguard-action`, whose repo predates this one by four months), and
    marketplace names are unique. `AI-Provenance/skillguard-core` holds `SkillGuard Scan` as well —
    the neighbourhood is crowded, which is the subject of the pending project-rename discussion.
 2. Confirm the listing renders: icon (shield/blue), description, and the README's Action section.
@@ -712,7 +712,7 @@ Newest last. One line per planning change, written by `/sg-plan`.
   structural validation, stdlib only — no dependency added, and M4-04/M4-06 now have their shape.
 - 2026-08-26 — **M4-01 spike done** (`docs/oms-notes.md`); M4 re-planned from primary sources.
   M4-02…M4-09 became M4-02…M4-11: canonicalization split from manifest/root-digest, a new ECDSA
-  P-256 card added (OMS requires EC P-256/384/521 — skill-guard signs Ed25519), and the interop
+  P-256 card added (OMS requires EC P-256/384/521 — surfaceguard signs Ed25519), and the interop
   test moved *earlier* and became offline because the spec ships test vectors. Also reconciled two
   stale rows: M3-01 and M3-07 were left `in-progress` after their PRs merged, because a status
   edit silently no-matched — status edits now assert before replacing.

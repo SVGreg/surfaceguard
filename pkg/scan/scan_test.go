@@ -7,10 +7,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/SVGreg/skill-guard/pkg/model"
-	"github.com/SVGreg/skill-guard/pkg/policy"
-	"github.com/SVGreg/skill-guard/pkg/rules"
-	"github.com/SVGreg/skill-guard/pkg/skill"
+	"github.com/SVGreg/surfaceguard/pkg/model"
+	"github.com/SVGreg/surfaceguard/pkg/policy"
+	"github.com/SVGreg/surfaceguard/pkg/rules"
+	"github.com/SVGreg/surfaceguard/pkg/skill"
 )
 
 func scanFixture(t *testing.T, path string) *Report {
@@ -395,7 +395,7 @@ func TestMaliciousFixtureTriggersBehavioralSteering(t *testing.T) {
 // bundle whose SKILL.md is clean but whose reference file carries the payload
 // used to scan `pass` with zero findings, because assets never became targets.
 // Progressive disclosure means that file reaches the model exactly like the
-// body, so the instruction surface skill-guard checked was a strict subset of
+// body, so the instruction surface surfaceguard checked was a strict subset of
 // the real one.
 func TestReferenceDocsAreScanned(t *testing.T) {
 	dir := t.TempDir()

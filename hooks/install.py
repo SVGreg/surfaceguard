@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Register (or remove) the skill-guard PreToolUse hook in a Claude Code settings file.
+"""Register (or remove) the surfaceguard PreToolUse hook in a Claude Code settings file.
 
   python3 hooks/install.py            # add to .claude/settings.json (project)
   python3 hooks/install.py --user     # add to ~/.claude/settings.json (all projects)
@@ -17,7 +17,7 @@ import os
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-COMMAND = "python3 ${CLAUDE_PROJECT_DIR}/hooks/skillguard_hook.py"
+COMMAND = "python3 ${CLAUDE_PROJECT_DIR}/hooks/surfaceguard_hook.py"
 MATCHER = "Skill"
 
 
@@ -45,7 +45,7 @@ def save(path: str, data: dict) -> None:
 def is_ours(block: dict) -> bool:
     if block.get("matcher") != MATCHER:
         return False
-    return any("skillguard_hook.py" in h.get("command", "")
+    return any("surfaceguard_hook.py" in h.get("command", "")
                for h in block.get("hooks", []))
 
 

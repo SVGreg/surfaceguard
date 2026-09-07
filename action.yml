@@ -1,8 +1,8 @@
 # The marketplace listing name, which must be unique across GitHub Marketplace
-# and is not the tool's name: "skill-guard" is already listed by an unrelated
-# project (vaibhavtupe/skill-guard-action, published before this one), and a
+# and is not the tool's name: "surfaceguard" is already listed by an unrelated
+# project (vaibhavtupe/surfaceguard-action, published before this one), and a
 # second listing cannot reuse it. The binary, the repo, the module path and the
-# `uses: SVGreg/skill-guard@v0` line are all unaffected — only this string is
+# `uses: SVGreg/surfaceguard@v0` line are all unaffected — only this string is
 # the listing's identity.
 name: Agent Skill Security Scan
 description: Scan Agent Skills (SKILL.md bundles) against the OWASP Agentic Skills Top 10 and upload the findings to code scanning.
@@ -24,9 +24,9 @@ inputs:
   output:
     description: File the scan output is written to.
     required: false
-    default: skill-guard.sarif
+    default: surfaceguard.sarif
   policy:
-    description: Path to a .skillguard.yaml policy (thresholds, waivers, allowlists, trust roster).
+    description: Path to a .surfaceguard.yaml policy (thresholds, waivers, allowlists, trust roster).
     required: false
     default: ""
   fail-on:
@@ -39,11 +39,11 @@ inputs:
     default: ""
   version:
     description: >-
-      skill-guard release to install. The default installs the release matching the
+      surfaceguard release to install. The default installs the release matching the
       ref this action was pinned to (so @v0.3.0 installs v0.3.0), falling back to the
       newest release when the action is used from a branch or a local path. Set an
       explicit tag (e.g. v0.3.0) to override, "latest" to always take the newest, or
-      "preinstalled" to use a skill-guard already on PATH.
+      "preinstalled" to use a surfaceguard already on PATH.
     required: false
     default: ""
   category:
@@ -70,7 +70,7 @@ inputs:
 
 outputs:
   exit-code:
-    description: "skill-guard's exit code: 0 pass/warn, 1 verdict fail, 3 usage error, 4 internal error."
+    description: "surfaceguard's exit code: 0 pass/warn, 1 verdict fail, 3 usage error, 4 internal error."
     value: ${{ steps.scan.outputs.exit-code }}
   output-file:
     description: Path to the file the scan wrote.
@@ -84,7 +84,7 @@ runs:
   steps:
     # Everything checked here produces a message naming the fix. The failures
     # this catches (no checkout, a Windows runner, a typo'd format) otherwise
-    # surface as a scanner usage error, which reads like skill-guard's fault.
+    # surface as a scanner usage error, which reads like surfaceguard's fault.
     - name: Check the inputs and the runner
       shell: bash
       env:
@@ -96,13 +96,13 @@ runs:
         case "$SG_FORMAT" in
           sarif|json|text|skill-card) ;;
           *)
-            echo "::error::format: $SG_FORMAT is not a skill-guard output format (sarif | json | text | skill-card)"
+            echo "::error::format: $SG_FORMAT is not a surfaceguard output format (sarif | json | text | skill-card)"
             exit 1
             ;;
         esac
 
         if [ "$RUNNER_OS" != "Linux" ] && [ "$RUNNER_OS" != "macOS" ] && [ "$SG_VERSION" != "preinstalled" ]; then
-          echo "::error::this action installs a Linux or macOS binary; $RUNNER_OS runners must install skill-guard themselves and pass version: preinstalled"
+          echo "::error::this action installs a Linux or macOS binary; $RUNNER_OS runners must install surfaceguard themselves and pass version: preinstalled"
           exit 1
         fi
 
@@ -115,7 +115,7 @@ runs:
           echo "::warning::upload-sarif is true but format is $SG_FORMAT; code scanning only accepts SARIF, so nothing will be uploaded"
         fi
 
-    - name: Install skill-guard
+    - name: Install surfaceguard
       if: ${{ inputs.version != 'preinstalled' }}
       shell: bash
       env:
@@ -128,7 +128,7 @@ runs:
         # which install.sh reads as an empty VERSION.
         REQUESTED: ${{ inputs.version }}
         ACTION_REF: ${{ github.action_ref }}
-        INSTALL_DIR: ${{ runner.temp }}/skill-guard-bin
+        INSTALL_DIR: ${{ runner.temp }}/surfaceguard-bin
         # Used only to raise the API rate limit while resolving "latest"; the
         # download itself is a public release asset.
         GITHUB_TOKEN: ${{ inputs.token }}
@@ -140,7 +140,7 @@ runs:
         # which is also what a failed lookup should do rather than break a
         # build over a rate limit.
         newest_in_major() {
-          url="https://api.github.com/repos/SVGreg/skill-guard/releases?per_page=100"
+          url="https://api.github.com/repos/SVGreg/surfaceguard/releases?per_page=100"
           # Two spellings rather than one with ${TOKEN:+-H "..."}: that
           # expansion is unquoted, so the shell would split the header into
           # four arguments and send a malformed request.
@@ -171,9 +171,9 @@ runs:
         VERSION=$(resolve)
         export VERSION INSTALL_DIR
         if [ -n "$VERSION" ]; then
-          echo "Installing skill-guard $VERSION"
+          echo "Installing surfaceguard $VERSION"
         else
-          echo "Installing the newest skill-guard release"
+          echo "Installing the newest surfaceguard release"
         fi
         mkdir -p "$INSTALL_DIR"
         # The action's own copy of install.sh is used, so the installer matches
@@ -185,11 +185,11 @@ runs:
       if: ${{ inputs.version == 'preinstalled' }}
       shell: bash
       run: |
-        command -v skill-guard >/dev/null 2>&1 || {
-          echo "::error::version: preinstalled was requested but no skill-guard is on PATH"
+        command -v surfaceguard >/dev/null 2>&1 || {
+          echo "::error::version: preinstalled was requested but no surfaceguard is on PATH"
           exit 1
         }
-        skill-guard version
+        surfaceguard version
 
     - name: Scan
       id: scan
@@ -217,7 +217,7 @@ runs:
         # reviewer gets. Composite steps have no continue-on-error, so the exit
         # code is captured rather than propagated here.
         set +e
-        skill-guard "${args[@]}"
+        surfaceguard "${args[@]}"
         code=$?
         set -e
         # Written before the exit-code check below, so a hard failure still
@@ -260,7 +260,7 @@ runs:
         case "$code" in
           0|1) ;;
           *)
-            echo "::error::skill-guard exited $code (3 = usage error, 4 = internal error)"
+            echo "::error::surfaceguard exited $code (3 = usage error, 4 = internal error)"
             exit "$code"
             ;;
         esac
@@ -276,7 +276,7 @@ runs:
         # Distinguishes one scan from another in the same repo. Without it, a
         # workflow scanning several skills has each upload replace the last
         # one's alerts, so only the final skill stays visible.
-        category: ${{ inputs.category != '' && inputs.category || format('skill-guard:{0}', inputs.path) }}
+        category: ${{ inputs.category != '' && inputs.category || format('surfaceguard:{0}', inputs.path) }}
 
     - name: Apply the verdict gate
       if: ${{ always() && inputs.fail-on-verdict == 'true' }}
@@ -292,6 +292,6 @@ runs:
           exit 1
         fi
         if [ "$SG_CODE" != "0" ]; then
-          echo "::error::skill-guard verdict gate failed (exit $SG_CODE); findings were uploaded first"
+          echo "::error::surfaceguard verdict gate failed (exit $SG_CODE); findings were uploaded first"
           exit "$SG_CODE"
         fi
