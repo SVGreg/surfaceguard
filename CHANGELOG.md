@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.5.0](https://github.com/SVGreg/surfaceguard/compare/v0.4.1...v0.5.0) (2026-09-07)
+
+
+### ⚠ BREAKING CHANGES
+
+* remove every trace of the former name ([#255](https://github.com/SVGreg/surfaceguard/issues/255))
+* move schema identifiers to surfaceguard.svgreg.net, and gate apiVersion ([#254](https://github.com/SVGreg/surfaceguard/issues/254))
+
+### Features
+
+* **eval:** add install-ranked skills.sh corpus and vendor regression anchor ([#247](https://github.com/SVGreg/surfaceguard/issues/247)) ([c2ba001](https://github.com/SVGreg/surfaceguard/commit/c2ba00136057f24918fb2d767e21540128b24874))
+* **maintain:** add sg-corpus-sweep — fetch fresh skills into quarantine, scan, mine ([#253](https://github.com/SVGreg/surfaceguard/issues/253)) ([c4fc73d](https://github.com/SVGreg/surfaceguard/commit/c4fc73de222d6fcd815780ca7e31c807e0fd5a1e))
+* move schema identifiers to surfaceguard.svgreg.net, and gate apiVersion ([#254](https://github.com/SVGreg/surfaceguard/issues/254)) ([5644879](https://github.com/SVGreg/surfaceguard/commit/56448792c6f532cd27c1752b62099aa3b40ea831))
+
+
+### Code Refactoring
+
+* remove every trace of the former name ([#255](https://github.com/SVGreg/surfaceguard/issues/255)) ([220ba15](https://github.com/SVGreg/surfaceguard/commit/220ba159c7662df9de099d70dc53fdfdd34d3be4))
+
 ## [0.4.1](https://github.com/SVGreg/surfaceguard/compare/v0.4.0...v0.4.1) (2026-09-07)
 
 
