@@ -156,13 +156,20 @@ rulepacks with **no policy/waivers**, so results reflect out-of-the-box behavior
 | `skillssh/` | Top skills by **installs** from the skills.sh registry | ~200 |
 | `skillsmp/` | GitHub-indexed skills from SkillsMP (`sort=recent`, ≤5 per repo) | ~200 |
 | `orgs/` | Vendor repos via skills.rest — `trailofbits`, `stripe`, `supabase`, `tinybird` — plus `vercel-labs/agent-skills` | 120 |
+| `aws/` | The AWS Agent Toolkit — every skill in `aws/agent-toolkit-for-aws` | 159 |
 | `anthropic/` | Example skills from `github.com/anthropics/skills` | 17 |
 | `skillject/` | `data/skills_sample` from `github.com/jiaxiaojunQAQ/SkillJect` | 100 |
 
 The `orgs/` bundles are curated and heavily installed, which makes them the corpus's
 **regression anchor** — a finding there is a false positive until proven otherwise (the run
 that added `vercel-labs/agent-skills` produced 8 `pass` and 1 `fail`, and the `fail` is
-tracked as a known FP). `skillject/` holds the **carrier** skills a published malicious-skill research framework
+tracked as a known FP). `aws/` is the second anchor and the denser one: one vendor repo, a single house style,
+and heavy use of the exact vocabulary several rules key on (AWS doc URLs, IMDS, IAM
+policy JSON, `sudo` installs, `~/.aws`, per-model prompt templates), so it is where
+AWS-shaped false positives surface first. Fetch it with `fetch_aws.sh` and read it alone
+via `CORPUS_DIRS=aws RAW_DIR=raw_aws`.
+
+`skillject/` holds the **carrier** skills a published malicious-skill research framework
 injects into at run time — real community skills, not pre-injected attacks; the payloads
 (`data/bash_scripts/`) are deliberately not vendored. Treat it like the other sources (an
 unlabeled FP corpus) but re-scan it whenever injection rules change, since it is the exact

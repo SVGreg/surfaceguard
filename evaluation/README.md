@@ -16,8 +16,29 @@ independent authors, not one house style.
 | `skillssh/` | Top skills by **install count** from the [skills.sh](https://skills.sh) registry | ~200 |
 | `skillsmp/` | GitHub-indexed skills from [SkillsMP](https://skillsmp.com), `sort=recent` for author diversity, ≤5 per repo | ~200 |
 | `orgs/` | Organization/vendor repos surfaced by [skills.rest](https://skills.rest) — `trailofbits`, `stripe`, `supabase`, `tinybird` — plus [`vercel-labs/agent-skills`](https://github.com/vercel-labs/agent-skills), the official collection behind skills.sh | 120 |
+| `aws/` | The AWS Agent Toolkit — every skill in [`aws/agent-toolkit-for-aws`](https://github.com/aws/agent-toolkit-for-aws) | 159 |
 | `anthropic/` | Example skills from [`github.com/anthropics/skills`](https://github.com/anthropics/skills) | 17 |
 | `skillject/` | `data/skills_sample` from [SkillJect](https://github.com/jiaxiaojunQAQ/SkillJect), a malicious-skill research framework | 100 |
+
+### About `aws/`
+
+One vendor repo, ~160 bundles, written to a single house style: every skill ships
+`references/*.md` under progressive disclosure, links AWS documentation heavily, and
+describes cloud primitives — IMDS, IAM policy documents, `sudo` installs, `~/.aws`
+credential paths, per-model prompt templates — that the ruleset also treats as risk
+signals. That combination makes it the corpus's densest **false-positive proving
+ground**, and it plays the same regression-anchor role as `orgs/` (a finding is an FP
+until proven otherwise) at five times the size.
+
+It is scanned as its own corpus dir so it can be read alone:
+
+```sh
+evaluation/scripts/fetch_aws.sh
+CORPUS_DIRS=aws RAW_DIR=raw_aws evaluation/scripts/run_scans.sh 4
+RAW_DIR=raw_aws REPORT_NAME=REPORT_aws.md STATS_NAME=stats_aws.json \
+  REPORT_TITLE="surfaceguard — AWS Agent Toolkit corpus" \
+  evaluation/scripts/aggregate.py
+```
 
 ### About `skillject/`
 
@@ -83,6 +104,7 @@ evidence about what skills look like today; re-run the fetcher before quoting a 
 |--------|-------|
 | [`reports/REPORT.md`](reports/REPORT.md) | combined — every corpus dir |
 | [`reports/REPORT.html`](reports/REPORT.html) | the combined report as a self-contained interactive page |
+| [`reports/REPORT_aws.md`](reports/REPORT_aws.md) | standalone — the AWS Agent Toolkit (159 bundles) |
 | [`reports/REPORT_skillject.md`](reports/REPORT_skillject.md) | standalone — the SkillJect sample (100 bundles) |
 | [`reports/REPORT_skillject.html`](reports/REPORT_skillject.html) | the SkillJect report as a self-contained interactive page |
 
@@ -100,6 +122,7 @@ evaluation/
   skillssh/<owner__repo__skill>/  install-ranked skills.sh bundles (+ _manifest.json)
   skillsmp/<owner__repo__skill>/  GitHub-indexed bundles (+ _manifest.json)
   orgs/<org__repo__skill>/ vendor-repo bundles    (+ _manifest.json)
+  aws/<org__repo__skill>/  AWS Agent Toolkit bundles (+ _manifest.json)
   anthropic/<slug>/        copied skill bundles   (+ _manifest.json)
   skillject/<slug>/        SkillJect carrier bundles (+ _manifest.json)
   scripts/
@@ -107,6 +130,7 @@ evaluation/
     fetch_skillssh.py      pull top-N skills by installs from skills.sh -> skillssh/
     fetch_skillsmp.py      pull skills via the SkillsMP API -> GitHub bundles (gh)
     fetch_orgs.sh          clone vendor repos (skills.rest set) -> orgs/
+    fetch_aws.sh           clone aws/agent-toolkit-for-aws -> aws/
     run_scans.sh           scan every bundle in parallel -> reports/<RAW_DIR>/*.json
     aggregate.py           roll raw JSON up into stats.json + REPORT.md
     report_html.py         render a stats.json into a self-contained HTML page
@@ -135,6 +159,7 @@ WANT=200 SKIP_DIRS=clawhub,anthropic,orgs \
 WANT=200 SKIP_DIRS=clawhub,anthropic,orgs,skillssh \
   python3 evaluation/scripts/fetch_skillsmp.py                            # SkillsMP (recent) -> skillsmp/
 evaluation/scripts/fetch_orgs.sh                                         # vendor repos -> orgs/
+evaluation/scripts/fetch_aws.sh                                          # AWS Agent Toolkit -> aws/
 git clone --depth 1 https://github.com/anthropics/skills /tmp/anthropic-skills
 #   then copy /tmp/anthropic-skills/skills/*/  into evaluation/anthropic/
 git clone --depth 1 https://github.com/jiaxiaojunQAQ/SkillJect /tmp/skillject
@@ -144,7 +169,7 @@ git clone --depth 1 https://github.com/jiaxiaojunQAQ/SkillJect /tmp/skillject
 # 3a. combined report (all six sources) -> reports/REPORT.md + stats.json
 # (parallelism defaults to nproc; pass a number to override, but keep it at or
 # below your core count — oversubscribing has hung the workstation before)
-CORPUS_DIRS="clawhub skillssh skillsmp orgs anthropic skillject" evaluation/scripts/run_scans.sh
+CORPUS_DIRS="clawhub skillssh skillsmp orgs aws anthropic skillject" evaluation/scripts/run_scans.sh
 python3 evaluation/scripts/aggregate.py
 python3 evaluation/scripts/report_html.py                 # -> reports/REPORT.html
 
