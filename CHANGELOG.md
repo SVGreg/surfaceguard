@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/SVGreg/surfaceguard/compare/v0.5.0...v0.5.1) (2026-09-10)
+
+
+### Features
+
+* **report:** add --snippet to show the source line that triggered a finding ([#257](https://github.com/SVGreg/surfaceguard/issues/257)) ([e5d5666](https://github.com/SVGreg/surfaceguard/commit/e5d566632feeb2eed383872c1104e09192bc335d))
+
 ## [0.5.0](https://github.com/SVGreg/surfaceguard/compare/v0.4.1...v0.5.0) (2026-09-07)
 
 
