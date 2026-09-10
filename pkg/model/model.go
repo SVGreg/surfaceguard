@@ -65,19 +65,35 @@ const (
 
 // Finding is a single rule hit against a bundle. See design doc §6.2.
 type Finding struct {
-	RuleID     string   `json:"rule_id"`
-	AST        []string `json:"ast,omitempty"`
-	Severity   Severity `json:"severity"`
-	Engine     string   `json:"engine"`
-	Layer      string   `json:"layer,omitempty"` // content | code | provenance | drift
-	Title      string   `json:"title"`
-	File       string   `json:"file"`
-	StartLine  int      `json:"start_line,omitempty"`
-	EndLine    int      `json:"end_line,omitempty"`
-	Excerpt    string   `json:"excerpt,omitempty"` // secret-redacted
-	Rationale  string   `json:"rationale,omitempty"`
-	Fix        string   `json:"fix,omitempty"`
-	Confidence float64  `json:"confidence"`
+	RuleID    string   `json:"rule_id"`
+	AST       []string `json:"ast,omitempty"`
+	Severity  Severity `json:"severity"`
+	Engine    string   `json:"engine"`
+	Layer     string   `json:"layer,omitempty"` // content | code | provenance | drift
+	Title     string   `json:"title"`
+	File      string   `json:"file"`
+	StartLine int      `json:"start_line,omitempty"`
+	EndLine   int      `json:"end_line,omitempty"`
+	Excerpt   string   `json:"excerpt,omitempty"` // secret-redacted
+	// Column and EndColumn locate the matched span *within* StartLine, as
+	// 1-based rune columns of the true file line — EndColumn is exclusive, i.e.
+	// the column just past the last matched rune, which is what SARIF's
+	// region.endColumn means. They are always true file columns even when
+	// LineText below holds only a window of a very long line, so a consumer
+	// that has the original file can always seek to the match with them alone.
+	Column    int `json:"column,omitempty"`
+	EndColumn int `json:"end_column,omitempty"`
+	// LineText is the source line the match sits on, verbatim, never containing
+	// a newline, and always starting at column 1 — so Column indexes straight
+	// into it. A pathologically long line (minified JS, a single-line JSON
+	// blob) is cut at a rune cap, and is left empty outright when the match
+	// itself starts past that cap; deciding how much of it to display is the
+	// renderer's job, not the model's. The content is attacker-authored:
+	// report.Sanitize it before it reaches a terminal.
+	LineText   string  `json:"line_text,omitempty"`
+	Rationale  string  `json:"rationale,omitempty"`
+	Fix        string  `json:"fix,omitempty"`
+	Confidence float64 `json:"confidence"`
 	// DemotedBy names the context rule that capped this finding's severity, and
 	// OriginalSeverity is the severity it carried before the cap. Both are unset
 	// unless a cap actually applied — a context rule whose ceiling is at or above

@@ -178,8 +178,11 @@ type sarifArtifactLocation struct {
 }
 
 type sarifRegion struct {
-	StartLine int `json:"startLine"`
-	EndLine   int `json:"endLine,omitempty"`
+	StartLine   int        `json:"startLine"`
+	StartColumn int        `json:"startColumn,omitempty"`
+	EndLine     int        `json:"endLine,omitempty"`
+	EndColumn   int        `json:"endColumn,omitempty"`
+	Snippet     *sarifText `json:"snippet,omitempty"`
 }
 
 // SARIF writes the report as a SARIF 2.1.0 log, the interchange format GitHub
@@ -381,6 +384,20 @@ func sarifResultFor(f model.Finding, ruleIndex int, taxaIndex map[string]int, se
 			r := &sarifRegion{StartLine: f.StartLine}
 			if f.EndLine > f.StartLine {
 				r.EndLine = f.EndLine
+			}
+			// SARIF columns are 1-based characters and endColumn is the column
+			// *after* the region, which is exactly what the finding carries.
+			// A viewer that has these highlights the matched span rather than
+			// the whole line; snippet lets one that does not have the file
+			// still show it.
+			if f.Column > 0 {
+				r.StartColumn = f.Column
+				if f.EndColumn > f.Column {
+					r.EndColumn = f.EndColumn
+				}
+			}
+			if f.LineText != "" {
+				r.Snippet = &sarifText{Text: f.LineText}
 			}
 			loc.PhysicalLocation.Region = r
 		}

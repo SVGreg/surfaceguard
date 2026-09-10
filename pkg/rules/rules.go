@@ -142,9 +142,12 @@ func (r *Rule) Evaluate(target, text string) []model.Finding {
 		if conf < EmitThreshold {
 			continue
 		}
+		// Suppression consults the whole raw line, not the capped copy locate
+		// keeps, so a carve-out cannot be defeated by a pathologically long one.
 		if r.suppressed(lineText(text, m.start)) {
 			continue
 		}
+		col, endCol, line := locate(text, m)
 		f := model.Finding{
 			RuleID:     r.ID,
 			AST:        r.AST,
@@ -153,6 +156,9 @@ func (r *Rule) Evaluate(target, text string) []model.Finding {
 			Layer:      r.Layer,
 			Title:      r.Title,
 			StartLine:  m.line,
+			Column:     col,
+			EndColumn:  endCol,
+			LineText:   line,
 			Excerpt:    truncate(m.text, 200),
 			Rationale:  r.Rationale,
 			Fix:        r.Fix,
@@ -577,20 +583,6 @@ func fenceStarts(text string) []int {
 // same quantity the old counting loop produced.
 func inFence(offs []int, pos int) bool {
 	return sort.SearchInts(offs, pos)%2 == 1
-}
-
-func lineText(text string, off int) string {
-	start := strings.LastIndexByte(text[:min(off, len(text))], '\n') + 1
-	end := off
-	if i := strings.IndexByte(text[off:], '\n'); i >= 0 {
-		end = off + i
-	} else {
-		end = len(text)
-	}
-	if start > end {
-		return ""
-	}
-	return text[start:end]
 }
 
 func prevRune(text string, off int) rune {

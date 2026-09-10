@@ -23,6 +23,7 @@ const (
 	cYellow = "\033[33m"
 	cGreen  = "\033[32m"
 	cGray   = "\033[90m"
+	cCyan   = "\033[36m"
 	cBold   = "\033[1m"
 )
 
@@ -30,6 +31,25 @@ const (
 type Options struct {
 	NoColor bool
 	Verbose bool
+	// Snippet turns on the source frame: each finding is shown with the line
+	// it matched and the matched span underlined, so a reviewer sees the
+	// trigger without opening the file. The one-line-per-finding layout is
+	// unchanged when it is off, which is the default.
+	Snippet bool
+	// Context is how many source lines to show either side of the match.
+	// Only consulted when Snippet is set and Sources is available.
+	Context int
+	// Sources resolves a bundle-relative path (the string a finding carries in
+	// File) to that file's bytes, so context lines can be printed. Optional:
+	// without it a finding still shows its own matched line, since that travels
+	// on the finding itself. Reading from the bundle rather than from disk also
+	// means the frame shows the bytes that were scanned, not whatever the file
+	// happens to hold now.
+	Sources func(path string) ([]byte, bool)
+	// Width overrides the wrap width for prose. Zero means $COLUMNS, then a
+	// fixed default — never the real terminal size, so redirected output stays
+	// byte-stable (see defaultWidth).
+	Width   int
 	Source  string
 	Version string
 }
@@ -41,53 +61,136 @@ func Text(w io.Writer, rep *scan.Report, opt Options) {
 	if len(rep.Findings) == 0 {
 		fmt.Fprintf(w, "  %sno findings%s\n", col(cGray), col(cReset))
 	}
+	if opt.Snippet && len(rep.Findings) > 0 {
+		fmt.Fprintln(w)
+	}
 	used := map[string]bool{}
-	for _, f := range rep.Findings {
-		sevC := severityColor(f.Severity, col)
-		var astTag string
-		if ids := strings.Join(f.AST, ", "); ids != "" {
-			astTag = fmt.Sprintf("  %s%s%s", col(cGray), sanitize(ids), col(cReset))
-		}
-		// A demoted finding shows the ceiling it was capped to *and* what it
-		// would have been, so the reader can see the judgment rather than a
-		// quietly-lower number (docs/design-note-demotion.md §4).
-		sevText := f.Severity.String()
-		if f.DemotedBy != "" {
-			sevText = fmt.Sprintf("%s (from %s)", sevText, f.OriginalSeverity.String())
-		}
-		fmt.Fprintf(w, "  %s:%d  %s%s%s  %s%s%s  %s%s\n",
-			sanitize(f.File), f.StartLine,
-			col(cBold), sanitize(f.RuleID), col(cReset),
-			sevC, sevText, col(cReset),
-			sanitize(f.Title), astTag)
+	fc := newFrameCache()
+	for i, f := range rep.Findings {
 		for _, id := range f.AST {
 			used[id] = true
 		}
-		if opt.Verbose {
-			if f.Excerpt != "" {
-				fmt.Fprintf(w, "      match: %q  (confidence %.2f)\n", f.Excerpt, f.Confidence)
-			}
-			if f.Rationale != "" {
-				fmt.Fprintf(w, "      why:   %s\n", sanitize(f.Rationale))
-			}
-			if f.DemotedBy != "" {
-				fmt.Fprintf(w, "      note:  severity capped at %s by %s (finding kept, not suppressed)\n",
-					f.Severity.String(), sanitize(f.DemotedBy))
-			}
-			if f.Fix != "" {
-				fmt.Fprintf(w, "      fix:   %s\n", sanitize(f.Fix))
-			}
-			for _, id := range f.AST {
-				if ref, ok := model.ASTInfo(id); ok {
-					fmt.Fprintf(w, "      owasp: %s %s — %s\n", ref.ID, ref.Title, ref.URL)
-				}
-			}
+		if opt.Snippet {
+			snippetFinding(w, i+1, len(rep.Findings), f, opt, col, fc)
+			continue
 		}
+		flatFinding(w, f, opt, col)
 	}
 	if len(rep.Waived) > 0 {
 		fmt.Fprintf(w, "  %s%d waived%s\n", col(cGray), len(rep.Waived), col(cReset))
 	}
-	astLegend(w, used, col)
+	// With --verbose every finding already carries its own owasp lines, so the
+	// legend at the foot would be a third copy of the same URLs.
+	if !opt.Verbose {
+		astLegend(w, used, col)
+	}
+}
+
+// flatFinding renders one finding in the default one-line-per-finding layout,
+// with the detail block underneath when --verbose is set.
+func flatFinding(w io.Writer, f model.Finding, opt Options, col func(string) string) {
+	sevC := severityColor(f.Severity, col)
+	var astTag string
+	if ids := strings.Join(f.AST, ", "); ids != "" {
+		astTag = fmt.Sprintf("  %s%s%s", col(cGray), sanitize(ids), col(cReset))
+	}
+	fmt.Fprintf(w, "  %s:%d  %s%s%s  %s%s%s  %s%s\n",
+		sanitize(f.File), f.StartLine,
+		col(cBold), sanitize(f.RuleID), col(cReset),
+		sevC, severityText(f), col(cReset),
+		sanitize(f.Title), astTag)
+	if !opt.Verbose {
+		return
+	}
+	if f.Excerpt != "" {
+		fmt.Fprintf(w, "      %s%-6s%s %q  %s(confidence %.2f)%s\n",
+			col(cBold)+col(cCyan), "match:", col(cReset), f.Excerpt, col(cGray), f.Confidence, col(cReset))
+	}
+	detail(w, f, opt, col, "      ", true)
+	fmt.Fprintln(w)
+}
+
+// snippetFinding renders one finding with its source frame (--snippet).
+func snippetFinding(w io.Writer, idx, total int, f model.Finding, opt Options, col func(string) string, fc *frameCache) {
+	sevC := severityColor(f.Severity, col)
+	loc := sanitize(f.File)
+	if f.StartLine > 0 {
+		loc = fmt.Sprintf("%s:%d", loc, f.StartLine)
+		if f.Column > 0 {
+			loc = fmt.Sprintf("%s:%d", loc, f.Column)
+		}
+	}
+	tail := strings.Join(f.AST, ", ")
+	if tail != "" {
+		tail += "  "
+	}
+	fmt.Fprintf(w, "%s[%d/%d]%s %s%s%s  %s%s%s  %s%s%s  %s  %s%s%.2f%s\n",
+		col(cGray), idx, total, col(cReset),
+		col(cBold), loc, col(cReset),
+		col(cBold), sanitize(f.RuleID), col(cReset),
+		sevC, severityText(f), col(cReset),
+		sanitize(f.Title),
+		col(cGray), sanitize(tail), f.Confidence, col(cReset))
+	writeFrame(w, f, opt, col, fc)
+	if opt.Verbose {
+		detail(w, f, opt, col, "    ", false)
+	}
+	fmt.Fprintln(w)
+}
+
+// detail writes the why/note/fix/owasp block. colon selects the default
+// layout's "why:" labels over the snippet layout's bare "why"; both pad the
+// label to a fixed column so the values line up and wrapped prose can hang
+// under them.
+func detail(w io.Writer, f model.Finding, opt Options, col func(string) string, indent string, colon bool) {
+	label := func(s string) string {
+		if colon {
+			return s + ":"
+		}
+		return s
+	}
+	width := wrapWidth(opt)
+	if f.Rationale != "" {
+		writeWrapped(w, indent, label("why"), f.Rationale, width, col)
+	}
+	if f.DemotedBy != "" {
+		writeWrapped(w, indent, label("note"), fmt.Sprintf(
+			"severity capped at %s by %s (finding kept, not suppressed)",
+			f.Severity.String(), f.DemotedBy), width, col)
+	}
+	if f.Fix != "" {
+		writeWrapped(w, indent, label("fix"), f.Fix, width, col)
+	}
+	for _, id := range f.AST {
+		if ref, ok := model.ASTInfo(id); ok {
+			fmt.Fprintf(w, "%s%s%-6s%s %s %s — %s%s%s\n", indent,
+				col(cBold)+col(cCyan), label("owasp"), col(cReset),
+				ref.ID, ref.Title, col(cGray), ref.URL, col(cReset))
+		}
+	}
+}
+
+// writeWrapped prints one labelled paragraph, wrapping it to width with a
+// hanging indent aligned under the value rather than under the label.
+func writeWrapped(w io.Writer, indent, label, text string, width int, col func(string) string) {
+	hang := strings.Repeat(" ", len(indent)+7)
+	for i, ln := range wrapLines(sanitize(text), width-len(hang)) {
+		if i == 0 {
+			fmt.Fprintf(w, "%s%s%-6s%s %s\n", indent, col(cBold)+col(cCyan), label, col(cReset), ln)
+			continue
+		}
+		fmt.Fprintf(w, "%s%s\n", hang, ln)
+	}
+}
+
+// severityText is the severity as shown. A demoted finding shows the ceiling
+// it was capped to *and* what it would have been, so the reader sees the
+// judgment rather than a quietly-lower number (docs/design-note-demotion.md §4).
+func severityText(f model.Finding) string {
+	if f.DemotedBy != "" {
+		return fmt.Sprintf("%s (from %s)", f.Severity.String(), f.OriginalSeverity.String())
+	}
+	return f.Severity.String()
 }
 
 // astLegend prints the OWASP Agentic Skills Top 10 references cited above, once,

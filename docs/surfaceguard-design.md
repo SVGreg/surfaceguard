@@ -389,6 +389,8 @@ surfaceguard/
       Title      string
       File       string
       StartLine, EndLine int
+      Column, EndColumn  int   // 1-based rune columns in StartLine; EndColumn exclusive (SARIF region semantics)
+      LineText   string     // the matched source line, capped; empty when the match lies past the cap
       Excerpt    string     // secret-redacted
       Rationale  string
       Fix        string     // remediation guidance (OWASP best practice: actionable)
@@ -396,6 +398,14 @@ surfaceguard/
       Waived     bool       // excluded from counts/verdict; listed separately
   }
   ```
+
+`Column`/`EndColumn`/`LineText` are what let a report point at the trigger
+rather than merely name its line: the text renderer's `--snippet` frame
+underlines the span, and SARIF emits it as `region.startColumn`/`endColumn`/
+`snippet`. Columns are counted in runes because both consumers count that way
+(a terminal caret is per printed character, SARIF text regions are per
+character), and they always describe the **true** file line — `LineText` is a
+storage convenience and may be absent, but the columns are not.
 
 ### 6.3 `attest`/`verify`/`trust` — see normative spec §7. `policy` — see §10.4. `card`/`report` — see §9, §3.6.
 
