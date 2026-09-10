@@ -52,7 +52,14 @@ the judgment rather than a quietly lower number.
 | `message.text` | `Finding.Title` |
 | `locations[].physicalLocation.artifactLocation.uri` | `Finding.File`, **bundle-relative**, with `uriBaseId: "SRCROOT"` |
 | `locations[].physicalLocation.region.startLine` / `endLine` | `Finding.StartLine` / `EndLine` (`endLine` omitted when equal) |
+| `region.startColumn` / `endColumn` | `Finding.Column` / `EndColumn` — 1-based characters, `endColumn` exclusive per the SARIF spec, both omitted when the finding carries no column |
+| `region.snippet.text` | `Finding.LineText`, the matched source line, omitted when empty |
 | `properties.severity`, `.confidence`, `.engine`, `.layer`, `.ast` | the finding's own fields |
+
+Columns and the snippet are what make a viewer highlight the matched span
+rather than the whole line, and let one that does not have the source file
+still show what matched. They do **not** enter the fingerprint (below): a
+finding that shifts sideways on its line is the same finding.
 
 `rules[]` is built from the findings themselves — they carry title, rationale,
 fix and AST ids — so an external `--rulepack` needs no special handling, and the

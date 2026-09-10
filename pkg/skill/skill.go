@@ -71,6 +71,25 @@ type Bundle struct {
 	SingleFile     bool          `json:"single_file"` // stdin / single SKILL.md mode
 }
 
+// FileContent returns the raw bytes of one bundle file by its normalized,
+// '/'-separated path — the same string a finding carries in File — so a caller
+// that has the bundle can show the source around a finding without re-reading
+// the file from disk (which would also risk showing bytes that changed after
+// the scan). SKILL.md answers from the raw manifest+body bytes, since the
+// scanner splits that file into two sub-span targets rather than keeping it in
+// Files in single-file mode.
+func (b *Bundle) FileContent(path string) ([]byte, bool) {
+	for i := range b.Files {
+		if b.Files[i].Path == path && b.Files[i].Content != nil {
+			return b.Files[i].Content, true
+		}
+	}
+	if path == "SKILL.md" && len(b.SkillMDRaw) > 0 {
+		return b.SkillMDRaw, true
+	}
+	return nil, false
+}
+
 // omsSigName is the OpenSSF Model Signing bundle written by `sign --oms`. It is
 // named here rather than imported from pkg/attest/oms because that package
 // depends on this one; the constant is one string and is asserted equal in a

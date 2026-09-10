@@ -45,6 +45,7 @@ func scanCmd() *cobra.Command {
 	var format, out, policyPath, failOn string
 	var rulepacks []string
 	var verbose, quiet, noColor bool
+	var snippet int
 
 	cmd := &cobra.Command{
 		Use:   "scan <path>",
@@ -68,6 +69,8 @@ allowlists, and the trust roster. Without one, the default gates fail on high+.
 EXIT CODES: 0 pass/warn · 1 fail · 3 usage error · 4 internal error.`,
 		Example: `  surfaceguard scan ./my-skill
   surfaceguard scan ./my-skill/SKILL.md --verbose
+  surfaceguard scan ./my-skill --snippet          # show the triggering source line
+  surfaceguard scan ./my-skill --snippet=0 -v     # no context lines, full rationale
   surfaceguard scan ./my-skill --format json --out report.json
   surfaceguard scan ./my-skill --policy .surfaceguard.yaml --fail-on critical`,
 		Args: bundlePathArg,
@@ -102,9 +105,18 @@ EXIT CODES: 0 pass/warn · 1 fail · 3 usage error · 4 internal error.`,
 			// mirrored copy on stdout is a terminal that should be coloured.
 			// A path the user named with --out is an artifact, never a terminal,
 			// so it is unconditional there rather than a device check.
+			if snippet < 0 {
+				snippet = 0
+			}
 			opt := report.Options{
 				NoColor: noColor || out != "" || report.ColorDisabled(w),
 				Verbose: verbose, Source: args[0], Version: Version,
+				// Presence of the flag, not its value, turns the frame on:
+				// --snippet=0 is a legitimate request for the matched line
+				// with no surrounding context.
+				Snippet: cmd.Flags().Changed("snippet"), Context: snippet,
+				Sources: b.FileContent,
+				Width:   terminalWidth(w),
 			}
 			if err := emit(w, rep, format, opt); err != nil {
 				return fail(4, "%v", err)
@@ -112,6 +124,7 @@ EXIT CODES: 0 pass/warn · 1 fail · 3 usage error · 4 internal error.`,
 			if !quiet && out != "" {
 				stdoutOpt := opt
 				stdoutOpt.NoColor = noColor || report.ColorDisabled(os.Stdout)
+				stdoutOpt.Width = terminalWidth(os.Stdout)
 				report.Text(os.Stdout, rep, stdoutOpt)
 			}
 			if rep.Verdict == model.Fail {
@@ -127,6 +140,8 @@ EXIT CODES: 0 pass/warn · 1 fail · 3 usage error · 4 internal error.`,
 	f.StringVar(&failOn, "fail-on", "", "override fail threshold: critical | high | medium | low")
 	f.StringArrayVar(&rulepacks, "rulepack", nil, "extra rule-pack YAML file to load (repeatable)")
 	f.BoolVarP(&verbose, "verbose", "v", false, "show rationale and suggested fix per finding")
+	f.IntVar(&snippet, "snippet", 0, "show each finding's source line with the match underlined, plus N context lines (default 2)")
+	f.Lookup("snippet").NoOptDefVal = "2"
 	f.BoolVarP(&quiet, "quiet", "q", false, "suppress the secondary text summary when using --out")
 	f.BoolVar(&noColor, "no-color", false, "disable ANSI color in output")
 	return cmd

