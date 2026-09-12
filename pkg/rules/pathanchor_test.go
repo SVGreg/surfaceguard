@@ -97,3 +97,35 @@ func TestPeerSkillEnumerationIgnoresInBundleSiblings(t *testing.T) {
 		}
 	}
 }
+
+// TestPeerSkillEnumerationIgnoresInstallInstructions: every skill's README has
+// to say where the bundle goes, and the agent home lands on the *destination*
+// side of that sentence. Snooping reads **from** the skills directory;
+// installing writes **into** it, and only the first is this rule's business
+// (#272). The repo-relative `skills/*` form is the bundle's own layout in a
+// multi-skill repo, which is #249's misread one directory up.
+func TestPeerSkillEnumerationIgnoresInstallInstructions(t *testing.T) {
+	r := ruleByID(t, "SG-AS-001")
+	cases := []struct {
+		text string
+		want bool
+	}{
+		// Install documentation — verbatim corpus shapes.
+		{"Copy it to `~/.claude/skills`", false},
+		{"Copy `skills/slm-optimize/SKILL.md` → `~/.claude/skills`", false},
+		{"Unzip the directory) into `~/.claude/skills`", false},
+		{"copy skill files from `plugin/skills/*`", false},
+		{"ls -d skills/*", false},
+		{"Read all `skills/*` in this repo", false},
+
+		// Reading the install directory is the signal the rule is for.
+		{`ls "${HOME}/.claude/skills"`, true},
+		{`cat ~/.claude/skills/other/SKILL.md`, true},
+		{`grep -r token ~/.claude/skills/`, true},
+	}
+	for _, c := range cases {
+		if got := len(r.Evaluate("body", c.text)) > 0; got != c.want {
+			t.Errorf("%q: match=%v, want %v", c.text, got, c.want)
+		}
+	}
+}
