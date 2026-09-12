@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.5.2](https://github.com/SVGreg/surfaceguard/compare/v0.5.1...v0.5.2) (2026-09-12)
+
+
+### Features
+
+* **rules:** add SG-CFG-003 — instruction to write the user's agent configuration (closes [#251](https://github.com/SVGreg/surfaceguard/issues/251)) ([#273](https://github.com/SVGreg/surfaceguard/issues/273)) ([98229c8](https://github.com/SVGreg/surfaceguard/commit/98229c86c7222d60b77f75ad75178f185f44f1dd))
+
+
+### Bug Fixes
+
+* **rules:** anchor SG-SEC-001's .aws alternative to a path separator (closes [#260](https://github.com/SVGreg/surfaceguard/issues/260)) ([#268](https://github.com/SVGreg/surfaceguard/issues/268)) ([0f005a8](https://github.com/SVGreg/surfaceguard/commit/0f005a85e2063c0de8f00731f789288d4ecf6f84))
+* **rules:** SG-AS-001 no longer reads a bundle-relative sibling as snooping (closes [#249](https://github.com/SVGreg/surfaceguard/issues/249)) ([#271](https://github.com/SVGreg/surfaceguard/issues/271)) ([c4a3eb6](https://github.com/SVGreg/surfaceguard/commit/c4a3eb6d8911830797d5ab55a3bbb69eb1d81c8b))
+* **rules:** SG-AS-001 stops reading install instructions as snooping (closes [#272](https://github.com/SVGreg/surfaceguard/issues/272)) ([#274](https://github.com/SVGreg/surfaceguard/issues/274)) ([0910314](https://github.com/SVGreg/surfaceguard/commit/0910314347c62315b8316c2ab626fbba83da47ee))
+* **rules:** SG-DEP-001 no longer reads an IAM policy wildcard as a floating dependency (closes [#263](https://github.com/SVGreg/surfaceguard/issues/263)) ([#275](https://github.com/SVGreg/surfaceguard/issues/275)) ([3d4adf7](https://github.com/SVGreg/surfaceguard/commit/3d4adf7fba4cefe94f18810f1f992af9e408dfde))
+* **rules:** SG-EXE-001 ignores exec aliased to execFile via promisify (closes [#246](https://github.com/SVGreg/surfaceguard/issues/246)) ([#278](https://github.com/SVGreg/surfaceguard/issues/278)) ([f14e116](https://github.com/SVGreg/surfaceguard/commit/f14e11665995d57473bd5e544e728b308fa483f4))
+* **rules:** SG-INJ-002 ignores prose that documents a code point (closes [#250](https://github.com/SVGreg/surfaceguard/issues/250)) ([#276](https://github.com/SVGreg/surfaceguard/issues/276)) ([6cfca0d](https://github.com/SVGreg/surfaceguard/commit/6cfca0d4a5a22db90b9aa3a0468427b39e70d0b6))
+* **rules:** SG-INJ-010 ignores a directive whose object is a quoted claim (closes [#264](https://github.com/SVGreg/surfaceguard/issues/264)) ([#279](https://github.com/SVGreg/surfaceguard/issues/279)) ([5143cb6](https://github.com/SVGreg/surfaceguard/commit/5143cb6e12ca2b3d9a3af982a8f1394afe0bef5a))
+* **rules:** SG-REF-003 requires an external locator, SG-ANTI-001 drops "unlimited" (closes [#262](https://github.com/SVGreg/surfaceguard/issues/262), closes [#261](https://github.com/SVGreg/surfaceguard/issues/261)) ([#269](https://github.com/SVGreg/surfaceguard/issues/269)) ([a4404cf](https://github.com/SVGreg/surfaceguard/commit/a4404cf5a65ee3138f6d93d30edd092c4b4c4428))
+
 ## [0.5.1](https://github.com/SVGreg/surfaceguard/compare/v0.5.0...v0.5.1) (2026-09-10)
 
 
