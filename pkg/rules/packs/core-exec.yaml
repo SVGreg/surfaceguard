@@ -1,6 +1,6 @@
 apiVersion: surfaceguard.svgreg.net/rulepack.v1
 name: core-exec
-version: 1.3.0
+version: 1.3.1
 description: Dangerous commands, code execution, privilege escalation, persistence (rule-verification.md §3).
 rules:
   - id: SG-EXE-001
@@ -34,8 +34,28 @@ rules:
         # space matches English as readily as code, and did — a corpus comment
         # reading "the string-form exec (xprintidle / gdbus)" was a measured
         # false positive. Both Python and JS write the call as `exec(`.
-        - regex: '(?:^|[^.\w])exec\('
-          confidence: 0.7
+        # A bare `exec(` is a shell call — except when the name is bound to
+        # execFile, the argv-array API this rule's own `fix` text recommends:
+        #
+        #   const exec = promisify(execFile);   // no shell
+        #   await exec(bin, args);              // <- was a high finding
+        #
+        # The alias declaration and the call site are different lines, so
+        # `suppress` (line-scoped) cannot see the binding; a file-scoped `not:`
+        # can, and that is the right scope for a declaration (#246). The
+        # dedicated child_process.(exec|execSync) leaf above is unaffected, so a
+        # genuine shell call in the same file still fires. `promisify(exec)` —
+        # aliasing the *shell* API — is deliberately not matched by the guard.
+        #
+        # Measured: the bare-exec leaf produces 6 findings across the corpus,
+        # never more than one per file, so reporting the first occurrence (what
+        # an `all` composite yields) costs nothing. 8 corpus files use the
+        # promisify(execFile) idiom, all naming the binding execFileAsync.
+        - all:
+            - regex: '(?:^|[^.\w])exec\('
+              confidence: 0.7
+            - not:
+                - regex: '(?i)promisify\s*\(\s*execFile\b'
         # Import a module by name at runtime — the evasion primitive behind
         # __import__('os').system(…), which reaches a sink without naming it
         # (rule-verification AST9: reflective access is *more* suspicious).
