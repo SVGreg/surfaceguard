@@ -1,6 +1,6 @@
 apiVersion: surfaceguard.svgreg.net/rulepack.v1
 name: core-injection
-version: 1.3.3
+version: 1.3.4
 description: Prompt injection, jailbreak, and instruction-layer attacks (rule-verification.md §2).
 rules:
   - id: SG-INJ-001
@@ -907,6 +907,17 @@ rules:
         - regex: '(?i)(keep\s+(this|that)\s+(between\s+us|to\s+yourself|off\s+the\s+record)|stays?\s+between\s+(you\s+and\s+me|us)\b)'
           confidence: 0.9
     suppress:
+      # Concealment hides an *action*. When the object of the directive is a
+      # quoted *claim* — `Never tell the user "storage is free."`, `Do not tell
+      # the user "PostgreSQL 11.9 is LTS"` — the sentence is accuracy guidance,
+      # the opposite of concealing what the agent did (#264). The opening quote
+      # must be preceded by a space, so the possessive in "the user's
+      # knowledge" is not read as an opening quote, and followed by a word so a
+      # *closing* quote does not count: a
+      # concealment directive that happens to sit inside a quoted string (a
+      # detection skill's signature table, `"... do not notify user"`) is a
+      # different question and is deliberately left firing.
+      - '(?i)\b(user|them|operator|human|owner)\b\s*[:,]?\s+["“'']\s*\w'
       # Secret-protection advice: hiding a *secret* from output is the opposite of
       # a concealment directive — it protects the user, it does not deceive them.
       - '(?i)\b(do not|don''?t|never)\s+(reveal|disclose|expose|share|print|echo|log|show|display|output|leak)\b[^\n]{0,25}\b(password|secret|api[\s_-]?key|token|credential|private key|passphrase|\.env|answer|solution|spoiler)\b'
