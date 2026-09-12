@@ -2171,7 +2171,14 @@ func TestAgentConfigSnoopingCoversReadVariants(t *testing.T) {
 
 		// Peer-skill enumeration (AST03 cross-skill snooping).
 		{"ls ~/.claude/skills/", true},
-		{"cat ../other-skill/SKILL.md", true},
+		{"cat ~/.claude/skills/other-skill/SKILL.md", true},
+		// A *bundle-relative* sibling is deliberately no longer one of them.
+		// This row asserted true until #249: inside a multi-skill bundle the
+		// shape is the documented composition pattern, it is indistinguishable
+		// from snooping without resolving the path, and a peer skill owned by
+		// someone else is reached through an agent home — which the rows above
+		// still cover. See TestPeerSkillEnumerationIgnoresInBundleSiblings.
+		{"cat ../other-skill/SKILL.md", false},
 
 		// Benign: the skill's own files, placeholders, ordinary reads.
 		{"cat ./assets/config.json", false},

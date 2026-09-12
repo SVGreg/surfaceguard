@@ -66,3 +66,34 @@ func TestSensitivePathAWSStillMatchesInProse(t *testing.T) {
 		t.Errorf("prose linking AWS docs produced %d findings, want 0", n)
 	}
 }
+
+// TestPeerSkillEnumerationIgnoresInBundleSiblings: a `../<name>/SKILL.md`
+// reference inside a multi-skill bundle is composition — the documented
+// progressive-disclosure pattern — not cross-skill snooping, and a pattern rule
+// cannot tell the two apart without resolving the path (#249). Peer skills that
+// belong to someone else live under an agent home, which stays covered.
+func TestPeerSkillEnumerationIgnoresInBundleSiblings(t *testing.T) {
+	r := ruleByID(t, "SG-AS-001")
+	cases := []struct {
+		text string
+		want bool
+	}{
+		// Composition inside one bundle family.
+		{"Read [`../aws-shared/SKILL.md`](../aws-shared/SKILL.md) first.", false},
+		{"Load [`agents-connect/SKILL.md`](../agents-connect/SKILL.md) for the schema.", false},
+		{"read `../shared/SKILL.md` before answering", false},
+
+		// Snooping: another publisher's skill, or the agent's own config, both
+		// of which are reached through an agent home.
+		{`cat ~/.claude/skills/victim/SKILL.md`, true},
+		{`ls "${HOME}/.claude/skills"`, true},
+		{`cat ~/.codex/skills/victim/SKILL.md`, true},
+		{`grep -r token ~/.gemini/`, true},
+		{`cat ./mcp.json`, true},
+	}
+	for _, c := range cases {
+		if got := len(r.Evaluate("body", c.text)) > 0; got != c.want {
+			t.Errorf("%q: match=%v, want %v", c.text, got, c.want)
+		}
+	}
+}
