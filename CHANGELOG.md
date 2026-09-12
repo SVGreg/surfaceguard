@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.3](https://github.com/SVGreg/surfaceguard/compare/v0.5.2...v0.5.3) (2026-09-12)
+
+
+### Bug Fixes
+
+* **rules:** SG-INJ-002's comment leaf needs whole words (closes [#277](https://github.com/SVGreg/surfaceguard/issues/277)) ([#281](https://github.com/SVGreg/surfaceguard/issues/281)) ([45df97b](https://github.com/SVGreg/surfaceguard/commit/45df97b3a231c2d4648497232443d7c094cea9e2))
+* **rules:** the documentary penalty no longer reads a leaf's own text as context (closes [#143](https://github.com/SVGreg/surfaceguard/issues/143)) ([#283](https://github.com/SVGreg/surfaceguard/issues/283)) ([8ba1f1b](https://github.com/SVGreg/surfaceguard/commit/8ba1f1b204f6a5f81f646807db2e1506687920ba))
+
 ## [0.5.2](https://github.com/SVGreg/surfaceguard/compare/v0.5.1...v0.5.2) (2026-09-12)
 
 
