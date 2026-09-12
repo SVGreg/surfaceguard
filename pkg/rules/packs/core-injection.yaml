@@ -1,6 +1,6 @@
 apiVersion: surfaceguard.svgreg.net/rulepack.v1
 name: core-injection
-version: 1.3.4
+version: 1.3.5
 description: Prompt injection, jailbreak, and instruction-layer attacks (rule-verification.md §2).
 rules:
   - id: SG-INJ-001
@@ -101,7 +101,21 @@ rules:
           confidence: 0.85
         - tag_block: true
           confidence: 0.9
-        - regex: '(?is)<!--[^>]*?(system|instructions?|ignore|exfiltrat|POST|send|transmit)[^>]*?-->'
+        # An instruction-bearing HTML comment is invisible to review and read by
+        # the agent, which is the threat. The payload words must be *words*,
+        # though: unanchored and case-insensitive they matched as substrings of
+        # ordinary identifiers, and machine-readable annotations became
+        # *critical* findings — `<!-- @ref:prd/chunk-system#… -->` (system),
+        # `<!-- mustflow-section: postconditions -->` (POST), `<!-- Template:
+        # … postdoc … -->` (POST). 10 of the rule's 28 corpus findings, its
+        # largest single cluster (#277).
+        #
+        # Two anchors fix it. A leading `[^\w-]` stops a suffix match, so
+        # `chunk-system` no longer counts as `system` (a plain \b would not:
+        # the hyphen is already a boundary). And POST is the HTTP verb, matched
+        # case-sensitively via `(?-i:POST)`, because lowercase "post" is an
+        # ordinary English word — postconditions, postdoc, post-install.
+        - regex: '(?is)<!--[^>]*?(?:^|[^\w-])(?:system|instructions?|ignore|exfiltrat|(?-i:POST)|send|transmit)\b[^>]*?-->'
           confidence: 0.7
         # Signal (d), finally implemented (issue #18). SkillCloak's "Reify"
         # operator swaps Cyrillic/Greek lookalikes into otherwise-Latin words —
