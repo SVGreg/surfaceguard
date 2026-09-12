@@ -1,6 +1,6 @@
 apiVersion: surfaceguard.svgreg.net/rulepack.v1
 name: core-injection
-version: 1.3.2
+version: 1.3.3
 description: Prompt injection, jailbreak, and instruction-layer attacks (rule-verification.md §2).
 rules:
   - id: SG-INJ-001
@@ -119,6 +119,30 @@ rules:
         # the measurement and the carrier predicate's three FP clauses.
         - homoglyph_ratio: { min_count: 1 }
           confidence: 0.65
+    suppress:
+      # Prose that *documents* a code point names it. A units table writing
+      # `μmol (U+03BC)`, or a homoglyph reference writing `"ignοre"  # Greek
+      # omicron (U+03BF)`, is describing the character, not smuggling it —
+      # and before this carve-out that was a *critical* finding on the most
+      # innocuous page in the bundle (#250).
+      #
+      # Structural leaves are deliberately exempt from the documentary
+      # confidence penalty (an invisible character inside a paragraph that says
+      # "example" is still invisible), and that exemption is right; it also
+      # removes the only signal that separates a document about a code point
+      # from a document carrying one. The code point's own name is that signal:
+      # documentation writes it, smuggled text never does.
+      #
+      # KNOWN BYPASS, accepted with eyes open: because `suppress` is line-scoped
+      # and cannot compare the named code point to the matched character, an
+      # attacker can pad a payload line with an unrelated `U+200B` token to
+      # silence it. The trade is deliberate — the FP is a critical finding on
+      # ordinary technical prose, the bypass costs the attacker a visible token
+      # on the same line, and closing it properly needs the engine to compare
+      # the two, which a pattern cannot do.
+      - '(?i)U\+[0-9A-F]{4,6}'
+      - '\\u[0-9A-Fa-f]{4}'
+      - '(?i)&#x[0-9A-F]+;'
     rationale: Non-printing characters, bidi controls, Unicode-tag ASCII smuggling, homoglyph-substituted words, or instruction-bearing comments are invisible (or misleading) to human review but parsed by the agent (AST04/AST01).
     fix: Remove non-printing/format characters and any hidden instructions; keep content in plain, visible text.
 
