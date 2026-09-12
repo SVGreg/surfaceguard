@@ -1,6 +1,6 @@
 apiVersion: surfaceguard.svgreg.net/rulepack.v1
 name: core-supply
-version: 1.1.2
+version: 1.1.3
 description: Supply chain — unpinned/remote dependencies pulled and executed at use time (rule-verification.md §4, AST02).
 rules:
   - id: SG-DEP-007
@@ -113,6 +113,16 @@ rules:
       # Only the two keys actually observed are carved out; see
       # rule-verification.md §SG-DEP-001 for the `engines` exposure left open.
       - '(?i)"(matcher|value)"\s*:\s*"\*"'
+      # An IAM statement is JSON with a wildcard value, and so is a dependency
+      # manifest — the leaf cannot tell them apart, so the key does. A cloud
+      # policy wildcard is a real risk, but it is over-privilege (AST03), not a
+      # floating dependency: reported here it cites the wrong risk and hands the
+      # reader supply-chain advice ("pin an exact version, commit a lockfile")
+      # that cannot be acted on. 8 of the 10 hits this leaf produces across the
+      # corpus are exactly this (#263). Same shape as the matcher/value entry
+      # above, and as fragile: the next wildcard-valued key repeats it, which is
+      # why the durable fix is dependency context rather than a key list.
+      - '(?i)"(Resource|NotResource|Principal|NotPrincipal|Action|NotAction|Sid|Condition)"\s*:\s*"\*"'
     rationale: >-
       A dependency declared with a floating spec — `"*"`/`"latest"`, `pkg@latest`, a git dep on a
       moving branch (`@main`), or a `:latest` container tag — resolves to whatever is newest at
