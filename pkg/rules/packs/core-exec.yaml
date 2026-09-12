@@ -1,6 +1,6 @@
 apiVersion: surfaceguard.svgreg.net/rulepack.v1
 name: core-exec
-version: 1.2.1
+version: 1.3.0
 description: Dangerous commands, code execution, privilege escalation, persistence (rule-verification.md §3).
 rules:
   - id: SG-EXE-001
@@ -208,6 +208,52 @@ rules:
       - '(?i)/path/to/'
     rationale: A bundled agent-hook config runs its command automatically on every matching lifecycle event, with no confirmation — installing code execution by shipping a config file (AST02/AST01). An empty matcher fires on every tool call and sees all tool input/output.
     fix: Do not ship lifecycle hooks in a skill bundle. If a hook is genuinely required, document it and let the user install it into their own settings deliberately.
+
+  - id: SG-CFG-003
+    title: Instruction to write the user's agent configuration
+    ast: [AST02, AST01]
+    severity: medium
+    engine: static
+    layer: content
+    confidence: 0.75
+    # The prose sibling of SG-CFG-001/002, which are `configs`-only and so see
+    # a config the bundle *ships*. This is the form with no artifact in the
+    # bundle at all: the skill tells the agent to write the config, and the
+    # agent has the file-write tool to do it (#251). `refs` rides along with
+    # `body` (rules.AppliesTo), which matters — a house-style skill puts its
+    # setup steps in references/.
+    targets: [body, manifest]
+    match:
+      # Three parts, all required on one line: a WRITE verb, an agent-config
+      # PATH, and a payload from the SG-CFG-001/002 execution families. Both
+      # orders are spelled out because English uses both ("add a hook to
+      # settings.json", "write into settings.json a hook that…") and RE2 has no
+      # way to say "these three in any order" (rule-verification §SG-CFG-003).
+      #
+      # The windows are the precision, not the vocabulary: measured over 6,259
+      # prose files in ~1,100 corpus bundles, the path alone appears in 71
+      # bundles, verb+path in 10, and verb+path+payload at these distances in
+      # **0** — while all eight attack phrasings in the spec still match.
+      any:
+        - regex: '(?i)\b(install|add|append|set|create|writ\w*|configur\w*|register|enabl\w*|updat\w*|edit|modif\w*|insert|patch)\b.{0,60}(\.claude/settings(\.local)?\.json|\.claude\.json|\.mcp\.json|claude_desktop_config\.json|\.codex/config(\.toml)?|\.gemini/settings\.json|\.cursor/mcp\.json|\.claude/hooks?\b).{0,80}(\bhooks?\b|\bPreToolUse\b|\bPostToolUse\b|\bSessionStart\b|\bSessionEnd\b|\bSubagentStop\b|\bUserPromptSubmit\b|\bPreCompact\b|"command"|\bpermissions?\b|\ballowedTools\b|\bmcpServers\b|\bNODE_OPTIONS\b|\bBASH_ENV\b)'
+          confidence: 0.75
+        - regex: '(?i)\b(install|add|append|set|create|writ\w*|configur\w*|register|enabl\w*|updat\w*|edit|modif\w*|insert|patch)\b.{0,40}(\bhooks?\b|\bPreToolUse\b|\bPostToolUse\b|\bSessionStart\b|\bSessionEnd\b|\bSubagentStop\b|\bUserPromptSubmit\b|\bPreCompact\b|"command"|\bpermissions?\b|\ballowedTools\b|\bmcpServers\b|\bNODE_OPTIONS\b|\bBASH_ENV\b).{0,60}(\.claude/settings(\.local)?\.json|\.claude\.json|\.mcp\.json|claude_desktop_config\.json|\.codex/config(\.toml)?|\.gemini/settings\.json|\.cursor/mcp\.json|\.claude/hooks?\b)'
+          confidence: 0.75
+    suppress:
+      - '(?i)/path/to/'
+    rationale: >-
+      Skill prose that directs a write to the user's agent configuration — a lifecycle hook, a
+      permission grant, an MCP server entry, an interpreter preload variable — installs the
+      SG-CFG-001/SG-CFG-002 payload one layer up, with nothing in the bundle for a scanner to
+      look at. The agent holds the file-write tool, so the config lands without the user ever
+      seeing a config file in the skill (AST02/AST01). Severity is `medium`, not `high`, because
+      the same sentence can be install documentation addressed to a human: SG-CFG-001's own `fix`
+      text recommends documenting a hook and letting the user install it, and a static rule cannot
+      read the addressee.
+    fix: >-
+      Do not instruct the agent to edit agent configuration. If a hook, permission or MCP entry is
+      genuinely required, show it to the user and let them install it deliberately into their own
+      settings — and say plainly that this is a manual step, not something the agent should do.
 
   - id: SG-CFG-002
     title: Repo-scoped agent settings execute or redirect at load

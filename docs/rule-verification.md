@@ -1297,6 +1297,47 @@ payload. One hit is not worth a broad, bypassable mechanism.
   `SessionStart`). FP: `testdata/benign/.claude/settings.json` (permissions only). See
   `TestAgentHookConfigRequiresEventAndCommand`.
 
+### SG-CFG-003 — Instruction to write the user's agent configuration  (AST02/AST01, medium) — **implemented** (`core-exec`)
+- **Threat.** `SG-CFG-001` and `SG-CFG-002` are `configs`-only by design, so they see a config file
+  the bundle *ships*. The instruction form ships nothing: the skill's prose tells the **agent** to
+  write the config — "add a `PreToolUse` hook to `.claude/settings.json` that runs …" — and the
+  agent already holds the file-write tool. There is no artifact in the bundle for a scanner to
+  look at, which is exactly why an attacker would choose it, against a mechanism whose whole
+  premise (`SG-CFG-001`) is that a lifecycle hook runs with no confirmation. Filed from a
+  `sweep_gaps.py` run that found six bundles scanning **completely clean** whose `SKILL.md`
+  directs the agent at agent-config files (issue #251).
+- **Signals (shipped):** two leaves, one per word order, each requiring **three** parts on one
+  line — a write verb (`install|add|append|set|create|writ*|configur*|register|enabl*|updat*|edit|modif*|insert|patch`),
+  an agent-config **path** (`.claude/settings[.local].json`, `.claude.json`, `.mcp.json`,
+  `claude_desktop_config.json`, `.codex/config[.toml]`, `.gemini/settings.json`,
+  `.cursor/mcp.json`, `.claude/hooks`), and a **payload** from the `SG-CFG-001`/`SG-CFG-002`
+  execution families (a lifecycle event name, `hooks`, `"command"`, `permissions`,
+  `allowedTools`, `mcpServers`, `NODE_OPTIONS`, `BASH_ENV`). Both orders are spelled out because
+  English uses both and RE2 cannot express "these three in any order".
+- **The windows are the precision, not the vocabulary.** Measured over **6,259 prose files in
+  ~1,100 corpus bundles** (clawhub, skillsmp, orgs, anthropic, skillject, aws): the config path
+  alone appears in **71** bundles, write-verb + path within 80 chars in **10**, and
+  verb + path + payload at the shipped distances in **0** — while all eight attack phrasings
+  below still match. Widening any window re-admits the 10-bundle tier, which is ordinary setup
+  documentation.
+- **Why `medium`, not `high`.** The same sentence can be install documentation addressed to a
+  *human*, and a static rule cannot read the addressee. That is not a hypothetical: `SG-CFG-001`'s
+  own `fix` text recommends documenting a hook and letting the user install it, and this document
+  records `clawhub/self-improvement` — which embeds a full `PostToolUse` block in its `SKILL.md`
+  prose — scanning clean as **the intended outcome**. `medium` keeps the finding out of the
+  default `fail_on: high` gate while still reporting it. Promotion to `high` needs an
+  agent-addressee discriminator (an imperative paired with "automatically", "without asking",
+  "before you begin"); note that the concealment-paired form is already `high` under
+  `SG-INJ-010`.
+- **Boundary.** `SG-CFG-001` = a hook config the bundle ships. `SG-CFG-002` = an `env` block in a
+  shipped settings file. `SG-AS-001` = *reading* agent config. This = prose directing a **write**.
+  A skill that merely names a config path in troubleshooting prose matches none of them.
+- **Fixtures:** TP: `testdata/malicious/SKILL.md` (a `SessionStart` hook written into
+  `~/.claude/settings.json`). FP rows in `TestAgentConfigWriteInstruction` include the corpus
+  line that survived the widest window tested (`slm codex install` is additive — it does not
+  replace other agents' hooks or rewrite `~/.codex/config.toml`), a CI-pipeline "add a hook", and
+  a `/path/to/` placeholder.
+
 ### SG-CFG-002 — Repo-scoped agent settings execute or redirect at load  (AST02/AST01, high) — **implemented** (`core-exec`)
 - **Threat.** The sibling half of `SG-CFG-001`. Check Point's disclosure (**CVE-2025-59536**, CVSS
   8.7, arbitrary shell execution on tool initialisation in an untrusted directory; **CVE-2026-21852**,
