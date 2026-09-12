@@ -1253,10 +1253,59 @@ payload. One hit is not worth a broad, bypassable mechanism.
 - **Fixtures:** `TestDestructiveFilesystemCoversVariants` in `pkg/rules/rules_test.go` — 20 TP (broad targets across every command form incl. the `rm -rf "$HOME"/*` malicious fixture) + 17 benign rows that pin the false-positive class the eval exposed (`rm -rf "$OUTDIR"`, `fs.rmSync(tmpDir,{recursive,force})`, `Remove-Item -LiteralPath $d …`, `shutil.rmtree(self.versions_dir / x)`, `find ./build … -delete`, scoped absolute paths). TP: `rm -rf "$HOME"/*`. FP: `rm -rf "$OUTDIR"`.
 
 ### SG-EXE-003 — Privilege escalation  (AST01, high) — **implemented** (`core-exec`)
-- **Signals:** `sudo`, `su -`, `setuid/setcap`, `pkexec`, `chmod u+s`, `doas`, writing to `/etc/sudoers`, adding SSH keys to `authorized_keys`, `usermod -aG`.
-- **FP carve-outs:** `sudo` in *install documentation* for a system tool (documentary −0.4); a skill explicitly for sysadmin tasks (policy waiver). `authorized_keys` **write** stays high regardless.
-- **Confidence:** sudoers/authorized_keys write 0.9; setuid 0.85; sudo in script 0.7; sudo in docs 0.4.
-- **Fixtures:** TP: `echo "$KEY" >> ~/.ssh/authorized_keys`. FP: README "run `sudo apt install ffmpeg`".
+- **The rule's axis is *acquiring* privilege, not *using* it.** This is the distinction the taxonomy
+  already draws (the `SG-EXE-003` row in `owasp-ast-taxonomy.md` re-maps AST03 → AST01 because
+  "actively acquiring privilege is an attack action, not an over-broad grant"), and the rule-polish
+  audit below turned it from a framing note into the rule's actual shape.
+- **Signals (shipped):** six leaves, each naming a transition that leaves the caller holding
+  privilege it did not hold before — (1) a `>`/`>>` redirect into `authorized_keys` or
+  `/etc/sudoers`; (2) the same write via **`tee`**; (3) a sudoers rule granting **`NOPASSWD`**,
+  anchored on the `ALL=(…)` runas spec; (4) `chmod u+s` / `setcap`; (5) `usermod -aG` into an
+  administrative group (`sudo|wheel|admin|adm|root`); (6) escalation to a root shell or the sudoers
+  editor — `sudo -i`/`-s`, `sudo su` with no target user, `su -`, `su root`, `visudo`, `pkexec`,
+  `doas`, all in command position.
+- **Why `tee` is leaf (2) and not an afterthought:** `sudo cmd > /etc/sudoers.d/x` **cannot work** —
+  the shell opens the redirect target as the unprivileged user — so `| sudo tee` is how install
+  guides actually write a root-owned file. The rule shipped with only the form that does not work
+  under sudo, and the corpus's single real privilege grant was written the other way.
+- **Corpus precision audit (2026-09-13, 1,036 bundles — rule-polish cycle 125).** The rule's
+  original third leaf was a bare `^\s*sudo\s+\w` at 0.60. It produced **34 of the rule's 37
+  findings and not one true positive**: `sudo yum install`, `sudo chown`, `sudo systemctl start`,
+  `sudo mkdir` — installers doing ordinary privileged work, concentrated in `aws/rds-db2` (21, the
+  AWS regression anchor) and `clawhub/computer-use` (13). **The decisive evidence was not the FP
+  count but where the misses were:** in `rds-db2/scripts/db2-driver.sh` the leaf raised 21 findings
+  on the lines *around* a `sudo tee "/etc/sudoers.d/$USER"` heredoc granting `NOPASSWD`, and the
+  rule never saw the grant. Signal-to-noise was inverted in the one file that mattered. The leaf was
+  removed and leaves (2), (3), (5), (6) added. **Result: 37 → 5 findings; the two survivors in
+  `rds-db2` are lines 431 and 432 — the `tee` write and the `NOPASSWD` rule, both previously
+  invisible.** Zero delta on every other rule; zero verdict changes across the corpus
+  (`computer-use` stays `fail` on its `SG-EXE-004` finding, risk 100 → 11).
+- **FP carve-outs:** sudoers syntax, not the word — the corpus counter-example is a comment reading
+  *"not blanket NOPASSWD:ALL"*, which a bare `\bNOPASSWD\b` would flag, so leaf (3) requires the
+  `ALL=(…)` runas spec. `sudo su - <user>` naming a **service** account (`sudo su - db2inst1`) is not
+  a privilege gain, so leaf (6)'s `sudo su` must reach end-of-line. `pkexec`/`doas` need a real
+  argument: a vendored meson helper assigns `pkexec = shutil.which('pkexec')`, which a bare
+  `\bpkexec\b` flagged eight times. Leaf (6) is deliberately **case-sensitive** — sudo's flags are,
+  and `(?i)-[is]` would swallow `sudo -S`, which reads a password from stdin and escalates nothing.
+- **Known FP, deliberately left (3 findings / 1 bundle):** `clawhub/prompt-guard` is a
+  prompt-injection detector whose `patterns.py` ships regex literals for the very write leaf (1)
+  looks for (`r"(?:>>|>)\s*.*\.ssh/authorized_keys"`). A `suppress` keyed on regex metasyntax
+  (`(?:`) would clear it, and was rejected: it hands an attacker a one-token bypass on a `critical`
+  write for 0.3% of bundles. This is the security-tool-contains-the-payload class — the same one
+  `SG-INJ-001`'s quoted-catalog suppress addresses in the same bundle family — and the honest answer
+  here is a policy waiver, not a pattern carve-out.
+- **Not covered, and not this rule's job:** bare `sudo <cmd>` is now uncovered by design. `curl … |
+  sudo bash` remains `SG-NET-002` (critical); a package install redirected to a hostile index is
+  `SG-DEP-008`. The `sudo <pkg-manager>` coverage that §SG-DEP-008 once credited to this rule is
+  gone, which changes nothing about SG-DEP-008's scope — that decision rested on `curl | sh` and
+  prevalence, not on this leaf.
+- **Confidence:** sudoers/authorized_keys write and `NOPASSWD` grant 0.9; setuid and admin-group
+  join 0.85; root shell / `visudo` / `pkexec` / `doas` 0.8.
+- **Fixtures:** TP: `echo "$KEY" >> ~/.ssh/authorized_keys` (`testdata/malicious/setup.sh:12`, still
+  fires). FP: `sudo apt install -y xvfb …`. Full table — 34 rows, 22 of which fail against the
+  pre-polish rule — in `TestPrivEscSeparatesAcquiringPrivilegeFromUsingIt`
+  (`pkg/rules/privesc_test.go`); every `false` row is a verbatim corpus line that used to be a
+  finding.
 
 ### SG-EXE-004 — Persistence  (AST01, high) — **implemented** (`core-exec`)  [SkillSpector RA2]
 - **Canonical id:** `SG-EXE-004`. `SG-ROGUE-002` is a **retired alias** for this entry — the persistence
@@ -2174,7 +2223,7 @@ Recording the measurement so no later cycle re-derives it.
 
 ### SG-DEP-008 — Package install redirected to a non-default registry  (AST02/AST07, high) — **implemented** (`core-supply`)
 - **Signals (shipped):** an install pointed at a **non-default index/registry/proxy** — `pip|uv pip|python -m pip install … --index-url|--extra-index-url|--trusted-host`, `PIP_(EXTRA_)INDEX_URL=`, `npm|pnpm|yarn (install|add) … --registry`, `npm config set registry`, an `.npmrc` `registry=https://…` line (including scoped `@scope:registry=`), `NPM_CONFIG_REGISTRY=`, `go env -w GOPROXY|GOPRIVATE|GONOSUMDB|GOSUMDB=`, and a Cargo `replace-with = "…"` source replacement.
-- **Scope, decided by measurement.** The backlog row read "`pip install`/`npm install`/`curl | sh` bootstrap", but **71 of the 217 corpus skills mention a plain install command** — a rule on that fires on a third of all skills and is unusable. `curl … | sh` is already SG-NET-002 (critical), `sudo <pkg-manager>` is already SG-EXE-003 (`^\s*sudo\s+\w`, high), and `npx -y`/`uvx` is SG-DEP-007. What was left uncovered, and what actually carries the attack, is the **index redirect**: the delivery half of dependency confusion and typosquatting. Corpus prevalence of that subset: **0 of 217**.
+- **Scope, decided by measurement.** The backlog row read "`pip install`/`npm install`/`curl | sh` bootstrap", but **71 of the 217 corpus skills mention a plain install command** — a rule on that fires on a third of all skills and is unusable. `curl … | sh` is already SG-NET-002 (critical), `sudo <pkg-manager>` was at the time also SG-EXE-003 (`^\s*sudo\s+\w`, high) — that leaf has since been removed as 0-precision (see §SG-EXE-003), which does not disturb this scoping decision, since it rested on `curl | sh` and on the 71/217 prevalence, and `npx -y`/`uvx` is SG-DEP-007. What was left uncovered, and what actually carries the attack, is the **index redirect**: the delivery half of dependency confusion and typosquatting. Corpus prevalence of that subset: **0 of 217**.
 - **FP carve-outs:** the canonical public indexes are suppressed (`registry.npmjs.org`, `pypi.org/simple`, `proxy.golang.org`) — pointing at the default is not a redirect. `/path/to/` placeholders. A legitimate corporate mirror will match by design; the `fix` text directs those to a `.surfaceguard.yaml` waiver rather than a looser rule.
 - **Confidence — every leaf is 0.9, and the flatness is forced, not chosen.** `docKeywords` includes `example`, so a match anywhere near an `example.com` / `.example` URL takes the documentary −0.4, and a `scripts`/`configs` target has no +0.15 instruction bonus to absorb it. At 0.85 the `PIP_INDEX_URL`, `.npmrc` and `GOPROXY` leaves failed their own tests for that reason alone. Signal-strength gradation is currently unusable on non-body targets — see the engine-backlog row (SG-MCP-001 hit the same cliff independently).
 - **Corpus:** **0 findings / 240 skills**, verdicts unchanged (209/22/9).
