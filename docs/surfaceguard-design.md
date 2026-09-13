@@ -250,7 +250,7 @@ Severity: `critical > high > medium > low > info`. Engines: `static` (regex/AST/
 ### 5.4 Dangerous commands & code execution → AST01, AST04
 - **SG-EXE-001** Dynamic eval/exec via real AST (`eval`, `exec`, `compile`, `getattr`-reflection, `subprocess(shell=True)`, `os.system`, `Function()`, `child_process`); high-confidence "exec-chain" when arg traces to a dynamic source. `static`, high.
 - **SG-EXE-002** Destructive FS ops on broad/dynamic targets (`rm -rf /`/`$VAR`/`*`, recursive chmod/chown, disk wipes). `static`, high.
-- **SG-EXE-003** Privilege escalation (`sudo`, `setuid`, `authorized_keys`/`sudoers` writes). `static`, high.
+- **SG-EXE-003** Privilege escalation (`authorized_keys`/`sudoers` writes incl. via `tee`, `NOPASSWD` grants, `setuid`, `usermod -aG` into an admin group, root-shell escalation). `static`, high. Bare `sudo <cmd>` is *using* privilege, not acquiring it, and is deliberately not a signal — see `rule-verification.md §SG-EXE-003`.
 - **SG-EXE-004 / SG-ROGUE-002** Persistence (cron, systemd, launchd, shell-rc edits, login/git hooks). `static`, high.
 - **SG-EXE-005** Anti-analysis / sandbox-detection / scanner-evasion logic. `static`, high.
 - **SG-ROGUE-001** Self-modification — runtime rewrite of the skill's own SKILL.md/scripts/config or disabling its own checks. `static`, high.
