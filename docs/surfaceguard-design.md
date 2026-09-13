@@ -686,14 +686,14 @@ waivers:
     path: "skills/legacy-*"
     reason: "vendored pin migration, ticket SEC-142"
     expires: 2026-10-01
-allowlists: { domains: ["docs.example.com"], paths: [] }
-scoring: {}                      # optional weight overrides (§9)
+allowlists: { domains: [], paths: [] }   # documented, NOT implemented — Load rejects non-empty
+scoring: {}                      # optional weight overrides (§9) — likewise rejected when non-empty
 trust:                           # the roster — same file, no --trust-store flag to confuse
   include: []                    # optional: pull in a shared roster file/URL (hash-pinned)
   keys:
     - keyid: author-2026
       algorithm: ed25519
-      public_key: "base64…"
+      public_key: "xllKlT5UIVX+Pw1QC+W2SDzM8mYCeebWrW+mOuA2/aM="   # real base64; Load checks it
       identity: "oidc:author@example.com"
   pack_keys: []                  # keys trusted to sign rule-packs (§8.2)
   revoked: []

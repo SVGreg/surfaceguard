@@ -639,9 +639,14 @@ waivers:
     reason: "reviewed: talks to our own analytics host"
     expires: 2026-12-31
 
-allowlists:
-  domains: ["example.com"]
-  paths: ["docs/**"]
+# NOTE: `allowlists` is part of the documented schema but is **not implemented** —
+# nothing reads it, so listed hosts and paths are still reported at full severity.
+# A policy that sets either field is rejected at load rather than silently
+# ignored. Use `waivers` (above), which carry a reason and an expiry.
+#
+# allowlists:
+#   domains: ["example.com"]
+#   paths: ["docs/**"]
 
 # Trust roster: public keys whose signatures are trusted on `verify`
 trust:

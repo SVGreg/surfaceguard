@@ -3,6 +3,7 @@ package policy
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -212,14 +213,14 @@ waivers:
     path: "skills/legacy-*"
     reason: "vendored pin migration, ticket SEC-142"
     expires: 2026-10-01
-allowlists: { domains: ["docs.example.com"], paths: [] }
+allowlists: { domains: [], paths: [] }
 scoring: {}
 trust:
   include: []
   keys:
     - keyid: author-2026
       algorithm: ed25519
-      public_key: "base64"
+      public_key: "xllKlT5UIVX+Pw1QC+W2SDzM8mYCeebWrW+mOuA2/aM="
       identity: "oidc:author@example.com"
   pack_keys: []
   revoked: []
@@ -321,5 +322,106 @@ func TestValidateRejectsUselessIdentityRules(t *testing.T) {
 	base.Trust.Identities = []IdentityRule{{Pattern: "repo:acme/*"}}
 	if err := base.validate(); err != nil {
 		t.Errorf("a valid identity rule was rejected: %v", err)
+	}
+}
+
+// TestLoadRejectsSilentlyBrokenPolicy covers the two ways a policy file could
+// still be wrong without saying so, both found in the cycle-129 review.
+//
+// The theme is the one Load's own doc comment states: a policy file is a
+// security control, so every way it can be wrong must be loud. Three fields
+// already fail closed for exactly this reason (trust.include, trust.pack_keys,
+// scoring); these were the remaining quiet ones.
+func TestLoadRejectsSilentlyBrokenPolicy(t *testing.T) {
+	cases := []struct {
+		name string
+		yaml string
+		want string // substring the error must mention
+	}{
+		// A roster entry that cannot verify anything is worse than no entry:
+		// pkg/verify keys the roster by keyid, so the key is "known", the
+		// signature fails to verify, and because the roster is non-empty the
+		// caller reports SG-PRV-002 "invalid or untrusted signature" at
+		// *critical* — a typo in the consumer's own policy blamed on the
+		// publisher.
+		{
+			name: "roster entry with no public_key",
+			yaml: "trust:\n  keys:\n    - keyid: sg-deadbeef\n      algorithm: ed25519\n",
+			want: "public_key is required",
+		},
+		{
+			name: "roster entry with an unrecognized algorithm",
+			yaml: "trust:\n  keys:\n    - keyid: sg-deadbeef\n      algorithm: ecdsa\n      public_key: xllKlT5UIVX+Pw1QC+W2SDzM8mYCeebWrW+mOuA2/aM=\n",
+			want: "is not recognized",
+		},
+		{
+			name: "roster entry whose public_key is not base64",
+			yaml: "trust:\n  keys:\n    - keyid: sg-deadbeef\n      public_key: \"not base64!!\"\n",
+			want: "not valid base64",
+		},
+		{
+			name: "ed25519 key of the wrong length",
+			yaml: "trust:\n  keys:\n    - keyid: sg-deadbeef\n      public_key: aGVsbG8=\n",
+			want: "decodes to 5 bytes",
+		},
+		// allowlists reads as a suppression control and suppresses nothing.
+		{
+			name: "allowlisted domains",
+			yaml: "allowlists:\n  domains: [\"internal.example.com\"]\n",
+			want: "allowlists are documented but not implemented",
+		},
+		{
+			name: "allowlisted paths",
+			yaml: "allowlists:\n  paths: [\"vendor/*\"]\n",
+			want: "allowlists are documented but not implemented",
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), ".surfaceguard.yaml")
+			if err := os.WriteFile(path, []byte(c.yaml), 0o600); err != nil {
+				t.Fatalf("write: %v", err)
+			}
+			_, err := Load(path)
+			if err == nil {
+				t.Fatalf("Load accepted a policy that cannot do what it says; want an error mentioning %q", c.want)
+			}
+			if !strings.Contains(err.Error(), c.want) {
+				t.Errorf("Load error = %q, want it to mention %q", err.Error(), c.want)
+			}
+		})
+	}
+}
+
+// ecdsaPKIX is a real P-256 public key in base64 PKIX DER — the shape
+// `openssl x509 -pubkey` emits and pkg/verify parses. A made-up string will not
+// do: the first draft of this fixture was invented, and the new base64 check
+// correctly rejected it.
+const ecdsaPKIX = "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEySRz8/bJAmN7BTj5kuFpcmCpwU79yfQ9+jAHSFh8IZwRyZQRuznZ+lGKSEkN5wjQn1/u78e4NpzL90Mziw/eMA=="
+
+// TestLoadAcceptsWellFormedKeyMaterial is the other half: the new validation
+// must not reject the roster shapes the README documents, including the
+// algorithm-omitted form that every roster written before ECDSA support used.
+func TestLoadAcceptsWellFormedKeyMaterial(t *testing.T) {
+	const ed = "xllKlT5UIVX+Pw1QC+W2SDzM8mYCeebWrW+mOuA2/aM="
+	cases := []struct{ name, yaml string }{
+		{"explicit ed25519", "trust:\n  keys:\n    - keyid: sg-1\n      algorithm: ed25519\n      public_key: " + ed + "\n"},
+		{"algorithm omitted defaults to ed25519", "trust:\n  keys:\n    - keyid: sg-1\n      public_key: " + ed + "\n"},
+		{"algorithm case and spacing tolerated", "trust:\n  keys:\n    - keyid: sg-1\n      algorithm: \" Ed25519 \"\n      public_key: " + ed + "\n"},
+		// An ECDSA key is PKIX DER, so it is longer than 32 bytes and must not
+		// be measured against the Ed25519 size.
+		{"ecdsa-p256 is not length-checked", "trust:\n  keys:\n    - keyid: sg-1\n      algorithm: ecdsa-p256\n      public_key: " + ecdsaPKIX + "\n"},
+		{"empty allowlists section is fine", "allowlists:\n  domains: []\n  paths: []\n"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), ".surfaceguard.yaml")
+			if err := os.WriteFile(path, []byte(c.yaml), 0o600); err != nil {
+				t.Fatalf("write: %v", err)
+			}
+			if _, err := Load(path); err != nil {
+				t.Errorf("Load rejected a well-formed policy: %v", err)
+			}
+		})
 	}
 }
