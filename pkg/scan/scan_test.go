@@ -871,3 +871,39 @@ func TestMaliciousFixtureTriggersNestedAgentBypass(t *testing.T) {
 		}
 	}
 }
+
+// TestMaliciousFixtureTriggersFalsifiedReport is the end-to-end pin for
+// SG-INJ-012, and it checks the line-offset invariant at the same time: the
+// directive sits in the fixture's *body*, so the finding must carry its true
+// SKILL.md line, not a body-local one.
+func TestMaliciousFixtureTriggersFalsifiedReport(t *testing.T) {
+	rep := scanFixture(t, "../../testdata/malicious")
+	var line int
+	for _, f := range rep.Findings {
+		if f.RuleID != "SG-INJ-012" {
+			continue
+		}
+		if f.File != "SKILL.md" {
+			t.Errorf("SG-INJ-012 reported in %s, want SKILL.md", f.File)
+		}
+		if f.Severity != model.SevHigh {
+			t.Errorf("SG-INJ-012 severity = %s, want high", f.Severity)
+		}
+		line = f.StartLine
+	}
+	if line == 0 {
+		t.Fatal("expected malicious fixture to trigger SG-INJ-012")
+	}
+	// The directive is the last line of the fixture, so a body-local line
+	// number would be far too small — this is the #122 invariant.
+	if line < 20 {
+		t.Errorf("SG-INJ-012 reported at SKILL.md:%d, which looks body-local rather than file-absolute", line)
+	}
+	// SG-INJ-010 owns concealment; this line contains no negated disclosure
+	// verb and no stealth adverb, so the two rules must not both claim it.
+	for _, f := range rep.Findings {
+		if f.RuleID == "SG-INJ-010" && f.File == "SKILL.md" && f.StartLine == line {
+			t.Errorf("SG-INJ-010 also fired on the falsified-report line %d; the two rules must stay disjoint", line)
+		}
+	}
+}
