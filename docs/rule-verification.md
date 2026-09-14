@@ -2272,6 +2272,60 @@ rule produces **42 findings across 19 bundles**, so this is the first real preci
 - **Fixtures (when implemented):** TP: the probe above; `claude --dangerously-skip-permissions` in a
   bundled `.sh`. FP rows must include the evals `"description"` line and an `agentRunner.js`
   `claude -p` comment **verbatim**.
+### SG-EXE-010 — Host security control disabled  (AST01, high) — **planned** (issue #298)
+- **Threat.** A skill's setup steps turn off the protection that would have caught the rest of it:
+  `setenforce 0`, `systemctl stop apparmor`, `ufw disable`, `iptables -F`,
+  `Set-MpPreference -DisableRealtimeMonitoring $true`, `spctl --master-disable`, `csrutil disable`,
+  `systemctl mask auditd`. Snyk's *ToxicSkills* study lists this as its seventh payload category —
+  "modifying systemctl files, deleting critical system files, weakening security configurations" —
+  as a subset of the **100%** of confirmed-malicious skills that carried a malicious code pattern.
+  It is the classic precursor move: disarm first, then run the payload the disarmed control was
+  there to stop.
+- **Why nothing covers it today.** `SG-NET-008` is the nearest rule and is about **TLS** verification
+  in an outbound client, not host controls. `SG-EXE-004` covers *installing* persistence (systemd
+  unit writes, cron); this is the inverse — *removing* a defence — and the two share no vocabulary.
+  `SG-EXE-002` is destructive filesystem operations. **Verified uncovered on `main` @ `ed29fa6`:** a
+  probe bundle whose `scripts/prep.sh` carries ten distinct disablement commands across Linux, macOS
+  and Windows scans **`pass` / 0 findings**.
+- **Prevalence measured before filing, and it is what makes this shippable (1,036 bundles):**
+
+  | signal | files |
+  |---|--:|
+  | `setenforce 0` / `SELINUX=disabled` | **0** |
+  | `systemctl stop\|disable\|mask` + `apparmor\|firewalld\|auditd\|selinux\|clamav\|falco` | **0** |
+  | `ufw disable` | **0** |
+  | `iptables -F` / `--flush` | **0** |
+  | `Set-MpPreference … -Disable*` | **0** |
+  | `Add-MpPreference … -Exclusion*` | **0** |
+  | `spctl --master-disable` | **0** |
+  | `csrutil disable` | **0** |
+  | *for contrast:* any `systemctl` at all | 23 |
+
+  `systemctl` appears in 23 files, so the gating on **security-service names** is what keeps this
+  clean — a bare service-management leaf would be unusable.
+- **`launchctl unload` is deliberately excluded, by measurement.** It is the obvious macOS
+  EDR-unload spelling and it is **3 files / 3 hits, all benign**: `clawhub/feishu-bridge` unloading
+  **its own** `~/Library/LaunchAgents/com.clawdbot.feishu-bridge.plist` in its uninstall
+  instructions. Distinguishing "unload the vendor's EDR" from "unload my own agent" needs a list of
+  security daemons the scanner cannot have, so the signal stays out rather than shipping 3/3 FPs.
+- **Signals (proposed).** One leaf per platform family, each pairing a disable verb with a **named
+  security control**: (a) SELinux/AppArmor (`setenforce 0`, `SELINUX=disabled`, systemctl against
+  `apparmor`); (b) host firewall (`ufw disable`, `iptables -F|--flush`, systemctl against
+  `firewalld`); (c) Windows Defender (`Set-MpPreference` with a `-Disable*` switch,
+  `Add-MpPreference` with `-Exclusion*` — an exclusion is a disablement scoped to the attacker's own
+  path); (d) macOS Gatekeeper/SIP (`spctl --master-disable`, `csrutil disable`); (e) audit
+  (`systemctl stop|disable|mask auditd`, `auditctl -e 0`).
+- **The FP population to expect, even at 0 today.** DevOps and lab skills legitimately *document*
+  relaxing SELinux or a firewall for a demo. Prose is where that lives, and the documentary −0.4
+  lands a 0.9 leaf at 0.5 — exactly the emit boundary — so **whoever implements this must decide the
+  base confidence deliberately rather than inheriting 0.9**, and should re-measure on a sweep slice:
+  the pinned corpus is sampled from the head of the download ranking, and the clawhub sweep showed
+  install/ops idioms are far denser further down.
+- **Not to be confused with the agent's own consent gate.** `SG-MTA-003` and `SG-EXE-009` cover
+  disabling *the agent's* permission prompt. This is the **host's** controls, below the agent
+  entirely, and the two should not share leaves.
+
+
 
 ### SG-DEP-002 — Typosquat / dependency confusion  (AST02, medium)  [SkillSpector SC6]
 - **Signals:** Levenshtein/keyboard-distance ≤ 2 to a top-N popular package with different author; internal-looking scoped names resolvable from public registry (confusion).
