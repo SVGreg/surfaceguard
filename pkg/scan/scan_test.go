@@ -907,3 +907,35 @@ func TestMaliciousFixtureTriggersFalsifiedReport(t *testing.T) {
 		}
 	}
 }
+
+// TestMaliciousFixtureTriggersSecurityDisablement is the end-to-end pin for
+// SG-EXE-010. The fixture carries the disarm step in setup.sh, which is where
+// Snyk's ToxicSkills study found the category living: setup instructions, the
+// part a reviewer skims.
+func TestMaliciousFixtureTriggersSecurityDisablement(t *testing.T) {
+	rep := scanFixture(t, "../../testdata/malicious")
+	var hits int
+	for _, f := range rep.Findings {
+		if f.RuleID != "SG-EXE-010" {
+			continue
+		}
+		if f.File != "setup.sh" {
+			t.Errorf("SG-EXE-010 reported in %s, want setup.sh", f.File)
+		}
+		if f.Severity != model.SevHigh {
+			t.Errorf("SG-EXE-010 severity = %s, want high", f.Severity)
+		}
+		hits++
+	}
+	if hits == 0 {
+		t.Fatal("expected malicious fixture to trigger SG-EXE-010")
+	}
+	// The benign fixture must stay clean: this rule's whole precision argument
+	// is that it names specific controls rather than generic service management.
+	benign := scanFixture(t, "../../testdata/benign")
+	for _, f := range benign.Findings {
+		if f.RuleID == "SG-EXE-010" {
+			t.Errorf("SG-EXE-010 fired on the benign fixture at %s:%d", f.File, f.StartLine)
+		}
+	}
+}
