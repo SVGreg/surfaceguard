@@ -4,6 +4,7 @@ package policy
 
 import (
 	"bytes"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -12,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/SVGreg/surfaceguard/pkg/attest"
 	"github.com/SVGreg/surfaceguard/pkg/model"
 	"gopkg.in/yaml.v3"
 )
@@ -60,7 +62,14 @@ type Waiver struct {
 	Expires string `yaml:"expires"` // YYYY-MM-DD
 }
 
-// Allowlists holds domains/paths exempt from certain rules.
+// Allowlists holds domains/paths exempt from certain rules. Like
+// Trust.Include/PackKeys and Scoring it is part of the documented schema and is
+// **not implemented**: nothing in pkg/ or cmd/ reads either field. Load rejects
+// it when non-empty rather than letting it fail silently, because of the four
+// unimplemented fields this is the one whose silence is most dangerous — it
+// reads as a *suppression* control, so a consumer who allowlists their internal
+// host and keeps seeing SG-NET-001 may conclude the findings are noise, while
+// one who trusts the allowlist stops reading those findings altogether.
 type Allowlists struct {
 	Domains []string `yaml:"domains"`
 	Paths   []string `yaml:"paths"`
@@ -300,6 +309,18 @@ func (p Policy) validate() error {
 			return fmt.Errorf("trust.keys[%d]: duplicate keyid %q (already declared at trust.keys[%d]); the later entry would silently replace the earlier key", i, k.KeyID, j)
 		}
 		seen[k.KeyID] = i
+		// A roster entry that cannot verify anything is worse than no entry at
+		// all. pkg/verify keys the roster by keyid, so a malformed entry still
+		// makes the key "known" — verifySignature then returns false, and
+		// because len(roster.Keys) != 0 the caller reports **SG-PRV-002
+		// "Invalid or untrusted signature" at critical** instead of the
+		// SG-PRV-005 "no roster configured" it would report for an empty
+		// roster. A typo in the consumer's own policy is therefore surfaced as
+		// tampering by the publisher. The same reasoning the log_keys check
+		// below already applies, on the roster that actually gates trust.
+		if err := validateKeyMaterial(k); err != nil {
+			return fmt.Errorf("trust.keys[%d] (keyid %s): %w", i, k.KeyID, err)
+		}
 	}
 	for i, r := range p.Trust.Roots {
 		switch {
@@ -331,8 +352,52 @@ func (p Policy) validate() error {
 	if len(p.Scoring) > 0 {
 		return errors.New("scoring weights are documented but not implemented — pkg/scan hardcodes the per-severity points, so the override would change nothing; remove the section")
 	}
+	if len(p.Allowlists.Domains) > 0 || len(p.Allowlists.Paths) > 0 {
+		return errors.New("allowlists are documented but not implemented — nothing reads allowlists.domains or allowlists.paths, so the listed hosts and paths would still be reported at full severity; use waivers (which carry a reason and an expiry) instead")
+	}
 	return nil
 }
+
+// validateKeyMaterial reports why a roster entry could never verify a
+// signature. It mirrors pkg/verify.verifySignature, which is the authority:
+// that function decodes public_key as base64, dispatches on a lower-cased,
+// trimmed algorithm, and requires an Ed25519 key to be exactly
+// ed25519.PublicKeySize bytes. Anything it would reject is checked here so the
+// policy author hears about it at load time instead of reading a critical
+// finding about someone else's signature.
+//
+// The ECDSA key is deliberately only base64-checked, not parsed: parsing PKIX
+// DER here would duplicate the crypto dispatch rather than mirror a constraint,
+// and the failure it would catch (valid base64 that is not a P-256 key) is far
+// rarer than the two this does catch — an omitted field and a mistyped
+// algorithm.
+func validateKeyMaterial(k Key) error {
+	alg := strings.ToLower(strings.TrimSpace(k.Algorithm))
+	switch alg {
+	case "", attest.AlgEd25519, attest.AlgECDSAP256:
+	default:
+		return fmt.Errorf("algorithm %q is not recognized (valid: %s, %s; empty means %s) — an unrecognized algorithm verifies nothing",
+			k.Algorithm, attest.AlgEd25519, attest.AlgECDSAP256, attest.AlgEd25519)
+	}
+	if strings.TrimSpace(k.PublicKey) == "" {
+		return errors.New("public_key is required (an entry with a keyid but no key verifies nothing, while still making the keyid \"known\" to the roster)")
+	}
+	raw, err := base64.StdEncoding.DecodeString(k.PublicKey)
+	if err != nil {
+		return fmt.Errorf("public_key is not valid base64: %v", err)
+	}
+	if alg == "" || alg == attest.AlgEd25519 {
+		if len(raw) != ed25519PublicKeySize {
+			return fmt.Errorf("public_key decodes to %d bytes, but an %s key is %d (a truncated or partially-pasted key)",
+				len(raw), attest.AlgEd25519, ed25519PublicKeySize)
+		}
+	}
+	return nil
+}
+
+// ed25519PublicKeySize mirrors ed25519.PublicKeySize. It is spelled out rather
+// than imported so this package keeps no crypto dependency for one constant.
+const ed25519PublicKeySize = 32
 
 // FailOnSeverity resolves the fail threshold.
 func (p Policy) FailOnSeverity() model.Severity {
