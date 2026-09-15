@@ -2111,11 +2111,42 @@ case, and an ordinary ```` ```bash ```` block containing `curl … | bash` that 
   `.claude/skills`, `../<peer>/SKILL.md`, or `skills/*`. These leak API keys, MCP tokens, and peers'
   instructions. Distinct from SG-INJ-004, which is the *write* form.
 - **FP carve-outs:** a skill reading *its own* directory (`./assets/`, its own `SKILL.md` with no
-  `../`); placeholder paths (`/path/to/` suppressed); documentary −0.4, which drops leaf (b) below
-  the emit threshold in prose. Agent runtimes legitimately manage these files — a *skill* shouldn't.
+  `../`); placeholder paths (`/path/to/` suppressed); install instructions, in both the prose form
+  (#272) and the command form (#294); command boundaries and redirects excluded from the verb→path
+  gap (cycle 132); documentary −0.4, which drops leaf (b) below the emit threshold in prose. Agent runtimes legitimately manage these files — a *skill* shouldn't.
 - **Confidence:** config read 0.8; peer enumeration 0.7 (softer — listing a skills dir has benign
   uses). Corpus: **4 findings / 3 skills of 240**, all genuine (a `.claude/loop.md` read, two
   `~/.gemini/` reads, and `ls "${HOME}/.claude/skills"` in a stop-hook script).
+- **Corpus precision audit (2026-09-14, 1,036 bundles — rule-polish cycle 132). 21 → 15 findings,
+  zero delta on every other rule, zero verdict changes.** Three separate FP mechanisms, each with a
+  mechanical cause:
+  - **The verb→path window spanned a shell command boundary.** #179 widened the gap to
+    `[^\n]{0,120}` for long macOS config paths, and at that width it began joining a read verb in
+    one command to a path in the *next*: `cat <<'EOF' | npx tsx .claude/hooks/guard.ts` has `cat`
+    reading a **heredoc**, and the `.claude/` path is tsx's argument. 5 hits in one bundle. Fixed by
+    excluding `| ; &` from the gap — the same shape as #284's sentence bound, one layer down. A
+    separator *after* the path is untouched, so `cat .claude/settings.json | jq …` still fires.
+  - **A redirect is a write.** `cat > ~/.claude/chrome/chrome-native-host << 'EOF'` was claimed by
+    the read-verb leaf, although this section's own signals paragraph assigns writes to
+    **SG-INJ-004**. Fixed by excluding `>` from the same gap. This hit was in `orgs/trailofbits` —
+    the regression anchor.
+  - **#272's carve-out was a vocabulary check, not a direction check (#294).** Its comment states
+    the principle correctly — snooping reads *from* the directory, installing writes *into* it — but
+    implements it as a directional **preposition**, which the command form does not have. So
+    `cp -Rf ~/.claude/skills/x .claude/skills/x` and `cp dist/tool ~/.claude/skills` kept firing at
+    `high`, and those are the spellings install snippets actually use. Now implemented as **argument
+    position**: copy verb → optional flags → source token → skills path as the destination.
+    `cp ~/.claude/skills/peer/secrets .` has the skills path as the *source* and still fires;
+    `ls -la .claude/skills` is untouched, since enumeration has no destination.
+- **Measurement caveat on #294.** Its class has **zero instances in the pinned corpus** — it was
+  sighted in the 2026-09-13 clawhub sweep, whose samples are deleted by design. So the corpus proves
+  the carve-out costs **nothing** (no finding lost) but cannot re-prove its benefit; the four verbatim
+  lines recorded in #294 are the durable evidence, and they are pinned as test rows.
+- **Known FP, deliberately left:** leaf (a)'s `\.claude[/\\]` alternative matches **any** path under
+  the agent home, not just config — so `cat ~/.claude/chrome/chrome-native-host`, a skill reading an
+  artifact **it installed itself**, still fires `high` (2 hits, `orgs/trailofbits`). Narrowing to
+  config-shaped leaves would risk real coverage (`.claude/agents/`, `.claude/settings.json` variants)
+  and needs its own measured cycle; filed to `docs/planned-rules.md`.
 - **Fixtures:** TP: `cat ~/.claude/mcp.json`, `less ~/.claude/settings.json`,
   `jq '.mcpServers' ~/.cursor/mcp.json`, `cat ~/Library/Application Support/Claude/claude_desktop_config.json`,
   `ls ~/.claude/skills/`, `cat ../other-skill/SKILL.md`. FP: skill reading its own `./assets/`,
