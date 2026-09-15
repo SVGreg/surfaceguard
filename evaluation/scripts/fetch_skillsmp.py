@@ -36,14 +36,30 @@ API = "https://skillsmp.com/api/skills"
 OUT_DIR = os.path.join(os.path.dirname(__file__), "..", os.environ.get("OUTDIR", "skillsmp"))
 WANT = int(os.environ.get("WANT", "200"))
 MAX_PER_REPO = int(os.environ.get("MAX_PER_REPO", "5"))
+# Files taken from any one bundle. One GitHub API call per file means an
+# uncapped bundle can stall an entire sweep. 400 is chosen from the vendored
+# skillsmp corpus's own distribution: 75 bundles, **median 2** files and mean
+# 57 — a mean inflated by a single 1,738-file outlier, which is precisely the
+# shape that stalls a run. The cap sits far above every ordinary skill and
+# clips only the tail.
+MAX_FILES_PER_BUNDLE = int(os.environ.get("MAX_FILES_PER_BUNDLE", "400"))
 SORT = os.environ.get("SORT", "recent")
 SKIP_DIRS = [d for d in os.environ.get("SKIP_DIRS", "").split(",") if d]
 
 UA = "Mozilla/5.0 (X11; Linux x86_64) surfaceguard-eval/0.1"
 
 
-def api_page(page, limit=50):
-    url = f"{API}?page={page}&limit={limit}&sortBy={SORT}"
+def api_page(page):
+    """Fetch one listing page.
+
+    No client-side `limit`: the API caps the page size server-side (12 as of
+    2026-09-15, reported back in `pagination.limit`) and **rejects** a larger
+    value with HTTP 400 rather than clamping it. This fetcher used to ask for
+    50, which turned every page request into a 400 and every sweep into zero
+    bundles. Taking whatever page size the server offers means a future change
+    to the cap cannot break it again.
+    """
+    url = f"{API}?page={page}&sortBy={SORT}"
     req = urllib.request.Request(url, headers={"Accept": "application/json", "User-Agent": UA})
     with urllib.request.urlopen(req, timeout=30) as r:
         return json.loads(r.read())
@@ -60,19 +76,33 @@ def gh_api(path):
         return None
 
 
-def download_dir(owner, repo, ref, path, dest, depth=0):
-    """Recursively download a repo directory into dest. Returns files written."""
+def download_dir(owner, repo, ref, path, dest, depth=0, budget=None):
+    """Recursively download a repo directory into dest. Returns files written.
+
+    `budget` caps the files taken from one bundle. This costs one GitHub API
+    call per file, so an uncapped bundle with a vendored tree can stall a whole
+    sweep on a single skill — observed on 2026-09-15, where the run sat on one
+    bundle for minutes with the rate limit untouched. fetch_skillssh.py has had
+    a file-count cap for the same reason; this brings the two into line.
+    """
     if depth > 4:
+        return 0
+    if budget is None:
+        budget = [MAX_FILES_PER_BUNDLE]
+    if budget[0] <= 0:
         return 0
     items = gh_api(f"repos/{owner}/{repo}/contents/{path}?ref={ref}")
     if not isinstance(items, list):
         return 0
     written = 0
     for it in items:
+        if budget[0] <= 0:
+            print(f"    [cap] {owner}/{repo}: stopped at {MAX_FILES_PER_BUNDLE} files", flush=True)
+            break
         name = it.get("name", "")
         typ = it.get("type")
         if typ == "dir":
-            written += download_dir(owner, repo, ref, it["path"], os.path.join(dest, name), depth + 1)
+            written += download_dir(owner, repo, ref, it["path"], os.path.join(dest, name), depth + 1, budget)
         elif typ == "file":
             # Skip huge/binary blobs; the scanner reads text bundles.
             if (it.get("size") or 0) > 1_000_000:
@@ -91,6 +121,7 @@ def download_dir(owner, repo, ref, path, dest, depth=0):
             with open(os.path.join(dest, name), "wb") as f:
                 f.write(raw)
             written += 1
+            budget[0] -= 1
     return written
 
 
@@ -115,7 +146,12 @@ def main():
         try:
             d = api_page(page)
         except Exception as e:
-            print(f"[page {page}] API error {e}")
+            # Page 1 failing means the listing API is unreachable or its
+            # contract moved, and there is nothing to salvage. Later pages
+            # failing just truncates the sweep, which is recoverable.
+            print(f"[page {page}] API error {e}", flush=True)
+            if page == 1:
+                raise SystemExit(f"[fatal] SkillsMP listing API failed on the first page: {e}")
             break
         skills = d.get("skills", [])
         if not skills:
@@ -146,12 +182,22 @@ def main():
             manifest.append({"slug": slug, "name": name, "owner": owner, "repo": repo,
                              "branch": branch, "skill_path": skill_path, "stars": s.get("stars"),
                              "github": s.get("githubUrl"), "dir": f"skillsmp/{slug}", "files": n})
-            print(f"[{ok:>3}] {slug:<48} ({n} files, {s.get('stars')}★)")
+            # flush: this fetcher makes one GitHub API call per file, so a
+            # 150-bundle run takes tens of minutes. Without flushing, the
+            # progress lines sit in the buffer and the run looks hung — which
+            # is exactly how the 2026-09-15 breakage first presented.
+            print(f"[{ok:>3}] {slug:<48} ({n} files, {s.get('stars')}★)", flush=True)
             time.sleep(0.1)
         page += 1
     with open(os.path.join(OUT_DIR, "_manifest.json"), "w") as f:
         json.dump(manifest, f, indent=2)
     print(f"\n[done] {ok} bundles saved -> {OUT_DIR}")
+    # A sweep that fetched nothing is a failure, not an empty result. Exiting 0
+    # here let the 2026-09-15 cycle's `limit=50` breakage read as "[done] 0
+    # bundles saved" and flow straight into run_scans.sh, which then had nothing
+    # to scan and also succeeded.
+    if ok == 0:
+        raise SystemExit("[fatal] no bundles fetched — the listing contract or the filters moved")
 
 
 if __name__ == "__main__":
