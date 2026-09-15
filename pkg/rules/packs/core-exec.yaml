@@ -1,6 +1,6 @@
 apiVersion: surfaceguard.svgreg.net/rulepack.v1
 name: core-exec
-version: 1.4.0
+version: 1.5.0
 description: Dangerous commands, code execution, privilege escalation, persistence (rule-verification.md §3).
 rules:
   - id: SG-EXE-001
@@ -757,3 +757,68 @@ rules:
       `--dangerously-skip-permissions` and `--permission-mode bypassPermissions`, and let the user
       approve the tools each agent uses. If a skill genuinely needs multi-step automation, keep it
       in one context where the whole plan is visible and reviewable.
+
+  - id: SG-EXE-010
+    title: Host security control disabled
+    ast: [AST01]
+    severity: high
+    engine: static
+    layer: code
+    confidence: 0.95
+    targets: [manifest, body, scripts, configs]
+    match:
+      # Disarm first, run the payload second. Snyk's *ToxicSkills* study lists
+      # this as its seventh payload category, inside the 100% of confirmed
+      # malicious skills that carried a code payload — a skill that turns off
+      # the protection which would have caught the rest of it (#298).
+      #
+      # **Every leaf names a specific security control, and that gating is the
+      # whole rule — do not widen it to generic service management.** Measured
+      # over 1,036 bundles: all thirteen spellings below appear in **0 files**,
+      # while a bare `systemctl` appears in **23**. A leaf on
+      # `systemctl stop <anything>` would be unusable, and the narrow list here
+      # is a deliberate result, not an oversight.
+      #
+      # `launchctl unload` is the obvious macOS EDR spelling and is deliberately
+      # **absent**: it is 3 files / 3 hits in the corpus and all three are
+      # `clawhub/feishu-bridge` unloading **its own** LaunchAgent in its
+      # uninstall instructions. Separating that from unloading a vendor's EDR
+      # needs a list of security daemons this scanner cannot have.
+      #
+      # Base confidence is **0.95, not 0.9, on purpose.** The documentary −0.4
+      # would put 0.9 at exactly 0.50 — the emit threshold itself — so a rule
+      # written at 0.9 would sit on the boundary in prose and flip on a rounding
+      # change. 0.95 lands prose at 0.55, which emits, and that is the intended
+      # side: Snyk's own finding is that these appear in *setup instructions*,
+      # so body prose is this threat's primary channel, not an incidental one.
+      # (`SG-EXE-006` recorded the same constraint as "base >= 0.75".)
+      #
+      # The systemctl gaps use `[^\n|;&]` so a service name in a *later* command
+      # cannot be joined to a `stop` in an earlier one — the command-boundary
+      # class found in SG-AS-001 (cycle 132) and SG-TRIG-001 (#284).
+      any:
+        # (a) Mandatory access control: SELinux, AppArmor.
+        - regex: '(?i)\bsetenforce\s+0\b|\bSELINUX\s*=\s*disabled\b|\bsystemctl\s+(?:stop|disable|mask)\b[^\n|;&]{0,30}\bapparmor\b|\baa-(?:teardown|disable)\b'
+          confidence: 0.95
+        # (b) Host firewall.
+        - regex: '(?i)\bufw\s+disable\b|\biptables\s+(?:-F|--flush)\b|\bsystemctl\s+(?:stop|disable|mask)\b[^\n|;&]{0,30}\bfirewalld\b|\bnetsh\s+advfirewall\s+set\s+\w+\s+state\s+off\b'
+          confidence: 0.95
+        # (c) Windows Defender. An *exclusion* is a disablement scoped to the
+        # attacker's own path, and is the quieter of the two spellings.
+        - regex: '(?i)\bSet-MpPreference\b[^\n]{0,80}-Disable\w+|\bAdd-MpPreference\b[^\n]{0,80}-Exclusion\w+'
+          confidence: 0.95
+        # (d) macOS Gatekeeper / System Integrity Protection.
+        - regex: '(?i)\bspctl\s+--master-disable\b|\bcsrutil\s+disable\b'
+          confidence: 0.95
+        # (e) Audit trail — disabling the record rather than the defence.
+        - regex: '(?i)\bsystemctl\s+(?:stop|disable|mask)\b[^\n|;&]{0,30}\bauditd\b|\bauditctl\s+-e\s+0\b|\bservice\s+(?:auditd|firewalld|apparmor|clamav)\s+stop\b'
+          confidence: 0.95
+    rationale: >-
+      Turning off SELinux/AppArmor, the host firewall, Defender, Gatekeeper/SIP or auditd removes the
+      protection that would have caught whatever the skill does next. It is a precursor move rather
+      than a payload in itself, which is why it belongs with the malicious-skill class (AST01) and
+      not with over-broad permission grants: nothing is being requested, a defence is being removed.
+    fix: >-
+      A skill must not weaken the host's security posture. If a step genuinely cannot run under the
+      current policy, say so and let the user decide — document the specific control and why, rather
+      than scripting its removal.

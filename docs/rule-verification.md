@@ -2303,7 +2303,7 @@ rule produces **42 findings across 19 bundles**, so this is the first real preci
 - **Fixtures (when implemented):** TP: the probe above; `claude --dangerously-skip-permissions` in a
   bundled `.sh`. FP rows must include the evals `"description"` line and an `agentRunner.js`
   `claude -p` comment **verbatim**.
-### SG-EXE-010 — Host security control disabled  (AST01, high) — **planned** (issue #298)
+### SG-EXE-010 — Host security control disabled  (AST01, high) — **implemented** (`core-exec`) (issue #298)
 - **Threat.** A skill's setup steps turn off the protection that would have caught the rest of it:
   `setenforce 0`, `systemctl stop apparmor`, `ufw disable`, `iptables -F`,
   `Set-MpPreference -DisableRealtimeMonitoring $true`, `spctl --master-disable`, `csrutil disable`,
@@ -2352,6 +2352,29 @@ rule produces **42 findings across 19 bundles**, so this is the first real preci
   base confidence deliberately rather than inheriting 0.9**, and should re-measure on a sweep slice:
   the pinned corpus is sampled from the head of the download ranking, and the clawhub sweep showed
   install/ops idioms are far denser further down.
+- **Shipped (cycle 135)** in `core-exec` 1.4.0 → 1.5.0 as five leaves, one per platform family —
+  (a) SELinux/AppArmor, (b) host firewall, (c) Defender (including `Add-MpPreference -Exclusion*`,
+  an exclusion being a disablement scoped to the attacker's own path), (d) Gatekeeper/SIP,
+  (e) auditd — all at **0.95**, over `manifest`/`body`/`scripts`/`configs`.
+- **Why 0.95 and not 0.9.** The documentary −0.4 puts a 0.9 base at **exactly 0.50**, which is the
+  emit threshold itself: a rule written at 0.9 would sit *on* the boundary in prose and flip on a
+  rounding-level change. 0.95 lands prose at 0.55 — deliberately the emitting side, because the
+  source's own finding is that this category lives in **setup instructions**, so body prose is the
+  threat's primary channel rather than an incidental one. `SG-EXE-006` recorded the same class of
+  constraint as "base ≥ 0.75".
+- **The systemctl gaps are `[^\n|;&]`**, so a service name in a *later* command cannot be joined to a
+  `stop` in an earlier one — the command-boundary class found in `SG-AS-001` (cycle 132) and #284,
+  applied here before it could bite.
+- **Corpus: 0 findings / 1,036 bundles**, and the zero is bounded rather than merely observed — all
+  thirteen shipped spellings were measured individually at 0 files *before* the rule was written,
+  against 23 files for a bare `systemctl`. No movement on any other rule; no verdict changes.
+- **Fixtures.** TP: `testdata/malicious/setup.sh` (`setenforce 0`, `systemctl mask auditd`). Tests:
+  `TestSecurityDisablementNamesTheControl` (`pkg/rules/secdisable_test.go`, 27 rows — 17 disablement
+  spellings and **10 negatives that are the precision argument itself**: `systemctl restart myapp`,
+  `ufw allow`, `iptables -L`, `csrutil status`, `spctl --assess`, a Defender *query*, the excluded
+  `launchctl unload`, and a service name in a later command) and
+  `TestMaliciousFixtureTriggersSecurityDisablement` (`pkg/scan/scan_test.go`), which also asserts the
+  **benign** fixture stays clean.
 - **Not to be confused with the agent's own consent gate.** `SG-MTA-003` and `SG-EXE-009` cover
   disabling *the agent's* permission prompt. This is the **host's** controls, below the agent
   entirely, and the two should not share leaves.
