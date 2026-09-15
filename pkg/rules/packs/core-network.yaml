@@ -1,6 +1,6 @@
 apiVersion: surfaceguard.svgreg.net/rulepack.v1
 name: core-network
-version: 1.1.1
+version: 1.1.2
 description: Data exfiltration, egress, SSRF (rule-verification.md §3).
 rules:
   - id: SG-NET-002
@@ -187,7 +187,12 @@ rules:
         # mkfifo backpipe one-liner reverse shell
         - regex: '(?i)\bmkfifo\b[^\n]{0,120}\b(nc|ncat|netcat)\b'
           confidence: 0.85
-        # interpreter reverse shell: socket fileno duped onto stdio, then a shell
+        # Interpreter reverse shell: a **socket** fileno duped onto stdio, then a
+        # shell. The leaf cannot express "the fd came from a socket" — dup2 onto
+        # stdio looks identical whether the source is a socket or a log file —
+        # so the discriminator lives in the `suppress` list below, which is
+        # line-scoped and therefore exactly the right scope: the benign fd
+        # source sits on the same line as the dup2.
         - regex: '(?i)os\.dup2\([^\n]{0,30}\.fileno\(\)'
           confidence: 0.85
         - regex: '(?i)\bpty\.spawn\(\s*[^\n)]{0,25}(sh|bash|/bin)'
@@ -223,6 +228,20 @@ rules:
         # ordinary dev servers spell the same address.
         - regex: '(?i)\.bind\(\s*\(?\s*(?:["''](?:0\.0\.0\.0|::|\[::\])?["'']|0\.0\.0\.0)\s*,\s*(?:[1-9][0-9]*|[A-Za-z_]\w*)'
           confidence: 0.7
+    suppress:
+      # `os.dup2(<fd>.fileno(), 1)` is **daemonization** when the fd is a log
+      # file or /dev/null, and a reverse shell only when it is a socket. Both
+      # spellings dup onto stdio, so the leaf above cannot tell them apart; the
+      # benign fd source is on the same line, which is where a line-scoped
+      # suppress can see it. Measured in the 2026-09-15 skillsmp sweep: 3 of the
+      # rule's 7 hits were `os.dup2(log.fileno(), …)` / `os.dup2(devnull.fileno(),
+      # …)` in a dev-server launcher — the textbook detach sequence.
+      #
+      # Known residual, accepted: an attacker who names their socket `log` is not
+      # caught by this leaf. The alternative — requiring a socket token anywhere
+      # in the file — would still fire on any server that both opens a socket and
+      # daemonizes, which is most of them.
+      - '(?i)\bos\.dup2\(\s*(?:log\w*|\w*logfile|devnull|dev_null|null|out|outfile|err|errfile|stdout|stderr|stdin|sys\.std\w+|f|fp|fh)\s*\.fileno\(\)'
     rationale: Reverse shells and bind-all listeners expose the host to remote control (AST01/AST06).
     fix: Bind only to localhost with authentication; remove reverse-shell code.
 
