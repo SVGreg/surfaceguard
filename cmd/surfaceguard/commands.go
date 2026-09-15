@@ -147,6 +147,11 @@ EXIT CODES: 0 pass/warn · 1 fail · 3 usage error · 4 internal error.`,
 	return cmd
 }
 
+// maxTTLDays bounds --ttl-days. time.Duration is int64 nanoseconds, so
+// `days * 24h` overflows above 106,751 days; 100 years is longer than any
+// signing key should outlive and leaves the arithmetic ~3x of headroom.
+const maxTTLDays = 36500
+
 func signCmd() *cobra.Command {
 	var keyPath, identity string
 	var noScan, emitFields, withOMS bool
@@ -186,6 +191,25 @@ EXIT CODES: 0 success · 3 usage error · 4 internal error.`,
   surfaceguard sign ./my-skill --key oms.key --oms   # also write skill.oms.sig`,
 		Args: bundlePathArg,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Validated before the key is even loaded, because both ends of
+			// this range produce an attestation that is *born expired* while
+			// `sign` reports success — and `verify` then blames the artifact
+			// (SG-PRV-004 "Attestation expired") rather than the flag.
+			//
+			// The upper bound is not arbitrary: BuildStatement computes
+			// time.Duration(ttlDays) * 24 * time.Hour, and time.Duration is
+			// int64 nanoseconds, so the product overflows above 106,751 days
+			// (~292 years). At --ttl-days 106752 the duration wraps negative
+			// and expires_at lands in **1734**. Asking for a longer validity
+			// silently gives none, which is the worst possible failure shape
+			// for a freshness control. maxTTLDays sits ~3x below the wrap so
+			// the arithmetic cannot reach it.
+			if ttlDays < 1 || ttlDays > maxTTLDays {
+				return fail(3, "--ttl-days must be between 1 and %d (got %d)\n"+
+					"  0 or less produces an attestation that is already expired when written;\n"+
+					"  above %d the duration overflows and expires_at lands in the past.",
+					maxTTLDays, ttlDays, maxTTLDays)
+			}
 			if keyPath == "" {
 				return fail(3, "missing --key\n"+
 					"  signing needs an Ed25519 key file. Create one with:\n"+
@@ -282,7 +306,7 @@ EXIT CODES: 0 success · 3 usage error · 4 internal error.`,
 	f.StringVar(&identity, "identity", "", "publisher identity claim, e.g. oidc:you@example.com")
 	f.BoolVar(&noScan, "no-scan", false, "integrity-only attestation: do not embed a scan result")
 	f.BoolVar(&emitFields, "emit-manifest-fields", false, "also write USF content_hash/signature into SKILL.md front-matter")
-	f.IntVar(&ttlDays, "ttl-days", 365, "attestation validity in days (expires_at)")
+	f.IntVar(&ttlDays, "ttl-days", 365, "attestation validity in days (expires_at); 1-36500")
 	return cmd
 }
 
