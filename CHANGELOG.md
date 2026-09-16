@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.5.3](https://github.com/SVGreg/surfaceguard/compare/v0.5.2...v0.5.3) (2026-09-16)
+
+
+### Features
+
+* **rules:** add SG-EXE-010 — host security control disabled (AST01) ([#300](https://github.com/SVGreg/surfaceguard/issues/300)) ([fb5cea8](https://github.com/SVGreg/surfaceguard/commit/fb5cea8e82f76979fc87f126661dc8dae9fd6c43)), closes [#298](https://github.com/SVGreg/surfaceguard/issues/298)
+* **rules:** add SG-INJ-012 — falsified completion report (AST01) ([#291](https://github.com/SVGreg/surfaceguard/issues/291)) ([f859c73](https://github.com/SVGreg/surfaceguard/commit/f859c73578b7bdbca07776273afb846147ba9d5f)), closes [#288](https://github.com/SVGreg/surfaceguard/issues/288)
+* **rules:** add SG-INJ-013 — structural concealment by padding (AST01/AST04) ([#310](https://github.com/SVGreg/surfaceguard/issues/310)) ([01b236e](https://github.com/SVGreg/surfaceguard/commit/01b236e0761c6d384842dcf20f4a877728947df5)), closes [#308](https://github.com/SVGreg/surfaceguard/issues/308)
+
+
+### Bug Fixes
+
+* **cmd:** reject a --ttl-days that makes an attestation born expired ([#301](https://github.com/SVGreg/surfaceguard/issues/301)) ([f2ed805](https://github.com/SVGreg/surfaceguard/commit/f2ed8050588e5540d0a11a8b7fd9d844a9b30292))
+* **eval:** repair the skillsmp fetcher, which had been returning zero bundles ([#304](https://github.com/SVGreg/surfaceguard/issues/304)) ([3992a78](https://github.com/SVGreg/surfaceguard/commit/3992a78d20f697ca12983d9221a47d0e17868c4e))
+* **policy:** reject the two policy misconfigurations that still failed silently ([#292](https://github.com/SVGreg/surfaceguard/issues/292)) ([be9f51a](https://github.com/SVGreg/surfaceguard/commit/be9f51a0eecde4116d946269a8255989ef020306))
+* **rules:** SG-AS-001 stops at command boundaries and at installs ([#297](https://github.com/SVGreg/surfaceguard/issues/297)) ([12b7efa](https://github.com/SVGreg/surfaceguard/commit/12b7efa2c394e49fe2dcb631cf7784ddd481f880)), closes [#294](https://github.com/SVGreg/surfaceguard/issues/294)
+* **rules:** SG-EXE-003 detects privilege grants, not privileged commands ([#287](https://github.com/SVGreg/surfaceguard/issues/287)) ([e38b4a7](https://github.com/SVGreg/surfaceguard/commit/e38b4a7c60418b354f1d0a814c40033340616265))
+* **rules:** SG-INJ-002's comment leaf needs whole words (closes [#277](https://github.com/SVGreg/surfaceguard/issues/277)) ([#281](https://github.com/SVGreg/surfaceguard/issues/281)) ([45df97b](https://github.com/SVGreg/surfaceguard/commit/45df97b3a231c2d4648497232443d7c094cea9e2))
+* **rules:** the documentary penalty no longer reads a leaf's own text as context (closes [#143](https://github.com/SVGreg/surfaceguard/issues/143)) ([#283](https://github.com/SVGreg/surfaceguard/issues/283)) ([8ba1f1b](https://github.com/SVGreg/surfaceguard/commit/8ba1f1b204f6a5f81f646807db2e1506687920ba))
+* **verify:** a co-signature must not mask a revoked key ([#311](https://github.com/SVGreg/surfaceguard/issues/311)) ([16700e7](https://github.com/SVGreg/surfaceguard/commit/16700e747127d792e857983f746a8c158ad90985))
+
 ## [0.5.2](https://github.com/SVGreg/surfaceguard/compare/v0.5.1...v0.5.2) (2026-09-12)
 
 
