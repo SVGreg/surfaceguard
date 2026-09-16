@@ -106,17 +106,40 @@ func VerifyOMSAt(b *skill.Bundle, data []byte, roster policy.Trust, policyDir st
 			"Invalid or untrusted OMS signature",
 			"No signature in the OMS bundle verified against a key in the roster.",
 			"Confirm the signing key is trusted and the bundle is authentic."))
+	// Revocation first, and reported whenever it happened — the same precedence
+	// as the SGMT-1 path in verify.go, and fixed here in the same cycle for the
+	// same reason. An OMS DSSE envelope carries a *list* of signatures and
+	// verifyKeyBound tries every roster key against every one of them, so a
+	// bundle co-signed by a revoked key and by a roster key whose identity no
+	// rule admits set both flags and reported only SG-PRV-005 (medium).
+	// verificationFailed treats SG-PRV-004 as failure and SG-PRV-005 as not, so
+	// the revoked signature verified without failing. OMS is the format other
+	// tools verify and the one keyless signing uses, so leaving this arm as it
+	// was would have left the bypass open where it matters most.
+	case !res.Trusted && res.Revoked:
+		res.Findings = append(res.Findings, prv("SG-PRV-004", model.SevHigh,
+			"Signing key revoked",
+			"A valid OMS signature was made with a revoked key.",
+			"Obtain a re-signed bundle from a non-revoked key."))
+		if res.IdentityRejected {
+			res.Findings = append(res.Findings, prv("SG-PRV-005", model.SevMedium,
+				"Publisher identity not permitted",
+				"Another valid OMS signature is from a roster key whose identity matches no trust.identities rule.",
+				"Add a matching pattern under trust.identities, or remove the key from the roster."))
+		}
 	case !res.Trusted && res.IdentityRejected:
 		res.Findings = append(res.Findings, prv("SG-PRV-005", model.SevMedium,
 			"Publisher identity not permitted",
 			"The OMS signature is valid and the key is in the roster, but its identity matches no trust.identities rule.",
 			"Add a matching pattern under trust.identities, or remove the key from the roster."))
 	case !res.Trusted:
-		res.Revoked = true
-		res.Findings = append(res.Findings, prv("SG-PRV-004", model.SevHigh,
-			"Signing key revoked",
-			"The valid OMS signature was made with a revoked key.",
-			"Obtain a re-signed bundle from a non-revoked key."))
+		// Fail-closed floor, as in verify.go: unreachable while the loop sets
+		// exactly one of Revoked / IdentityRejected / Trusted, but "not trusted
+		// and no reason established" must never read as verified.
+		res.Findings = append(res.Findings, prv("SG-PRV-002", model.SevCritical,
+			"Invalid or untrusted OMS signature",
+			"A signature verified but the key is not trusted, and no more specific reason was established.",
+			"Confirm the signing key is trusted and the bundle is authentic."))
 	}
 
 	manifest, err := oms.VerifyManifest(b, st)
