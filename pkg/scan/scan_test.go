@@ -939,3 +939,38 @@ func TestMaliciousFixtureTriggersSecurityDisablement(t *testing.T) {
 		}
 	}
 }
+
+// TestMaliciousFixtureTriggersPaddingConcealment is the end-to-end pin for
+// SG-INJ-013. The fixture's run is 14 blank lines — comfortably over the >=10
+// bound but nowhere near the 600 an attacker would use, so the test proves the
+// threshold rather than an extreme.
+//
+// It also asserts the line number lands at the *start* of the run: reporting the
+// end would point a reviewer at the padded instruction and hide the padding that
+// is the actual finding.
+func TestMaliciousFixtureTriggersPaddingConcealment(t *testing.T) {
+	rep := scanFixture(t, "../../testdata/malicious")
+	var line int
+	for _, f := range rep.Findings {
+		if f.RuleID != "SG-INJ-013" {
+			continue
+		}
+		if f.File != "SKILL.md" {
+			t.Errorf("SG-INJ-013 reported in %s, want SKILL.md", f.File)
+		}
+		if f.Severity != model.SevMedium {
+			t.Errorf("SG-INJ-013 severity = %s, want medium", f.Severity)
+		}
+		line = f.StartLine
+	}
+	if line == 0 {
+		t.Fatal("expected malicious fixture to trigger SG-INJ-013")
+	}
+	// The benign fixture must stay clean — the thresholds exist to make that true.
+	benign := scanFixture(t, "../../testdata/benign")
+	for _, f := range benign.Findings {
+		if f.RuleID == "SG-INJ-013" {
+			t.Errorf("SG-INJ-013 fired on the benign fixture at %s:%d", f.File, f.StartLine)
+		}
+	}
+}
