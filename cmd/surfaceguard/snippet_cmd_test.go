@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -54,11 +55,26 @@ func TestScanSnippetZeroDropsContextLines(t *testing.T) {
 	if !strings.Contains(out, "╵") {
 		t.Fatalf("--snippet=0 dropped the frame entirely:\n%s", firstLines(out, 10))
 	}
-	// With no context, every frame is exactly one source line, so the source
-	// rows and the marker rows must come out one for one.
-	if src, marks := strings.Count(out, "│"), strings.Count(out, "╵"); src != marks {
-		t.Errorf("--snippet=0 printed %d source lines for %d markers (context leaked):\n%s",
-			src, marks, firstLines(out, 10))
+	// With no context, every frame is exactly one source line — so the source
+	// rows must equal the finding count. That, not "one marker per source row",
+	// is what "no context leaked" means.
+	//
+	// The two were the same number until SG-INJ-013 arrived: it is the pack's
+	// first rule whose match spans *multiple lines* (a run of blank lines), and
+	// writeFrame's fallback branch prints such a line plain, with no marker row,
+	// because the highlight span does not fit the single line it renders. So
+	// markers are a subset of source rows, and pinning them equal would make any
+	// future multi-line rule look like a context leak.
+	src, marks := strings.Count(out, "│"), strings.Count(out, "╵")
+	// One "[n/total] file:line:col" header per finding, whatever the file.
+	headers := regexp.MustCompile(`(?m)^\[\d+/\d+\] `).FindAllString(out, -1)
+	if want := len(headers); src != want {
+		t.Errorf("--snippet=0 printed %d source lines for %d findings (context leaked):\n%s",
+			src, want, firstLines(out, 10))
+	}
+	if marks > src {
+		t.Errorf("--snippet=0 printed %d markers for %d source lines:\n%s",
+			marks, src, firstLines(out, 10))
 	}
 }
 

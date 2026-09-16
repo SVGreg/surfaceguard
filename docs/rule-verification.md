@@ -936,7 +936,7 @@ The code had drifted behind its own spec, and four issue-#105 shapes were invisi
   must stay disjoint, since one is the other's mirror.
 - **Relation to `SG-EXE-009` / the consent gate.** Those rules cover *removing* the approval step.
   This covers *lying to it*, which is the same harm reached without touching any setting.
-### SG-INJ-013 — Structural concealment by padding  (AST01/AST04, medium) — **planned** (issue #308)
+### SG-INJ-013 — Structural concealment by padding  (AST01/AST04, medium) — **implemented** (`core-injection`) (issue #308)
 - **Threat.** Instructions pushed out of a human reviewer's view by bulk whitespace: hundreds of
   blank lines before a directive, or hundreds of leading spaces so a line renders far off-screen.
   SkillSpector ships this as **P9, "large whitespace padding hiding instructions"**, a pattern
@@ -971,6 +971,35 @@ The code had drifted behind its own spec, and four issue-#105 shapes were invisi
   should raise the bundle's profile and draw a reviewer's eye without failing on its own, which is
   what `medium` does under the default `fail_on: high`. When the padded content *is* independently
   malicious, that rule already fires and sets the verdict.
+- **Shipped (cycle 142)** in `core-injection` 1.4.0 → 1.5.0 as two `regex` leaves over
+  `manifest`/`body` (and therefore `refs`): `(?m)(?:^[ \t]*\r?\n){10,}` and `(?m)^[ \t]{80,}\S`.
+  No engine change was needed — RE2 expresses both directly, which the triage pass verified before
+  the work started.
+- **Confidence 0.8, not 0.75, and that is the one real calibration decision.** These are `regex`
+  leaves, so unlike the bidi/unicode structural primitives they are **not** exempt from the prose
+  modifiers: `+0.15` in a prose target, `−0.4` near a `docKeyword`. At 0.75 the documentary branch
+  computes to **exactly 0.50** — the emit threshold itself — so the rule would sit on the boundary
+  and flip on a rounding change, the trap `SG-EXE-010` recorded. 0.8 lands that branch at 0.55,
+  decisively emitting, which is the right side: a run of ten blank lines near the word "example" is
+  still a run of ten blank lines.
+- **Indentation is not a fence**, checked rather than assumed: `fenceStarts` counts only ``` markers
+  despite `modCodeExample`'s comment mentioning indented blocks, so leaf (b) does not penalise itself
+  for being indented.
+- **It is the pack's first multi-line match, and that surfaced a real interaction.** A blank-line run
+  spans lines, so `report.writeFrame`'s highlight span does not fit the single line it renders and
+  the fallback branch prints that line **plain, with no marker row**. `TestScanSnippetZeroDropsContextLines`
+  had pinned `count(│) == count(╵)`, which was only ever true because every prior rule matched within
+  one line. The invariant is now the one that was actually intended — **one source row per finding**,
+  with markers a subset — so a future multi-line rule does not read as a context leak.
+- **Corpus: 0 findings / 1,036 bundles**, the predicted rate holding: both thresholds were measured
+  at 0 files before the rule was written. No movement on any other rule, no verdict changes.
+- **Fixtures.** TP: `testdata/malicious/SKILL.md` — a 14-line blank run before a sub-threshold
+  steering line, chosen to sit just over the bound rather than at an extreme, so the fixture proves
+  the *threshold*. Tests: `TestPaddingConcealmentThresholds` (`pkg/rules/padding_test.go`, 16 rows —
+  including the deepest **real** corpus values, 5 blank lines and a 46-column indent, pinned `false`
+  so a future widening has to argue with the measurement) and
+  `TestMaliciousFixtureTriggersPaddingConcealment` (`pkg/scan/scan_test.go`), which also asserts the
+  benign fixture stays clean.
 - **Cautions for the implementer.** (1) A generated or vendored document can carry deep indentation —
   the 26 files at ≥40 are the warning, so do not lower the bound to catch more. (2) Count a run of
   whitespace-**only** lines, not `\n\n`: a file using `"\n    \n    \n"` pads identically and a
