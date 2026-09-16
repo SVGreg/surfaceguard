@@ -159,17 +159,48 @@ func Verify(b *skill.Bundle, env *attest.Envelope, roster policy.Trust) *Result 
 			"Invalid or untrusted signature",
 			"No signature verified against a trusted key in the roster.",
 			"Confirm the signing key is trusted and the bundle is authentic."))
+	// Revocation is reported FIRST, and reported whenever it happened.
+	//
+	// These arms used to be the other way round, with a bare `case !anyTrusted`
+	// *assuming* revocation and setting res.Revoked itself. With more than one
+	// signature the two states can both occur, and the identity arm then
+	// swallowed the revocation: an envelope co-signed by a revoked key and by a
+	// roster key whose identity no rule admits reported only SG-PRV-005
+	// (medium). verificationFailed treats SG-PRV-002/003/004 as failure and
+	// SG-PRV-005 as not — so **a bundle signed by a revoked key verified
+	// without failing**, simply because a second, scoped-out signature was
+	// attached. Revocation is an explicit decision the consumer made about a
+	// key; an identity scope is a narrower statement about which publishers
+	// they accept. The explicit decision has to win.
+	//
+	// Both are emitted when both occurred: they describe *different signatures*
+	// and have different fixes, so collapsing them would hide one of the two
+	// problems the consumer has.
+	case !anyTrusted && res.Revoked:
+		res.Findings = append(res.Findings, prv("SG-PRV-004", model.SevHigh,
+			"Signing key revoked",
+			"A valid signature was made with a revoked key.",
+			"Obtain a re-signed bundle from a non-revoked key."))
+		if res.IdentityRejected {
+			res.Findings = append(res.Findings, prv("SG-PRV-005", model.SevMedium,
+				"Publisher identity not permitted",
+				"Another valid signature is from a roster key whose identity matches no trust.identities rule.",
+				"Add a matching pattern under trust.identities, or remove the key from the roster."))
+		}
 	case !anyTrusted && res.IdentityRejected:
 		res.Findings = append(res.Findings, prv("SG-PRV-005", model.SevMedium,
 			"Publisher identity not permitted",
 			"The signature is valid and the key is in the roster, but its identity matches no trust.identities rule.",
 			"Add a matching pattern under trust.identities, or remove the key from the roster."))
 	case !anyTrusted:
-		res.Revoked = true
-		res.Findings = append(res.Findings, prv("SG-PRV-004", model.SevHigh,
-			"Signing key revoked",
-			"The valid signature was made with a revoked key.",
-			"Obtain a re-signed bundle from a non-revoked key."))
+		// Unreachable today: with a valid signature from a roster key, the loop
+		// above sets exactly one of Revoked / IdentityRejected / anyTrusted. Kept
+		// as a fail-closed floor rather than a silent no-finding, because "not
+		// trusted and we cannot say why" must never read as verified.
+		res.Findings = append(res.Findings, prv("SG-PRV-002", model.SevCritical,
+			"Invalid or untrusted signature",
+			"A signature verified but the key is not trusted, and no more specific reason was established.",
+			"Confirm the signing key is trusted and the bundle is authentic."))
 	}
 
 	// Expiry — fail closed. An absent or unparseable expires_at used to skip the
