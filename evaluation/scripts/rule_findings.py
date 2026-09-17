@@ -55,6 +55,28 @@ def load(raw_dir):
         yield rep, rep.get("_path", p.stem), rep.get("_source", "?")
 
 
+def _line_shape(f):
+    """Describe the source line's shape without ever reproducing its content.
+
+    Returns a short string like "line 154 chars; 90 leading whitespace; 63 more
+    after the match" — enough to tell a concealed instruction from an alignment
+    artifact, which the excerpt alone cannot do for a structural match.
+    """
+    line = f.get("line_text") or ""
+    if not line:
+        return ""
+    lead = len(line) - len(line.lstrip(" \t"))
+    end = f.get("end_column")
+    parts = [f"line {len(line)} chars"]
+    if lead:
+        parts.append(f"{lead} leading whitespace")
+    if isinstance(end, int) and 0 < end <= len(line) + 1:
+        rest = len(line) - (end - 1)
+        body = len(line[lead:].strip())
+        parts.append(f"{rest} more after the match, {body} non-blank on the line")
+    return "; ".join(parts)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("rule", help="rule id, e.g. SG-INJ-001")
@@ -87,6 +109,18 @@ def main():
                     "confidence": f.get("confidence"),
                     "severity": f.get("severity"),
                     "excerpt": (f.get("excerpt") or "").strip(),
+                    # Shape of the source line, NEVER its content. `line_text`
+                    # is verbatim and, unlike `excerpt`, is not secret-redacted
+                    # (pkg/model: "attacker-authored: report.Sanitize it before
+                    # it reaches a terminal"), so the sweep guardrail that lets
+                    # us look at excerpts does not extend to it. Measuring it is
+                    # safe; printing it is not. Without this, a rule whose match
+                    # is structural reports an excerpt that cannot be judged —
+                    # SG-INJ-013 matches `^[ \t]{80,}\S`, so its excerpt is
+                    # padding plus exactly one character no matter what the line
+                    # actually says, and the 2026-09-17 skillssh sweep misread
+                    # three of them as false positives on that basis.
+                    "shape": _line_shape(f),
                 }
             )
             bundles.add(path)
@@ -131,7 +165,9 @@ def main():
     print(f"\n--- {label} (judge each: true positive, false positive, or ambiguous) ---")
     for h in sorted(shown, key=lambda h: (h["bundle"], h["file"], h["line"] or 0)):
         print(f"\n{h['bundle']}/{h['file']}:{h['line']}  conf={h['confidence']} sev={h['severity']}")
-        print(f"  | {h['excerpt'][:200]}")
+        print(f"  | {h['excerpt'][:200] or '<whitespace only>'}")
+        if h["shape"]:
+            print(f"  ~ {h['shape']}")
 
 
 if __name__ == "__main__":
