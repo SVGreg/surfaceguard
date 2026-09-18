@@ -489,3 +489,57 @@ func TestSARIFDemotionPropertiesSurvive(t *testing.T) {
 		t.Errorf("severity = %v, want the capped medium", props["severity"])
 	}
 }
+
+// TestArtifactURIEscapesHostileFilenames pins that a bundle cannot steer a
+// SARIF consumer somewhere else by naming its own files. Each row is a path a
+// bundle may legally contain; the raw form was emitted verbatim before this was
+// fixed, and each one changes what RFC 3986 says the location is.
+func TestArtifactURIEscapesHostileFilenames(t *testing.T) {
+	cases := []struct {
+		name, path, want, why string
+	}{
+		{
+			name: "fragment delimiter",
+			path: "refs/notes #1.md",
+			want: "refs/notes%20%231.md",
+			why:  `"#" would start a fragment, leaving the path "refs/notes "`,
+		},
+		{
+			name: "percent is escaped, not passed through",
+			path: "refs/a%2Fb.md",
+			want: "refs/a%252Fb.md",
+			why:  `unescaped, a consumer decodes "%2F" to "/" and resolves into another directory`,
+		},
+		{
+			name: "pipe",
+			path: "refs/a|b.md",
+			want: "refs/a%7Cb.md",
+			why:  `"|" is not a legal URI character`,
+		},
+		{
+			name: "question mark starts a query",
+			path: "refs/a?b.md",
+			want: "refs/a%3Fb.md",
+			why:  `"?" would start a query string`,
+		},
+		{
+			name: "ordinary paths are untouched",
+			path: "scripts/setup.sh",
+			want: "scripts/setup.sh",
+			why:  "the common case must not churn existing alerts",
+		},
+		{
+			name: "separators survive",
+			path: "a/b/c/SKILL.md",
+			want: "a/b/c/SKILL.md",
+			why:  "escaping must not eat the path separator",
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := artifactURI(c.path); got != c.want {
+				t.Errorf("artifactURI(%q) = %q, want %q — %s", c.path, got, c.want, c.why)
+			}
+		})
+	}
+}

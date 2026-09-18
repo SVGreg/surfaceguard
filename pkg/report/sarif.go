@@ -10,6 +10,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/url"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -376,7 +378,7 @@ func sarifResultFor(f model.Finding, ruleIndex int, taxaIndex map[string]int, se
 	}
 	if f.File != "" {
 		loc := sarifLocation{PhysicalLocation: sarifPhysicalLocation{
-			ArtifactLocation: sarifArtifactLocation{URI: f.File, URIBaseID: srcRoot},
+			ArtifactLocation: sarifArtifactLocation{URI: artifactURI(f.File), URIBaseID: srcRoot},
 		}}
 		if f.StartLine > 0 {
 			// EndLine is omitted when it would just repeat StartLine; SARIF
@@ -426,6 +428,28 @@ func sarifResultFor(f model.Finding, ruleIndex int, taxaIndex map[string]int, se
 		res.Taxa = taxaRefs(f.AST, taxaIndex)
 	}
 	return res
+}
+
+// artifactURI renders a bundle-relative path as the URI reference SARIF's
+// artifactLocation.uri is specified to hold (RFC 3986), rather than pasting the
+// raw path in. A bundle names its own files, so the path is attacker-controlled
+// and three characters change what a consumer resolves:
+//
+//   - "#" begins a fragment, so "refs/notes #1.md" parses as the path
+//     "refs/notes " with fragment "1.md" — the alert points at a file that does
+//     not exist, and the real one is never flagged;
+//   - " ", "|" and "?" are not legal unescaped, so a strict consumer may reject
+//     the whole run rather than one result;
+//   - a literal "%" must be escaped to "%25", or "a%2Fb.md" decodes to "a/b.md"
+//     and the location silently resolves into a different directory.
+//
+// url.URL.EscapedPath escapes exactly these while leaving "/" as the separator,
+// so ordinary paths ("SKILL.md", "scripts/setup.sh") are unchanged and no
+// consumer sees a difference for them. filepath.ToSlash runs first because
+// SARIF paths are "/"-separated on every platform; it is a no-op on Unix, where
+// the separator already is "/".
+func artifactURI(p string) string {
+	return (&url.URL{Path: filepath.ToSlash(p)}).EscapedPath()
 }
 
 // fingerprint is a stable per-finding identity for cross-run dedup. It hashes
