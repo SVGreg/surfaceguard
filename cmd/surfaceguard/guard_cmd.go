@@ -44,8 +44,8 @@ declares, so whoever approves it sees what they are admitting. Whatever load
 denies, install denies too.
 
 CACHING (--cache-dir): decisions are keyed by the bundle's content hash, the
-policy, and whether scanning was skipped, so one changed byte or one changed
-setting is a miss. Off unless asked for.
+policy, the mode, and whether scanning was skipped, so one changed byte or one
+changed setting is a miss. Off unless asked for.
 
 EXIT CODES: 0 allow or warn · 1 deny · 3 usage error · 4 internal error.`,
 		Example: `  surfaceguard guard ./my-skill

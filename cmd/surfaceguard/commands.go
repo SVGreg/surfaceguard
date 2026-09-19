@@ -98,7 +98,10 @@ EXIT CODES: 0 pass/warn · 1 fail · 3 usage error · 4 internal error.`,
 			}
 			rep := scan.New(rs, pol).WithContexts(cs).Scan(b)
 
-			w := outputWriter(out)
+			w, err := outputWriter(out)
+			if err != nil {
+				return err
+			}
 			defer closeWriter(w)
 			// Resolved per writer, not once: with --out these are two different
 			// destinations, and the file must stay escape-free even when the
@@ -544,16 +547,21 @@ func emit(w *os.File, rep *scan.Report, format string, opt report.Options) error
 	}
 }
 
-func outputWriter(path string) *os.File {
+// outputWriter opens --out, or returns stdout when it is unset. It returns an
+// error rather than exiting: exit codes are the contract in
+// `cmd/surfaceguard/main.go` and are produced by returning an `exitErr` from a
+// command (CLAUDE.md). Calling os.Exit from a helper bypasses that, skips any
+// deferred cleanup the caller has registered, and makes the failure path
+// untestable — a test that reaches it kills the test binary.
+func outputWriter(path string) (*os.File, error) {
 	if path == "" {
-		return os.Stdout
+		return os.Stdout, nil
 	}
 	f, err := os.Create(path)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "error:", err)
-		os.Exit(3)
+		return nil, fail(3, "cannot write --out %q: %v\n  the directory must already exist and be writable.", path, err)
 	}
-	return f
+	return f, nil
 }
 
 func closeWriter(w *os.File) {
