@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.5.4](https://github.com/SVGreg/surfaceguard/compare/v0.5.3...v0.5.4) (2026-09-19)
+
+
+### Bug Fixes
+
+* **cmd:** outputWriter returns an exitErr instead of calling os.Exit ([#323](https://github.com/SVGreg/surfaceguard/issues/323)) ([53c032d](https://github.com/SVGreg/surfaceguard/commit/53c032d1f03965c5b82d27b3584a5a9f68b9c7dc))
+* **evaluation:** report line shape in rule_findings.py so structural matches can be judged ([#317](https://github.com/SVGreg/surfaceguard/issues/317)) ([ba55286](https://github.com/SVGreg/surfaceguard/commit/ba55286aec087f29d36d70bb6ffe024f30383f06))
+* **report:** percent-encode the SARIF artifact URI ([#320](https://github.com/SVGreg/surfaceguard/issues/320)) ([a2377f8](https://github.com/SVGreg/surfaceguard/commit/a2377f870e6ff7c9515dc3d7c8af07cce1d8e82f))
+
 ## [0.5.3](https://github.com/SVGreg/surfaceguard/compare/v0.5.2...v0.5.3) (2026-09-16)
 
 
