@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.5](https://github.com/SVGreg/surfaceguard/compare/v0.5.4...v0.5.5) (2026-09-26)
+
+
+### Features
+
+* **rules:** add SG-EVA-004 — reviewer-directed verdict manipulation (AST08) ([#331](https://github.com/SVGreg/surfaceguard/issues/331)) ([e9ccd1b](https://github.com/SVGreg/surfaceguard/commit/e9ccd1b116d7f3649bf9d0ccbd66c0219d0e3708))
+
+
+### Bug Fixes
+
+* **rules:** narrow SG-SEC-001 — the verb→path gap no longer crosses a sentence ([#327](https://github.com/SVGreg/surfaceguard/issues/327)) ([00e30fa](https://github.com/SVGreg/surfaceguard/commit/00e30fa9ba245b89134bc9239575ed6d0ef4cfcd)), closes [#325](https://github.com/SVGreg/surfaceguard/issues/325)
+
 ## [0.5.4](https://github.com/SVGreg/surfaceguard/compare/v0.5.3...v0.5.4) (2026-09-19)
 
 
