@@ -243,6 +243,9 @@ verdict: fail   risk score: 100/100 (L3)   [crit 15, high 50, med 8, low 0, info
 Discovery follows these rules:
 - A directory holding `SKILL.md` is one skill, and its subtree belongs to it.
 - `.git` and vendored trees (`node_modules`, `.venv`, `vendor`, …) are skipped.
+  This applies to *finding* skills. Inside a skill, files under a vendored tree are still scanned,
+  but their findings are capped at low (`CTX-VENDORED-DEPENDENCY`), so a dependency's own code
+  cannot fail the skill and still cannot hide in it.
 - A symlinked skill folder is scanned once, by its real path, and never
   followed for descent. A symlink to a folder that is not a skill is noted in
   the report rather than followed.
