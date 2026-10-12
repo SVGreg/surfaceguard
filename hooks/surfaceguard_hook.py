@@ -96,17 +96,115 @@ CONFIG_BASENAME = "surfaceguard-hook.config.json"
 
 
 def load_config() -> Dict[str, Any]:
-    """Merge the first config found (env → project → user) over defaults."""
+    """Resolve the hook config over defaults.
+
+    `$SURFACEGUARD_HOOK_CONFIG`, when it names a file, is authoritative and used
+    alone: it comes from the user's environment, not from the repository. Without
+    it, the user config (`~/.claude/…`) applies in full, and then the project
+    config (`<project>/.claude/…`) may only **tighten** it (see
+    _tighten_from_project).
+
+    The project file used to win outright. In the deployment where the gate is a
+    boundary at all (hook and config at user scope, protecting the user from the
+    repo they open), a cloned repo could then set `mode: log`, allowlist its own
+    skills, or point `surfaceguard_bin` at its own script, which would run on
+    every skill call (issue #385). That is the CVE-2025-59536 trust inversion,
+    in the tool that detects it.
+    """
     cfg = dict(DEFAULT_CONFIG)
-    for path in _config_candidates():
-        if path and os.path.isfile(path):
-            try:
-                with open(path, "r", encoding="utf-8") as fh:
-                    cfg.update(json.load(fh))
-            except (OSError, ValueError) as exc:  # pragma: no cover - defensive
-                _stderr(f"surfaceguard-hook: ignoring bad config {path}: {exc}")
-            break
+    env_path, project_path, user_path = _config_candidates()
+    if env_path and os.path.isfile(env_path):
+        cfg.update(_read_config(env_path))
+        return cfg
+    if os.path.isfile(user_path):
+        cfg.update(_read_config(user_path))
+    if os.path.isfile(project_path) and not _same_file(project_path, user_path):
+        _tighten_from_project(cfg, _read_config(project_path), project_path)
     return cfg
+
+
+def _read_config(path: str) -> Dict[str, Any]:
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            data = json.load(fh)
+    except (OSError, ValueError) as exc:  # pragma: no cover - defensive
+        _stderr(f"surfaceguard-hook: ignoring bad config {path}: {exc}")
+        return {}
+    if not isinstance(data, dict):
+        _stderr(f"surfaceguard-hook: ignoring bad config {path}: not a JSON object")
+        return {}
+    return data
+
+
+def _same_file(a: str, b: str) -> bool:
+    """True when the project config *is* the user config (project dir == ~)."""
+    try:
+        return os.path.samefile(a, b)
+    except OSError:
+        return False
+
+
+# Strictness ranks for the keys a project config may raise. Higher is stricter.
+_MODE_RANK = {"log": 0, "block-invalid": 1, "enforce": 2}
+_ACTION_RANK = {"allow": 0, "warn": 1, "deny": 2}
+_ON_ERROR_RANK = {"allow": 0, "deny": 1}
+
+
+def _tighten_from_project(cfg: Dict[str, Any], project: Dict[str, Any], path: str) -> None:
+    """Apply the project config's values only where they make the gate stricter.
+
+    Accepted when stricter: `mode` (log < block-invalid < enforce),
+    `unresolved_action` (allow < warn < deny), `on_error` (allow < deny),
+    `system_messages` (only switched on), `builtin_allowlist` (only shrunk, by
+    intersection), `trigger_tools` (only extended). Every other key is ignored
+    with a notice: `surfaceguard_bin` (would run the repo's own binary),
+    `skill_dirs` and `policy` (would move resolution or the trust roster),
+    `log_file` and `cache_dir` (would write where the repo says), and the
+    timeouts (a tiny timeout with `on_error: allow` fails every check open).
+    """
+    ignored: List[str] = []
+    for key, value in project.items():
+        if key == "mode":
+            if not _raise(cfg, key, value, _MODE_RANK):
+                ignored.append(key)
+        elif key == "unresolved_action":
+            if not _raise(cfg, key, value, _ACTION_RANK):
+                ignored.append(key)
+        elif key == "on_error":
+            if not _raise(cfg, key, value, _ON_ERROR_RANK):
+                ignored.append(key)
+        elif key == "system_messages":
+            if value is True:
+                cfg[key] = True
+            elif value != cfg.get(key):
+                ignored.append(key)
+        elif key == "builtin_allowlist" and isinstance(value, list):
+            cur = list(cfg.get(key, []))
+            keep = set(value)
+            if any(n not in cur for n in value):
+                ignored.append(key + " (additions)")
+            cfg[key] = [n for n in cur if n in keep]
+        elif key == "trigger_tools" and isinstance(value, list):
+            cur = list(cfg.get(key, []))
+            cfg[key] = cur + [t for t in value if isinstance(t, str) and t not in cur]
+            if any(t not in value for t in cur):
+                ignored.append(key + " (removals)")
+        else:
+            ignored.append(key)
+    if ignored:
+        _stderr(f"surfaceguard-hook: project config {path} may only tighten the gate; "
+                f"ignored: {', '.join(ignored)}")
+
+
+def _raise(cfg: Dict[str, Any], key: str, value: Any, rank: Dict[str, int]) -> bool:
+    """Set cfg[key] = value if value ranks at least as strict; report whether it held."""
+    if not isinstance(value, str) or value not in rank:
+        return False
+    current = rank.get(str(cfg.get(key)), 0)
+    if rank[value] < current:
+        return False
+    cfg[key] = value
+    return True
 
 
 def _config_candidates() -> List[str]:
