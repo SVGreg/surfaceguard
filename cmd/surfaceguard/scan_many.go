@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -113,8 +114,12 @@ func runMultiScan(paths []string, o multiScanOpts) error {
 		Verbose: o.verbose, Source: source, Version: Version,
 		Width: terminalWidth(w),
 	}
-	if err := emitMulti(w, m, o.format, opt); err != nil {
+	sw := &stickyWriter{w: w}
+	if err := emitMulti(sw, m, o.format, opt); err != nil {
 		return fail(4, "%v", err)
+	}
+	if err := finishOutput(w, sw, o.out); err != nil {
+		return err
 	}
 	if !o.quiet && o.out != "" {
 		stdoutOpt := opt
@@ -128,7 +133,7 @@ func runMultiScan(paths []string, o multiScanOpts) error {
 	return nil
 }
 
-func emitMulti(w *os.File, m *scan.MultiReport, format string, opt report.Options) error {
+func emitMulti(w io.Writer, m *scan.MultiReport, format string, opt report.Options) error {
 	switch format {
 	case "json":
 		return report.MultiJSON(w, m, opt)
