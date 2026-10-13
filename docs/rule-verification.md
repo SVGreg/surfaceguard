@@ -3508,6 +3508,16 @@ licence grant clauses, SPDX headers, code-of-conduct text. "Common and benign" d
 that set is unbounded. If a carve-out cannot be stated that way, it is a grammar fix in the
 rule's match tree instead. Full rationale and the shipped decisions: `docs/design-note-demotion.md`.
 
+**Location as the canonical form (`paths:`).** One entry keys on *where* a file sits rather than on
+wording. `CTX-VENDORED-DEPENDENCY` selects files by bundle-relative path regex, under the directory
+names package managers write install trees into (`node_modules/`, `site-packages/`, `venv/`,
+`vendor/`, …). It has no match tree and caps every finding in those files to low. This is the same
+bar as everything else here: those names are fixed by the tools that write them. The motivating
+case is issue #293, where one ClawHub bundle failed at risk 100 on 78 findings, and every one of
+them was in pip's and httpx's source under a vendored `venv/`. The files are **capped, not skipped**.
+A skip list would make `node_modules/` the hiding place #187 warns about. Under a cap, a payload
+placed there is still a finding, just one that no longer decides the verdict.
+
 **Precision budget:** track per-rule FP rate against the benign corpus (`anthropics/skills` mirror). A rule exceeding a configurable FP ceiling (default 2% of benign skills) is auto-demoted to `info`/`warn` until tuned — coverage never comes at the cost of an unusable signal-to-noise ratio.
 
 ### 8.1 A trailing `\b` binds to every branch of the alternation before it

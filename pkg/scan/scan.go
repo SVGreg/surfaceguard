@@ -174,7 +174,7 @@ func (s *Scanner) contextCaps(targets []scanTarget) severityCaps {
 	caps := severityCaps{}
 	for _, c := range s.contexts {
 		for _, t := range targets {
-			if !c.AppliesTo(t.name, t.lang) {
+			if !c.AppliesTo(t.name, t.lang) || !c.AppliesToPath(t.file) {
 				continue
 			}
 			lines, wholeFile := c.Spans(t.name, t.text)
