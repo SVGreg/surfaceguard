@@ -2586,6 +2586,36 @@ case, and an ordinary ```` ```bash ```` block containing `curl … | bash` that 
   `ls ~/.claude/skills/`, `cat ../other-skill/SKILL.md`. FP: skill reading its own `./assets/`,
   `head -20 README.md`, `ls ./scripts/`. See `TestAgentConfigSnoopingCoversReadVariants`.
 
+### SG-AS-002 — Cross-skill payload handoff  (AST01/AST03, medium) — **implemented** (`core-exec`)
+- **Threat:** the reader half of ColluSkill's *artifact passing* (arXiv:2608.09732; CompoSkill,
+  arXiv:2608.16246). Skill A drops `/tmp/.wf/stage2.sh`, skill B runs `bash /tmp/.wf/stage2.sh`, and
+  each bundle scans clean alone. The paper reports 96% evasion of six skill scanners. Issue #382.
+- **Signals (shipped):** an `all` of two parts. **(1) Exec from a drop location:** an interpreter
+  or `source` (`bash|sh|zsh|dash|ksh|source|python|node|perl|ruby|pwsh|php|osascript`, up to three
+  flags) pointed at a path under `/tmp`, `/var/tmp`, `/dev/shm`, `~/.cache`, `$HOME/.cache` or
+  `$TMPDIR`. A second leaf catches `. /tmp/…` dot-sourcing, but only in command position (line
+  start or after `;&|`), so a sentence ending in a period before a path does not match. **(2) A
+  file-scoped `not:`:** the same file does not write into a drop location (`>`/`>>`, `tee`,
+  `cp|mv|install|ln|unzip|tar …`, `-o`/`-O`/`--output`/`-d`, `open(…'w')`, `write_text`,
+  `writeFileSync`) and does not use `mktemp`/`tempfile`/`mkstemp`/`NamedTemporaryFile`/`os.tmpdir`.
+- **Why "not written by this file":** the row's corpus probe found exec-from-drop mostly in skills
+  running a temp file they had just written (a test harness, a repro script). "Not produced here"
+  is the discriminator.
+- **Known limits (deliberate):**
+  - **(a) Scope is one file, not the bundle.** A writer in a different file of the same bundle
+    still fires. That is why the rule is **medium**: it warns rather than fails.
+  - **(b) The `not:` is path-agnostic.** RE2 has no backreferences, so a file that writes drop
+    path A while running drop path B is cleared. The malicious fixture's body is exactly this case:
+    it writes `> /tmp/.t`, so the fixture carries the reader in its own `stage2-loader.sh`.
+  - **(c) The two-bundle pair is out of scope here.** Catching both halves together is the
+    `pkg/scan` cross-bundle correlation engine row, not a rule.
+- **FP carve-outs:** reading or listing a drop path (`cat /tmp/build.log`, `ls /tmp/`, a log
+  location in prose) is not execution. Running a bundled script (`bash scripts/setup.sh`) is not a
+  drop location.
+- **Confidence:** 0.7 (prose register applies the usual documentary modifier). Corpus (1036 bundles, 2026-10-13): **0 findings**, no verdict moved. Leaf (1) alone matches 2 files (one test harness shipped in two copies of a ClawHub skill), and both write the temp file they run, so the `not:` clears them.
+- **Fixtures:** `testdata/malicious/stage2-loader.sh` (`TestMaliciousFails`);
+  `TestDropLocationHandoffNeedsAForeignPayload` (7 true, 8 false rows across `scripts` and `body`).
+
 ### SG-DEP-001 — Unpinned dependencies  (AST02/AST07, medium) — **implemented** (`core-supply`)
 - **Signals (shipped):** only **explicit floating** specs, which are the high-signal, low-FP subset —
   `"pkg": "*"` / `"latest"` in a JSON manifest; `pkg@latest` (npm/go/pip install); a VCS dep on a
@@ -3461,7 +3491,7 @@ section (Signals / FP carve-outs / Confidence / Fixtures) in the appropriate num
 | `SG-REF-004` | Skill references an external ruleset/config the agent is told to obey at runtime | distinct from `SG-REF-002` (unpinned external reference) |
 | `SG-REF-005` | Self-ingested instructions — skill tells the agent to read its own log / prior tool output / transcript and **follow** it | the `SG-REF-003` shape with a *local, agent-written* carrier instead of a URL; that is why SG-REF-003's external-source token misses it |
 | `SG-SEC-005` | ~~Instruction to attach a credential or env var to an outbound request~~ — **shipped**, spec now at §3 above | `SG-SEC-004` is a retired alias of `SG-SSRF-001`, so 005 was the next free id in the family. The instruction-layer counterpart of `SG-TAINT-002` (same threat as a *data-flow* in code, still deferred to M3) |
-| `SG-AS-002` | **Cross-skill payload handoff** — the skill executes or sources a file under a shared drop location (`/tmp`, `/var/tmp`, `/dev/shm`, `~/.cache`, `$TMPDIR`) that the bundle does not itself write: the reader half of ColluSkill's artifact passing | `SG-AS-001` covers reading peer skills' *directories*; 002 covers a payload handed through a shared location. The pair across bundles is a `pkg/scan` multi-bundle correlation, not a rule (engine row). Sources: arXiv:2608.09732, arXiv:2608.16246; issue #382 |
+| `SG-AS-002` | ~~Cross-skill payload handoff~~ — **shipped (single-file tripwire)**, spec now at §SG-AS-002 above — the skill executes or sources a file under a shared drop location (`/tmp`, `/var/tmp`, `/dev/shm`, `~/.cache`, `$TMPDIR`) that the bundle does not itself write: the reader half of ColluSkill's artifact passing | `SG-AS-001` covers reading peer skills' *directories*; 002 covers a payload handed through a shared location. The pair across bundles is a `pkg/scan` multi-bundle correlation, not a rule (engine row). Sources: arXiv:2608.09732, arXiv:2608.16246; issue #382 |
 | `SG-STEER-002` | ~~Dependency steering — skill prose biases the agent's *generated code* toward an attacker-chosen package~~ — **shipped (static tripwire)**, spec now at §2 above | the name-vetoed optimized variant stays T3 (see `planned-rules.md` SG-LLM notes) |
 | `SG-TAINT-001`…`SG-TAINT-005` | Data-flow correlations (untrusted→exec, secret→network, fetched→file-write, context→request body, decoded→exec) | §5 above holds the design; deferred to M3 |
 

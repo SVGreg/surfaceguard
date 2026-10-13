@@ -1100,7 +1100,7 @@ mapped to OWASP Agentic Skills Top 10 IDs (`AST01`–`AST10`):
 |------|--------|---------------|
 | `core-injection` | prompt injection, jailbreak, hidden/obfuscated instructions | `SG-INJ-001` imperative override, `SG-INJ-002` hidden/bidi/tag-smuggled text, `SG-INJ-006` system-prompt exfiltration, `SG-ANTI-001` anti-refusal framing |
 | `core-network` | egress & remote-code fetch | `SG-NET-001` suspicious egress host, `SG-NET-002` pipe-to-shell, `SG-SSRF-001` cloud-metadata/SSRF |
-| `core-exec` | unsafe execution | `SG-EXE-003` privilege escalation, `SG-EXE-004` persistence, `SG-ROGUE-001` rogue tool use |
+| `core-exec` | unsafe execution | `SG-EXE-003` privilege escalation, `SG-EXE-004` persistence, `SG-ROGUE-001` rogue tool use, `SG-AS-002` payload run from a shared drop location |
 | `core-secret` | secret theft & sensitive-path access | `SG-SEC-001` sensitive-path read, `SG-AS-001` agent-state tampering |
 | `core-metadata` | manifest hygiene | `SG-MTA-003` over-broad `allowed-tools`, unsafe deserialization |
 | `core-supply` | supply chain (AST02) | `SG-DEP-001` unpinned dependency, `SG-DEP-007` remote-package auto-execution, `SG-EVA-001` payload staged where scanners don't look |

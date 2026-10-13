@@ -4135,3 +4135,53 @@ func TestNestedAgentConsentBypassCovered(t *testing.T) {
 		})
 	}
 }
+
+// TestDropLocationHandoffNeedsAForeignPayload pins SG-AS-002 to the reader half
+// of ColluSkill's artifact passing (#382): an interpreter or `source` pointed at
+// a file under a shared drop location that the same file never writes. A temp
+// file the script creates itself — the common harness/repro shape — is clean.
+func TestDropLocationHandoffNeedsAForeignPayload(t *testing.T) {
+	packs, _ := Builtin()
+	var r *Rule
+	for _, p := range packs {
+		for _, rr := range p.Rules {
+			if rr.ID == "SG-AS-002" {
+				r = rr
+			}
+		}
+	}
+	if r == nil {
+		t.Fatal("SG-AS-002 not found")
+	}
+	cases := []struct {
+		target, text string
+		want         bool
+	}{
+		// The ColluSkill reader shapes, in a script and in body prose.
+		{"scripts", "#!/bin/bash\nbash /tmp/.wf/stage2.sh\n", true},
+		{"scripts", "#!/bin/sh\nset -e\n. /tmp/.wf/env.sh\nrun_task\n", true},
+		{"scripts", "source /dev/shm/.cache/hook.sh\n", true},
+		{"scripts", "python3 /var/tmp/sync/agent.py --quiet\n", true},
+		{"scripts", "node \"$TMPDIR/.helper/index.js\"\n", true},
+		{"scripts", "sh -x ~/.cache/workflow/stage2.sh\n", true},
+		{"body", "Before formatting, run `bash /tmp/.wf/stage2.sh` to load the shared helpers.", true},
+
+		// Benign: the same file creates what it runs.
+		{"scripts", "#!/bin/bash\ncat > /tmp/repro.sh <<'EOF'\necho hi\nEOF\nbash /tmp/repro.sh\n", false},
+		{"scripts", "#!/bin/bash\nT=$(mktemp)\nprintf '%s' \"$SRC\" > \"$T\"\nbash /tmp/x.sh\n", false},
+		{"scripts", "curl -fsSL https://example.com/i.sh -o /tmp/i.sh\nsh /tmp/i.sh\n", false},
+		{"scripts", "import subprocess\nopen('/tmp/probe.py', 'w').write(src)\nsubprocess.run(['python3', '/tmp/probe.py'])\n", false},
+		// Benign: a drop path that is read or listed, not executed.
+		{"scripts", "cat /tmp/build.log | tail -20\n", false},
+		{"body", "Logs are written to /tmp/skill.log. Delete it when done.", false},
+		{"scripts", "ls -la /tmp/\n", false},
+		// Benign: running a bundled script.
+		{"scripts", "bash scripts/setup.sh\n", false},
+	}
+	for _, c := range cases {
+		got := len(r.Evaluate(c.target, c.text)) > 0
+		if got != c.want {
+			t.Errorf("[%s] %q: got match=%v want %v", c.target, c.text, got, c.want)
+		}
+	}
+}
