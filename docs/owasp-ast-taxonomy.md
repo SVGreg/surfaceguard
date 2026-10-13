@@ -406,6 +406,7 @@ surfaceguard statically inspects a skill's own bundle, so a finding is filed by
 | `SG-SEC-002` | Embedded secret | AST03, AST08 | **AST08** | −AST03 (P6: an embedded secret is the AST08 credential-scan check, not access-over-privilege) |
 | `SG-SEC-003` | Environment harvesting | AST03 | **AST03** | unchanged (P5: mass env read to harvest credentials) |
 | `SG-AS-001` | Agent-config / cross-skill snooping | AST03 | **AST03** | unchanged (P5: reading beyond own scope) |
+| `SG-AS-002` | Cross-skill payload handoff (exec from a shared drop location) | AST01, AST03 | **AST01, AST03** | new — AST01 primary (a payload executed that no reviewed bundle ships); AST03 for reaching into a world-shared location beyond the skill's own files |
 | `SG-SEC-005` | Instruction to attach a credential to an outbound request | AST03, AST01 | **AST03, AST01** | unchanged — AST03 primary (P5: the agent's credential is disclosed beyond the skill's stated function) with AST01 for the directive that causes it; the prose counterpart of `SG-SEC-003`'s code-level harvest |
 
 **Provenance (`verify`, not a static pack):** `SG-PRV-001…006` → **AST01, AST02**
