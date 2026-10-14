@@ -34,12 +34,6 @@ func lineSpan(text string, off int) (start, end int) {
 	return start, end
 }
 
-// lineText returns the whole line containing the byte offset off.
-func lineText(text string, off int) string {
-	start, end := lineSpan(text, off)
-	return text[start:end]
-}
-
 // locate resolves a match to the source line it sits on and to 1-based rune
 // columns within that line. EndColumn is exclusive — the column just past the
 // last matched rune — which is what SARIF's region.endColumn means.
