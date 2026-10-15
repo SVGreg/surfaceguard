@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -365,8 +366,8 @@ func normalizePath(root, p string) string {
 // Deliberately still absent, pending their own measured change: `.tsx`/`.jsx`/
 // `.rs` (183 corpus files — a large population entering `scripts` at once, which
 // needs its own before/after regen), and `.fish`/`.ksh`, which have no honest
-// label here — calling fish "bash" would reintroduce the mislabeling already
-// tracked for `pwsh` in shebangLanguage.
+// label here — calling fish "bash" would repeat the mislabeling shebangLanguage
+// had for `pwsh` (and fish) until it identified interpreters by name.
 var scriptExt = map[string]string{
 	".sh": "bash", ".bash": "bash", ".zsh": "bash",
 	".py": "python", ".pyw": "python",
@@ -489,11 +490,15 @@ func classify(f *File) {
 // script shipped *without* a telltale extension — a common way to slip a payload
 // past extension-based classification, and the only reason a bundled `perl`/`php`
 // one-liner would otherwise land as an inert `asset` and skip every code-layer
-// rule. It covers the same interpreters as scriptExt so classification is
-// consistent whether or not the file carries an extension, and it reports the
-// actual language instead of assuming bash (a python shebang used to be labeled
-// bash, hiding it from language-gated rules). "sh" is checked last because it is
-// a substring of many interpreter names.
+// rule. It reports the actual language instead of assuming bash (a python
+// shebang used to be labeled bash, hiding it from language-gated rules).
+//
+// The interpreter is identified by name first (shebangInterpreters), so the
+// label matches scriptExt's for the same language: `#!/usr/bin/env pwsh` is
+// powershell, as a .ps1 is, where a substring test called it bash because "pwsh"
+// contains "sh". The substring test survives only as the fallback for an
+// interpreter the table does not know, so no shebang that classified as a script
+// before stops being one.
 func shebangLanguage(content []byte) string {
 	if !bytes.HasPrefix(content, []byte("#!")) {
 		return ""
@@ -501,6 +506,9 @@ func shebangLanguage(content []byte) string {
 	line := content
 	if i := bytes.IndexByte(content, '\n'); i >= 0 {
 		line = content[:i]
+	}
+	if lang, ok := shebangInterpreters[shebangInterpreter(line[2:])]; ok {
+		return lang
 	}
 	switch {
 	case bytes.Contains(line, []byte("python")):
@@ -517,6 +525,44 @@ func shebangLanguage(content []byte) string {
 		return "bash"
 	}
 	return ""
+}
+
+// shebangInterpreters maps an interpreter's base name, version suffix removed,
+// to the label scriptExt gives the same language. The sh family stays "bash", as
+// it always has here, so the one label a future language-gated rule would key on
+// for shell does not split.
+var shebangInterpreters = map[string]string{
+	"sh": "bash", "bash": "bash", "zsh": "bash", "dash": "bash", "ash": "bash",
+	"ksh": "bash", "mksh": "bash",
+	"python": "python", "pypy": "python",
+	"node": "javascript", "nodejs": "javascript", "bun": "javascript",
+	"deno": "typescript", "ts-node": "typescript", "tsx": "typescript",
+	"ruby": "ruby", "perl": "perl", "php": "php",
+	"pwsh": "powershell", "powershell": "powershell",
+	"fish": "fish", "lua": "lua",
+}
+
+// shebangInterpreter returns the base name of the interpreter a shebang line
+// runs, looking through `env` (and its flags and NAME=value assignments, as in
+// `#!/usr/bin/env -S deno run`), with a trailing version removed: python3.12
+// and node18 name python and node.
+func shebangInterpreter(rest []byte) string {
+	fields := strings.Fields(string(rest))
+	if len(fields) == 0 {
+		return ""
+	}
+	name := path.Base(fields[0])
+	if name == "env" {
+		name = ""
+		for _, f := range fields[1:] {
+			if strings.HasPrefix(f, "-") || strings.Contains(f, "=") {
+				continue
+			}
+			name = path.Base(f)
+			break
+		}
+	}
+	return strings.TrimRight(name, "0123456789.")
 }
 
 // looksBinary reports whether content is not plausibly text. A NUL byte is the
