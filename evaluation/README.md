@@ -131,7 +131,7 @@ evaluation/
     fetch_skillsmp.py      pull skills via the SkillsMP API -> GitHub bundles (gh)
     fetch_orgs.sh          clone vendor repos (skills.rest set) -> orgs/
     fetch_aws.sh           clone aws/agent-toolkit-for-aws -> aws/
-    run_scans.sh           scan every bundle in parallel -> reports/<RAW_DIR>/*.json
+    run_scans.sh           scan every bundle in parallel -> reports/<RAW_DIR>/*.json (+ .done)
     aggregate.py           roll raw JSON up into stats.json + REPORT.md
     report_html.py         render a stats.json into a self-contained HTML page
     rule_findings.py       every corpus hit for one rule, for FP auditing
@@ -201,6 +201,11 @@ git clone --depth 1 https://github.com/jiaxiaojunQAQ/SkillJect /tmp/skillject
 # (parallelism defaults to nproc; pass a number to override, but keep it at or
 # below your core count — oversubscribing has hung the workstation before)
 CORPUS_DIRS="clawhub skillssh skillsmp orgs aws anthropic skillject" evaluation/scripts/run_scans.sh
+# a full run takes 20+ minutes; when backgrounded, wait for reports/<RAW_DIR>/.done
+# (written last, holding the report count). Not the report count: every .json
+# exists from the moment its scan starts, while the slowest bundles still take
+# minutes. Not `pgrep -f run_scans.sh` either: it matches the poller's own
+# command line and so never comes back empty.
 python3 evaluation/scripts/aggregate.py
 python3 evaluation/scripts/report_html.py                 # -> reports/REPORT.html
 

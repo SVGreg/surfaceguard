@@ -8,7 +8,20 @@
 #                quarantine directory outside the repo to scan a freshly fetched
 #                sweep without the bundles ever touching the working tree.
 #   RAW_DIR      output dir for raw JSON, relative to evaluation/reports/ (default: "raw")
+#
+# When every worker has finished, the script writes $RAW/.done holding the
+# report count. Wait on that file, nothing else. The report count is not a
+# signal: a worker's redirect creates its .json and .err the moment its scan
+# starts, so the count is complete while the slowest bundles (minutes each)
+# are still scanning. Nor is the process: `until ! pgrep -f run_scans.sh`
+# matches the poller's own command line and never ends. A raw dir without
+# .done is a run still going, or one that died.
 set -uo pipefail
+
+# The whole body is one { ...; exit; } group, so bash parses all of it before
+# running any of it. Bash otherwise reads a script as it goes, and editing this
+# file mid-run would change what the run executes next.
+{
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 BIN="$ROOT/surfaceguard"
@@ -59,4 +72,8 @@ export -f scan_one
 tr '\n' '\0' < "$LIST" | xargs -0 -P"$JOBS" -I{} bash -c 'scan_one "$@"' _ {} "$BIN" "$RAW" "$CORPUS_ROOT"
 rm -f "$LIST"
 
-echo "raw reports written to $RAW ($(ls "$RAW"/*.json | wc -l | tr -d ' ') files)"
+N="$(ls "$RAW"/*.json 2>/dev/null | wc -l | tr -d ' ')"
+echo "$N" > "$RAW/.done"
+echo "raw reports written to $RAW ($N files)"
+exit
+}
