@@ -3,6 +3,7 @@
 import glob
 import json
 import os
+import pathlib
 from collections import Counter, defaultdict
 
 HERE = os.path.dirname(__file__)
@@ -24,6 +25,69 @@ def load():
     return rows
 
 
+_MANIFESTS = {}
+
+
+def _manifest_for(bundle, source):
+    """The `_manifest.json` of the corpus dir named `source` above `bundle`, as
+    {path-relative-to-that-dir: entry}. Found by walking up from the bundle, so
+    it works for the vendored corpora and for a sweep quarantine alike."""
+    for d in [bundle, *bundle.parents]:
+        if d.name != source:
+            continue
+        if d not in _MANIFESTS:
+            idx = {}
+            mf = d / "_manifest.json"
+            try:
+                entries = json.loads(mf.read_text())
+            except (OSError, ValueError):
+                entries = []
+            for e in entries if isinstance(entries, list) else []:
+                if isinstance(e, dict) and e.get("dir"):
+                    idx[e["dir"].split("/", 1)[-1]] = e
+            _MANIFESTS[d] = idx
+        return d, _MANIFESTS[d]
+    return None, {}
+
+
+def publisher_of(d):
+    """Who published this bundle, for de-duplicating rule reach.
+
+    Registries are full of sibling bundles from one author, so a per-bundle rate
+    weights one house style by however many skills it shipped (32 of one
+    sweep's 56 SG-DEP-007 hits were four sibling bundles). Each fetcher records
+    the publisher under its own key: `owner` (clawhub, skillsmp), `org` (orgs,
+    aws), or an `owner/repo` `source` (skillssh, anthropic). A bundle with no
+    manifest entry counts as its own publisher, which degrades to the per-bundle
+    figure rather than inventing a merge.
+    """
+    src = d.get("_source", "?")
+    path = d.get("_path")
+    if path:
+        root, idx = _manifest_for(pathlib.Path(path), src)
+        if root is not None:
+            try:
+                rel = pathlib.Path(path).relative_to(root)
+            except ValueError:
+                rel = None
+            e = None
+            # A multi-skill bundle's nested skills sit below its manifest
+            # entry, so fall back to the nearest enclosing entry.
+            while rel is not None and str(rel) not in (".", "") and e is None:
+                e = idx.get(str(rel))
+                rel = rel.parent
+            if e:
+                who = e.get("owner") or e.get("org") or e.get("provider")
+                if not who and e.get("source"):
+                    parts = str(e["source"]).split("://", 1)[-1].split("/")
+                    if parts[0] in ("github.com", "gitlab.com") and len(parts) > 1:
+                        parts = parts[1:]
+                    who = parts[0]
+                if who:
+                    return f"{src}:{str(who).lower()}"
+    return f"{src}:bundle:{d.get('_slug', '?')}"
+
+
 def summarize(rows):
     stats = {
         "total_skills": len(rows),
@@ -37,6 +101,10 @@ def summarize(rows):
         "risk_tiers": Counter(),
         "clean_skills": 0,
     }
+    # rule -> bundles it fired in / publishers it fired in / findings per publisher
+    rule_bundles = defaultdict(set)
+    rule_pubs = defaultdict(Counter)
+    publishers = set()
     per_source = defaultdict(lambda: {"n": 0, "pass": 0, "warn": 0, "fail": 0,
                                       "findings": 0, "risk_sum": 0,
                                       "sev": Counter()})
@@ -49,6 +117,8 @@ def summarize(rows):
         counts = d.get("counts", {}) or {}
         findings = d.get("findings", []) or []
         stats["verdicts"][verdict] += 1
+        pub = publisher_of(d)
+        publishers.add(pub)
         stats["risk_tiers"][tier] += 1
         ps = per_source[src]
         ps["n"] += 1
@@ -68,6 +138,8 @@ def summarize(rows):
         for fdg in findings:
             rid = fdg.get("rule_id", "?")
             stats["rule_hits"][rid] += 1
+            rule_bundles[rid].add((src, d.get("_slug", "?")))
+            rule_pubs[rid][pub] += 1
             stats["rule_titles"][rid] = fdg.get("title", "")
             for a in (fdg.get("ast") or []):
                 stats["ast_hits"][a] += 1
@@ -94,6 +166,16 @@ def summarize(rows):
             "avg_risk": round(ps["risk_sum"] / ps["n"], 1) if ps["n"] else 0,
             "severity": dict(ps["sev"]),
         }
+    # Reach, de-duplicated by publisher: rule_hits counts findings, rule_bundles
+    # bundles, rule_publishers distinct publishers. top_publisher_share is the
+    # fraction of a rule's findings that came from its single largest publisher;
+    # near 1.0 means the rule's count describes one author, not the population.
+    stats["publishers_total"] = len(publishers)
+    stats["rule_bundles"] = {r: len(b) for r, b in rule_bundles.items()}
+    stats["rule_publishers"] = {r: len(c) for r, c in rule_pubs.items()}
+    stats["rule_top_publisher_share"] = {
+        r: round(c.most_common(1)[0][1] / sum(c.values()), 3)
+        for r, c in rule_pubs.items()}
     stats["skills"] = sorted(skills, key=lambda s: (-s["risk_score"], s["source"], s["slug"]))
     # jsonify counters
     for k in ["verdicts", "severity_totals", "rule_hits", "ast_hits", "risk_tiers"]:
@@ -169,10 +251,17 @@ def md(stats):
 
     # top rules
     A("## Most-triggered rules\n")
-    A("| Rule | Title | Hits |")
-    A("|---|---|--:|")
+    A(f"_Hits are findings. Bundles and publishers de-duplicate them: "
+      f"{stats['total_skills']} bundles come from {stats['publishers_total']} "
+      "publishers, and one author's sibling bundles can carry most of a rule's "
+      "hits. Top-publisher share is the fraction of a rule's hits from its single "
+      "largest publisher._\n")
+    A("| Rule | Title | Hits | Bundles | Publishers | Top-publisher share |")
+    A("|---|---|--:|--:|--:|--:|")
     for rid, n in sorted(stats["rule_hits"].items(), key=lambda x: -x[1])[:15]:
-        A(f"| `{rid}` | {stats['rule_titles'].get(rid,'')} | {n} |")
+        A(f"| `{rid}` | {stats['rule_titles'].get(rid,'')} | {n} | "
+          f"{stats['rule_bundles'].get(rid, 0)} | {stats['rule_publishers'].get(rid, 0)} | "
+          f"{round(100 * stats['rule_top_publisher_share'].get(rid, 0))}% |")
     A("")
 
     # AST breakdown

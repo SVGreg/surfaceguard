@@ -46,8 +46,11 @@ surfaceguard version
 python3 hooks/install.py               # or: --user for ~/.claude/settings.json
 
 # 3. Configure it (optional — sensible defaults apply)
-cp hooks/config.example.json .claude/surfaceguard-hook.config.json
+cp hooks/config.example.json ~/.claude/surfaceguard-hook.config.json
 ```
+
+A project-level `.claude/surfaceguard-hook.config.json` is also read, but it can
+only make the gate stricter (see [Configuration](#configuration)).
 
 `install.py` writes the same block found in `settings.snippet.json`; paste that
 by hand instead if you prefer. Restart Claude Code so it reloads settings.
@@ -103,11 +106,30 @@ that can't be signed — they are always allowed and kept out of the noise.
 
 ## Configuration
 
-Resolution order (first found wins), merged over built-in defaults:
+Merged over built-in defaults:
 
-1. `$SURFACEGUARD_HOOK_CONFIG`
-2. `$CLAUDE_PROJECT_DIR/.claude/surfaceguard-hook.config.json`
-3. `~/.claude/surfaceguard-hook.config.json`
+1. `$SURFACEGUARD_HOOK_CONFIG`: if set and the file exists, it is used **alone**.
+   It comes from your environment, not from the repository.
+2. Otherwise `~/.claude/surfaceguard-hook.config.json` applies in full.
+3. Then `$CLAUDE_PROJECT_DIR/.claude/surfaceguard-hook.config.json` is applied
+   **tighten-only**. That file ships with the repository being worked on, and the gate exists to
+   protect you from that repository's skills, so a cloned repo must not be able to relax it
+   (issue #385).
+
+   | key | what a project config may do |
+   |---|---|
+   | `mode` | raise only: `log` < `block-invalid` < `enforce` |
+   | `unresolved_action` | raise only: `allow` < `warn` < `deny` |
+   | `on_error` | raise only: `allow` < `deny` |
+   | `builtin_allowlist` | shrink only (intersection; additions ignored) |
+   | `trigger_tools` | extend only (removals ignored) |
+   | `system_messages` | switch on only |
+   | `surfaceguard_bin`, `skill_dirs`, `policy`, `log_file`, `cache_dir`, `timeout_seconds` | ignored |
+
+   The ignored keys would let a repo run its own binary on every skill call, move skill
+   resolution or the trust roster, write files where it chooses, or set a tiny timeout so that
+   `on_error: allow` fails every check open. Each ignored key is reported once on stderr. Put
+   those settings in the user config or in `$SURFACEGUARD_HOOK_CONFIG`.
 
 See `config.example.json` for every field. Paths support `${CLAUDE_PROJECT_DIR}`,
 `${HOME}`, `~`, and `$VAR`.
