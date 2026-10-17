@@ -296,6 +296,15 @@ and `original_severity`. Nothing is hidden anywhere.
 (PR #136) is now `CTX-LICENSE-BOILERPLATE`. §8's non-goal stands — the rest convert when
 their rule is next touched, with corpus measurement, not in one sweep.
 
+**Path-selected files (`paths:`, issue #293).** A context rule may declare `paths:`, a list of RE2
+regexes matched against the bundle-relative `/`-separated path. A rule with `paths` and `scope: file`
+may omit `match`, and it then caps every file the paths select. The loader rejects an empty match
+tree anywhere else, and `paths` on a detection, because both would load and do nothing.
+`CTX-VENDORED-DEPENDENCY` is the first entry: package-manager install trees (`node_modules/`,
+`site-packages/`, `venv/`, `vendor/`, …) are capped to low and still scanned. Skipping them by name
+was rejected, because it would rebuild the "payload where the scanner does not look" bypass from
+#187 in the directory nobody reads. Pinned-corpus measurement is in the PR.
+
 **Still open, deliberately:** policy override of a context rule (an org that wants license
 boilerplate flagged is a legitimate position), the SARIF mapping, and whether the documentary
 modifier folds into this. None of them ride along with this change.
