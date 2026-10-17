@@ -1645,6 +1645,19 @@ payload. One hit is not worth a broad, bypassable mechanism.
   fail against the pre-fix pack; every true-positive row passes both before and after.
 
 
+- **`load_dotenv` binds to its own argument (core-secret 1.3.3, #339).** `load_dotenv` used to be one
+  of the free verbs. It shared the `{0,120}` window with `open`/`cat`, so documentation of the SDK's
+  precedence — ``load_dotenv(override=False)`, so an existing process environment value wins over `.env` ``
+  (`microsoft/azure-skills`, 2026-09-26 skills.sh sweep) — was a **critical** read at conf 1.0. The
+  window ran past the call's closing paren to a `.env` named later in the sentence. A bare
+  `load_dotenv()` reads the skill's own `.env` by design, so the call only counts as a credential read
+  when the credential path is its **argument**. It is now a separate leaf whose gap is the window's
+  gap minus `)`, with empty `()` allowed so `Path.home() / ".aws" / "credentials"` still matches.
+  It matches a strict subset of what the old verb did. Pinned corpus delta: 0, because its only
+  `load_dotenv` line (`find_dotenv(usecwd=True)`) never matched. Pinned by
+  `TestLoadDotenvBindsToItsArgument` (`pkg/rules/dotenv_test.go`): three of its FP rows fail
+  against the 1.3.2 pack.
+
 - **"Local Storage" needs path form (core-secret 1.3.2, #390).** The ungated artifact leaf listed `Local Storage`
   as a bare phrase, but those two words are also the Web Storage API's name. A Playwright `## Local Storage` docs
   heading (Microsoft's `playwright-cli`, 2026-10-04 skills.sh sweep) failed its bundle at **critical**. Chrome's
