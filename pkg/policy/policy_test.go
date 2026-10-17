@@ -121,6 +121,9 @@ func TestLoadRejectsSilentMisconfiguration(t *testing.T) {
 		{"unimplemented trust.include", "trust:\n  include: [./org-roster.yaml]\n"},
 		{"unimplemented trust.pack_keys", "trust:\n  pack_keys:\n    - keyid: k1\n"},
 		{"unimplemented scoring override", "scoring:\n  critical: 40\n"},
+		{"second YAML document", "fail_on: critical\n---\nfail_on: low\n"},
+		{"content after a comment-only document", "---\n# org defaults\n---\nfail_on: low\n"},
+		{"waivers in a second document", "fail_on: high\n---\nwaivers:\n  - rule: SG-NET-001\n    reason: x\n"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -147,6 +150,10 @@ func TestLoadAcceptsValidPolicies(t *testing.T) {
 		{"thresholds and a waiver", "fail_on: critical\nwarn_on: low\nwaivers:\n  - rule: SG-NET-001\n    path: scripts/*.sh\n    reason: reviewed\n    expires: 2999-01-01\n"},
 		{"empty include/pack_keys/scoring are harmless", "scoring: {}\ntrust:\n  include: []\n  pack_keys: []\n"},
 		{"attestation block keeps unset defaults", "attestation:\n  required: true\n"},
+		{"leading document marker", "---\nfail_on: high\n"},
+		{"stray trailing document marker", "fail_on: high\n---\n"},
+		{"comment-only trailing document", "fail_on: high\n---\n# end\n"},
+		{"explicit document end", "fail_on: high\n...\n"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
