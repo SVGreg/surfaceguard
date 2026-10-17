@@ -2904,12 +2904,31 @@ Recording the measurement so no later cycle re-derives it.
 - **Fixtures:** TP: `docker pull evil:latest --disable-content-trust`. FP: `image@sha256:…`.
 
 ### SG-DEP-008 — Package install redirected to a non-default registry  (AST02/AST07, high) — **implemented** (`core-supply`)
-- **Signals (shipped):** an install pointed at a **non-default index/registry/proxy** — `pip|uv pip|python -m pip install … --index-url|--extra-index-url|--trusted-host`, `PIP_(EXTRA_)INDEX_URL=`, `npm|pnpm|yarn (install|add) … --registry`, `npm config set registry`, an `.npmrc` `registry=https://…` line (including scoped `@scope:registry=`), `NPM_CONFIG_REGISTRY=`, `go env -w GOPROXY|GOPRIVATE|GONOSUMDB|GOSUMDB=`, and a Cargo `replace-with = "…"` source replacement.
+- **Signals (shipped; widened 2026-10-15, below):** an install pointed at a **non-default index/registry/proxy** — `pip|uv pip|python -m pip install … --index-url|--extra-index-url|--trusted-host`, `PIP_(EXTRA_)INDEX_URL=`, `npm|pnpm|yarn (install|add) … --registry`, `npm config set registry`, an `.npmrc` `registry=https://…` line (including scoped `@scope:registry=`), `NPM_CONFIG_REGISTRY=`, `go env -w GOPROXY|GOPRIVATE|GONOSUMDB|GOSUMDB=`, and a Cargo `replace-with = "…"` source replacement.
 - **Scope, decided by measurement.** The backlog row read "`pip install`/`npm install`/`curl | sh` bootstrap", but **71 of the 217 corpus skills mention a plain install command** — a rule on that fires on a third of all skills and is unusable. `curl … | sh` is already SG-NET-002 (critical), `sudo <pkg-manager>` was at the time also SG-EXE-003 (`^\s*sudo\s+\w`, high) — that leaf has since been removed as 0-precision (see §SG-EXE-003), which does not disturb this scoping decision, since it rested on `curl | sh` and on the 71/217 prevalence, and `npx -y`/`uvx` is SG-DEP-007. What was left uncovered, and what actually carries the attack, is the **index redirect**: the delivery half of dependency confusion and typosquatting. Corpus prevalence of that subset: **0 of 217**.
 - **FP carve-outs:** the canonical public indexes are suppressed (`registry.npmjs.org`, `pypi.org/simple`, `proxy.golang.org`) — pointing at the default is not a redirect. `/path/to/` placeholders. A legitimate corporate mirror will match by design; the `fix` text directs those to a `.surfaceguard.yaml` waiver rather than a looser rule.
 - **Confidence — every leaf is 0.9, and the flatness is forced, not chosen.** `docKeywords` includes `example`, so a match anywhere near an `example.com` / `.example` URL takes the documentary −0.4, and a `scripts`/`configs` target has no +0.15 instruction bonus to absorb it. At 0.85 the `PIP_INDEX_URL`, `.npmrc` and `GOPROXY` leaves failed their own tests for that reason alone. Signal-strength gradation is currently unusable on non-body targets — see the engine-backlog row (SG-MCP-001 hit the same cliff independently).
 - **Corpus:** **0 findings / 240 skills**, verdicts unchanged (209/22/9).
 - **Fixtures:** TP `testdata/malicious/setup.sh` (`pip install … --index-url https://pkgs.internal-mirror.test/simple`). FP: `pip install -r requirements.txt`, `npm install --save-dev typescript`, and both canonical registries. See `TestIndexRedirectCoversDependencyConfusion` (8 TP, 6 benign).
+- **Polish (2026-10-15) — widened recall, and a canonical-index carve-out that could be walked around.**
+  - **Corpus audit first:** 1 finding in 1036 bundles (`local-whisper`, `uv pip install … torch --index-url` pointing at PyTorch's wheel index). It is kept as a **true positive**. A vendor's own index is still a non-default index, and `download.pytorch.org` was the delivery path of the December 2022 `torchtriton` dependency-confusion attack. There were no false positives to narrow.
+  - **Missed forms, now caught:**
+    - pip's short `-i <url>` and `python3 -m pip`.
+    - pip's persisted config: `pip config set global.(extra-)index-url`, and the `pip.conf` line `index-url = https://…`.
+    - uv's own verbs (`uv add|sync|lock|run|tool install`) with `--index` / `--default-index` / `--(extra-)index-url`, and `UV_(EXTRA_|DEFAULT_)INDEX(_URL)=`.
+    - Yarn Berry: `npmRegistryServer:` in `.yarnrc.yml`, `yarn config set npmRegistryServer`, and `YARN_NPM_REGISTRY_SERVER=`.
+    - bun: `bun add|install --registry` and `BUN_CONFIG_REGISTRY=`.
+    - An exported `GOPROXY=https://…`. Exporting it was invisible; only `go env -w` was matched.
+
+    All 21 new attack rows missed on `main`, on both `scripts` and `body`.
+  - **The carve-out was a bare substring, so it could be bypassed.** It is now: the canonical URL (`registry.npmjs.org`, `registry.yarnpkg.com`, `pypi.org/simple`, `proxy.golang.org`) must be the line's **only** URL and must end at a host boundary. It used to suppress four kinds of real redirect:
+    - `--index-url https://test.pypi.org/simple/`. `test.pypi.org` contains the string `pypi.org/simple`, and TestPyPI lets anyone upload.
+    - `registry=https://registry.npmjs.org.<attacker>/`.
+    - `--index-url https://pypi.org/simple --extra-index-url <attacker>`, the shape a dependency-confusion attack actually takes.
+    - Any redirect followed by a trailing `# mirrors https://pypi.org/simple` comment.
+
+    Known residual: a canonical index on a line that also carries an unrelated path (`… ./local-pkg`) now fires. Zero such lines exist in the corpus.
+  - **Corpus after:** 991 → 991 findings over all 1036 bundles, no finding added or removed, and no verdict changed. Tests: `TestIndexRedirectCoversToolVariants` (21 TP, 16 benign, each on `scripts` and `body`). The original test passes unchanged.
 
 ### SG-DEP-010 — Install-lifecycle hook that runs a command  (AST02/AST01, high) — **implemented** (`core-supply`)
 - **Threat:** the declarative sibling of `SG-CFG-001` (agent-hook config). A `package.json` whose
