@@ -158,6 +158,21 @@ func TestShebangClassifiesExtensionlessScripts(t *testing.T) {
 		{"posix-sh", "#!/bin/sh\necho hi\n", "script", "bash"},
 		{"env-node", "#!/usr/bin/env node\nconsole.log(1)\n", "script", "javascript"},
 		{"ruby", "#!/usr/bin/ruby\nputs 1\n", "script", "ruby"},
+		// Identified by interpreter name, so the label matches scriptExt's:
+		// "pwsh" and "fish" both contain "sh" and used to be labeled bash.
+		{"env-pwsh", "#!/usr/bin/env pwsh\nWrite-Host 1\n", "script", "powershell"},
+		{"abs-pwsh", "#!/opt/microsoft/powershell/7/pwsh -NoProfile\nWrite-Host 1\n", "script", "powershell"},
+		{"fish", "#!/usr/bin/fish\necho 1\n", "script", "fish"},
+		{"env-S-deno", "#!/usr/bin/env -S deno run --allow-net\nfetch('x')\n", "script", "typescript"},
+		{"env-bun", "#!/usr/bin/env bun\nconsole.log(1)\n", "script", "javascript"},
+		{"lua", "#!/usr/bin/lua5.4\nprint(1)\n", "script", "lua"},
+		{"versioned-python", "#!/usr/local/bin/python3.12\nprint(1)\n", "script", "python"},
+		{"env-assign-python", "#!/usr/bin/env PYTHONUNBUFFERED=1 python3\nprint(1)\n", "script", "python"},
+		{"bash-under-share", "#!/usr/share/tools/bash\necho 1\n", "script", "bash"},
+		// Unknown interpreter: the old substring fallback still applies, so a
+		// shebang that classified as a script before still does.
+		{"unknown-tclsh", "#!/usr/bin/tclsh\nputs 1\n", "script", "bash"},
+		{"bare-shebang", "#!\n", "asset", ""},
 		{"no-shebang-text", "just a plain readme, no shebang\n", "asset", ""},
 		{"hash-but-not-shebang", "# a comment, not a shebang\n", "asset", ""},
 	}
