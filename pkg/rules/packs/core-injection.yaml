@@ -1,6 +1,6 @@
 apiVersion: surfaceguard.svgreg.net/rulepack.v1
 name: core-injection
-version: 1.8.0
+version: 1.8.1
 description: Prompt injection, jailbreak, and instruction-layer attacks (rule-verification.md §2).
 rules:
   - id: SG-INJ-001
@@ -341,7 +341,16 @@ rules:
         # already covers the *write* form (a sink targeting CLAUDE.md/MEMORY.md);
         # this rule is the instruction-only form, which needs no file write to
         # reprogram the agent.
-        - regex: '(?i)\b(remember|store|save|persist|retain)\b[^\n]{0,50}\b(for|in|across|between)\b[^\n]{0,25}\b(all|every|future|later|subsequent|upcoming|new)\b[^\n]{0,25}\b(session|conversation|chat|interaction)s?\b'
+        - regex: '(?i)\b(remember|store|persist|retain)\b[^\n]{0,50}\b(for|in|across|between)\b[^\n]{0,25}\b(all|every|future|later|subsequent|upcoming|new)\b[^\n]{0,25}\b(session|conversation|chat|interaction)s?\b'
+          confidence: 0.8
+        # `save` is also the verb of saving *time* ("log a learning when it would
+        # save 5+ minutes in a future session", issue #410 — 89 high hits in one
+        # repo's boilerplate). So `save` gets its own leaf that needs a thing to
+        # persist: a pronoun/determiner or directive noun as its object, or
+        # to/into memory, and no digit before the cross-session clause. Done in
+        # the leaf rather than a line `suppress`, which would also mute a real
+        # directive sharing the line with a time-saving clause.
+        - regex: '(?i)\bsave\s+(this|that|these|those|it|them|the|my|your|our|their|any|all|every|each|what(ever)?|everything|anything|to|in|into|as|preferences?|settings?|instructions?|rules?|directives?|notes?|context|information)\b[^\n\d]{0,50}\b(for|in|across|between)\b[^\n]{0,25}\b(all|every|future|later|subsequent|upcoming|new)\b[^\n]{0,25}\b(session|conversation|chat|interaction)s?\b'
           confidence: 0.8
         - regex: '(?i)\b(remember|keep|store)\s+(this|that|these|the following)\b[^\n]{0,40}\b(permanently|forever|indefinitely|for good)\b'
           confidence: 0.8
