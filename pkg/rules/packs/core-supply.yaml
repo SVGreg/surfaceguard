@@ -1,6 +1,6 @@
 apiVersion: surfaceguard.svgreg.net/rulepack.v1
 name: core-supply
-version: 1.3.0
+version: 1.4.0
 description: Supply chain — unpinned/remote dependencies pulled and executed at use time (rule-verification.md §4, AST02).
 rules:
   - id: SG-DEP-007
@@ -149,31 +149,47 @@ rules:
       # env-var and .npmrc leaves silently failed their own tests. Same cliff as
       # SG-MCP-001; see the engine-backlog row on the documentary modifier.
       any:
-        # pip / uv: index redirect on the command line or via env.
-        - regex: '(?i)\b(pip3?|uv pip|python\s+-m\s+pip)\s+install\b[^\n]{0,120}--(extra-)?index-url[=\s]'
+        # pip / uv: index redirect on the command line or via env. `-i` is pip's
+        # short `--index-url`; uv's own verbs take `--index`/`--default-index`.
+        - regex: '(?i)\b(pip3?|uv\s+pip|python3?\s+-m\s+pip|uv(\s+tool)?)\s+(install|add|sync|lock|run)\b[^\n]{0,120}(\s-i\s*["\x27]?https?://|--(extra-|default-)?index(-url)?[=\s])'
           confidence: 0.9
-        - regex: '(?i)\b(pip3?|uv pip|python\s+-m\s+pip)\s+install\b[^\n]{0,120}--trusted-host[=\s]'
+        - regex: '(?i)\b(pip3?|uv\s+pip|python3?\s+-m\s+pip)\s+install\b[^\n]{0,120}--trusted-host[=\s]'
           confidence: 0.9
-        - regex: '(?i)\bPIP_(EXTRA_)?INDEX_URL\s*='
+        - regex: '(?i)\b(PIP_(EXTRA_)?INDEX_URL|UV_(EXTRA_|DEFAULT_)?INDEX(_URL)?)\s*='
           confidence: 0.9
-        # npm / yarn / pnpm: per-command registry, persisted config, or .npmrc.
-        - regex: '(?i)\b(npm|pnpm|yarn)\s+(install|i|add)\b[^\n]{0,120}--registry[=\s]'
+        # pip's persisted config: `pip config set global.index-url`, or the
+        # pip.conf / pip.ini line itself.
+        - regex: '(?i)\bpip3?\s+config\b[^\n]{0,40}\bset\s+[\w.]*\b(extra-)?index-url\b'
           confidence: 0.9
-        - regex: '(?i)\b(npm|pnpm|yarn)\s+config\s+set\s+registry\b'
+        - regex: '(?im)^\s*(extra-)?index-url\s*=\s*https?://'
+          confidence: 0.9
+        # npm / yarn / pnpm / bun: per-command registry, persisted config, .npmrc,
+        # Yarn Berry's .yarnrc.yml, or the env equivalents.
+        - regex: '(?i)\b(npm|pnpm|yarn|bun)\s+(install|i|add)\b[^\n]{0,120}--registry[=\s]'
+          confidence: 0.9
+        - regex: '(?i)\b(npm|pnpm|yarn)\s+config\s+set\s+(registry|npmRegistryServer)\b'
           confidence: 0.9
         - regex: '(?im)^\s*(@[\w-]+:)?registry\s*=\s*https?://'
           confidence: 0.9
-        - regex: '(?i)\bNPM_CONFIG_REGISTRY\s*='
+        - regex: '(?im)^\s*npmRegistryServer\s*:\s*["\x27]?https?://'
           confidence: 0.9
-        # Go module proxy / Rust source replacement.
+        - regex: '(?i)\b(NPM_CONFIG_REGISTRY|BUN_CONFIG_REGISTRY|YARN_NPM_REGISTRY_SERVER)\s*='
+          confidence: 0.9
+        # Go module proxy (persisted or exported) / Rust source replacement.
         - regex: '(?i)\bgo\s+env\s+-w\s+GO(PROXY|PRIVATE|NOSUMDB|SUMDB)\s*='
+          confidence: 0.9
+        - regex: '(?i)\bGOPROXY\s*=\s*["\x27]?https?://'
           confidence: 0.9
         - regex: '(?i)\breplace-with\s*=\s*["\x27]'
           confidence: 0.9
     suppress:
       - '(?i)/path/to/'
-      # The canonical public indexes are not a redirect.
-      - '(?i)(registry\.npmjs\.org|pypi\.org/simple|proxy\.golang\.org)'
+      # The canonical public indexes are not a redirect — but only when that URL
+      # is the line's *only* URL and ends at a host boundary. A bare substring
+      # also spared `test.pypi.org/simple` (TestPyPI, which anyone can upload
+      # to), `registry.npmjs.org.<attacker>`, and a real redirect sharing its
+      # line with a canonical URL, including one in a trailing comment.
+      - '(?i)^[^/\n]*https?://(registry\.npmjs\.org|registry\.yarnpkg\.com|pypi\.org/simple|proxy\.golang\.org)(/[^\s"\x27,]*)?(["\x27,\s][^/\n]*)?$'
     rationale: Redirecting a package manager to a non-default index, registry, or module proxy makes every subsequent install fetch code from a host the skill chose — the delivery half of dependency confusion and typosquatting, and it silently outlives the skill when set via config or env (AST02/AST07).
     fix: Install from the default public registry, or pin the exact artifact by hash. If your organisation genuinely uses an internal mirror, waive this rule in .surfaceguard.yaml rather than shipping the redirect in a skill.
 

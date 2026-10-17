@@ -109,3 +109,67 @@ func TestBuiltinContextPackLoads(t *testing.T) {
 		t.Fatal("no context rules loaded — the context pack is not being embedded")
 	}
 }
+
+const pathCtxPack = `
+apiVersion: surfaceguard.svgreg.net/rulepack.v1
+name: t
+version: 1.0.0
+rules:
+  - id: CTX-P
+    kind: context
+    title: t
+    scope: file
+    paths: ['(^|/)node_modules/']
+    effect:
+      max_severity: low
+    targets: [scripts]
+`
+
+// TestContextPathsSelectFiles: a `paths` rule with no match tree caps every
+// file it selects, by location alone, and nothing outside it.
+func TestContextPathsSelectFiles(t *testing.T) {
+	p, err := LoadPack([]byte(pathCtxPack))
+	if err != nil {
+		t.Fatalf("LoadPack: %v", err)
+	}
+	c := p.Contexts[0]
+	for path, want := range map[string]bool{
+		"node_modules/x/index.js":     true,
+		"web/node_modules/x/index.js": true,
+		"my_node_modules/index.js":    false,
+		"scripts/node_modules.js":     false,
+	} {
+		if got := c.AppliesToPath(path); got != want {
+			t.Errorf("AppliesToPath(%q) = %v, want %v", path, got, want)
+		}
+	}
+	if _, whole := c.Spans("scripts", "anything at all\n"); !whole {
+		t.Error("a path-only rule must cap the whole selected file")
+	}
+	// A rule without `paths` keeps applying everywhere.
+	q, err := LoadPack([]byte(ctxPack))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !q.Contexts[0].AppliesToPath("node_modules/x.js") {
+		t.Error("a rule with no paths must apply to every file")
+	}
+}
+
+// TestContextPathsRejectsInertShapes: an empty match tree is only meaningful
+// as a path-selected whole file; paths on a detection would be ignored.
+func TestContextPathsRejectsInertShapes(t *testing.T) {
+	cases := map[string]string{
+		"no match, no paths":   strings.Replace(pathCtxPack, "    paths: ['(^|/)node_modules/']\n", "", 1),
+		"no match, line scope": strings.Replace(pathCtxPack, "scope: file", "scope: line", 1),
+		"bad paths regex":      strings.Replace(pathCtxPack, "'(^|/)node_modules/'", "'(?<=x)'", 1),
+		"paths on detection": strings.Replace(strings.Replace(pathCtxPack,
+			"    kind: context\n", "    severity: high\n", 1),
+			"    scope: file\n", "", 1),
+	}
+	for name, src := range cases {
+		if _, err := LoadPack([]byte(src)); err == nil {
+			t.Errorf("%s: expected a load error, got none", name)
+		}
+	}
+}
