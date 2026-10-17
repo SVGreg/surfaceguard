@@ -570,3 +570,23 @@ func TestGenerateKeyAlgRejectsUnknown(t *testing.T) {
 		t.Errorf("error = %v, want ErrUnsupportedAlgorithm", err)
 	}
 }
+
+// TestWriteUSFFieldsCapsItsRead: the SKILL.md re-read is bounded by the same
+// 16 MiB cap as every other read in the package. Before, a bare os.ReadFile
+// read (and then rewrote) a file of any size.
+func TestWriteUSFFieldsCapsItsRead(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "SKILL.md")
+	if err := os.WriteFile(path, []byte("---\nname: big\n---\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Sparse, so the test costs no disk.
+	if err := os.Truncate(path, maxAttestFileSize+1); err != nil {
+		t.Fatal(err)
+	}
+	if err := WriteUSFFields(path, "sha256:00", "ed25519:AA=="); err == nil {
+		t.Fatal("WriteUSFFields read a SKILL.md over the size cap; want an error")
+	}
+	if fi, err := os.Stat(path); err != nil || fi.Size() != maxAttestFileSize+1 {
+		t.Fatalf("oversize SKILL.md was modified: %v %v", fi, err)
+	}
+}

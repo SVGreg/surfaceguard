@@ -288,6 +288,24 @@ func Load(path string) (Policy, error) {
 	if err := dec.Decode(&p); err != nil && !errors.Is(err, io.EOF) {
 		return p, err
 	}
+	// Decode reads one document. A second one — `---` followed by more keys —
+	// was dropped without a word, so `fail_on: critical` / `---` /
+	// `fail_on: low` loaded as critical, and a file that opened with a
+	// comment-only document lost its entire policy. A policy is one document;
+	// trailing empty ones (a stray `---`) are harmless and still accepted.
+	for i := 2; ; i++ {
+		var extra yaml.Node
+		err := dec.Decode(&extra)
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		if err != nil {
+			return p, err
+		}
+		if hasContent(&extra) {
+			return p, fmt.Errorf("policy holds more than one YAML document (document %d starts at line %d); only the first would be read, so merge them into one", i, extra.Line)
+		}
+	}
 	if p.FailOn == "" {
 		p.FailOn = "high"
 	}
@@ -298,6 +316,24 @@ func Load(path string) (Policy, error) {
 		return p, err
 	}
 	return p, nil
+}
+
+// hasContent reports whether a decoded YAML document carries any value. A
+// document holding only comments, or an explicit null, decodes to an empty
+// node or a null scalar.
+func hasContent(n *yaml.Node) bool {
+	if n.Kind == yaml.DocumentNode {
+		for _, c := range n.Content {
+			if hasContent(c) {
+				return true
+			}
+		}
+		return false
+	}
+	if n.Kind == 0 {
+		return false
+	}
+	return !(n.Kind == yaml.ScalarNode && n.Tag == "!!null")
 }
 
 // validate rejects a policy that would misbehave silently. It is deliberately
