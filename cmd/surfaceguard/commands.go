@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"time"
@@ -177,8 +178,12 @@ EXIT CODES: 0 pass/warn · 1 fail · 3 usage error · 4 internal error.
 				Sources: b.FileContent,
 				Width:   terminalWidth(w),
 			}
-			if err := emit(w, rep, format, opt); err != nil {
+			sw := &stickyWriter{w: w}
+			if err := emit(sw, rep, format, opt); err != nil {
 				return fail(4, "%v", err)
+			}
+			if err := finishOutput(w, sw, out); err != nil {
+				return err
 			}
 			if !quiet && out != "" {
 				stdoutOpt := opt
@@ -637,7 +642,7 @@ func versionCmd() *cobra.Command {
 
 // --- helpers ---
 
-func emit(w *os.File, rep *scan.Report, format string, opt report.Options) error {
+func emit(w io.Writer, rep *scan.Report, format string, opt report.Options) error {
 	switch format {
 	case "json":
 		return report.JSON(w, rep, opt)
@@ -668,10 +673,50 @@ func outputWriter(path string) (*os.File, error) {
 	return f, nil
 }
 
+// closeWriter is the deferred safety net for early returns. The success path
+// goes through finishOutput, which reports the Close error; a second Close here
+// then returns os.ErrClosed, which is deliberately ignored.
 func closeWriter(w *os.File) {
 	if w != os.Stdout {
 		_ = w.Close()
 	}
+}
+
+// stickyWriter remembers the first write error. report.Text and
+// report.MultiText return nothing (changing their exported signatures is a
+// separate decision), so without this a full disk or a quota while writing
+// --out produced a truncated file and exit 0.
+type stickyWriter struct {
+	w   io.Writer
+	err error
+}
+
+func (s *stickyWriter) Write(p []byte) (int, error) {
+	if s.err != nil {
+		return 0, s.err
+	}
+	n, err := s.w.Write(p)
+	if err != nil {
+		s.err = err
+	}
+	return n, err
+}
+
+// finishOutput reports a failed --out write: the first short write, then the
+// Close error. Stdout is left alone on purpose: `scan x | head` closing the
+// pipe early is not a failure the user wants reported.
+func finishOutput(w *os.File, sw *stickyWriter, path string) error {
+	if path == "" {
+		return nil
+	}
+	err := sw.err
+	if cerr := w.Close(); err == nil {
+		err = cerr
+	}
+	if err != nil {
+		return fail(4, "writing --out %q: %v\n  the report is incomplete; do not rely on it.", path, err)
+	}
+	return nil
 }
 
 func scanVerdict(s *attest.ScanSummary) model.Verdict {
