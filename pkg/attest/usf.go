@@ -43,11 +43,16 @@ func USFFields(ctx context.Context, b *skill.Bundle, signer Signer) (contentHash
 // an existing SKILL.md always kept its own mode, and a rename must not silently
 // normalize it to the temp file's 0600. A symlinked SKILL.md is refused, as for
 // every other write in this package.
+//
+// The read goes through readCapped like every other read here. The CLI only
+// reaches this after pkg/skill has loaded (and size-capped) the bundle, but the
+// function is exported and takes any path, so without the cap a library caller
+// could be made to read an unbounded file, or block forever on a FIFO.
 func WriteUSFFields(skillMDPath, contentHash, signature string) error {
 	if err := refuseSymlink(skillMDPath); err != nil {
 		return err
 	}
-	content, err := os.ReadFile(skillMDPath)
+	content, err := readCapped(skillMDPath)
 	if err != nil {
 		return err
 	}
