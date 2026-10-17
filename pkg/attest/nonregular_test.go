@@ -36,3 +36,22 @@ func TestReadSignatureFileRefusesNamedPipe(t *testing.T) {
 		t.Fatal("ReadEnvelope blocked on a FIFO")
 	}
 }
+
+// TestWriteUSFFieldsRefusesNamedPipe: WriteUSFFields is exported and takes any
+// path, so a FIFO named SKILL.md must be refused rather than block the caller.
+func TestWriteUSFFieldsRefusesNamedPipe(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "SKILL.md")
+	if err := syscall.Mkfifo(p, 0o644); err != nil {
+		t.Skipf("mkfifo unavailable: %v", err)
+	}
+	done := make(chan error, 1)
+	go func() { done <- WriteUSFFields(p, "sha256:00", "ed25519:AA==") }()
+	select {
+	case err := <-done:
+		if err == nil {
+			t.Fatal("WriteUSFFields accepted a FIFO; want an error")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("WriteUSFFields blocked on a FIFO")
+	}
+}
