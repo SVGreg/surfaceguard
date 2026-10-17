@@ -4,6 +4,7 @@
 package attest
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
@@ -105,6 +106,19 @@ var (
 	// the block is now stripped cleanly instead of leaving a blank line behind.
 	fmBlockRe    = regexp.MustCompile(`(?sm)\A(\x{FEFF}?---\r?\n)(.*?)(^---\r?\n?)`)
 	reservedLine = regexp.MustCompile(`(?im)^(content_hash|signature):.*\r?\n?`)
+
+	// reservedKey finds a reserved line; reservedScalar says it is safe to drop.
+	// A line may leave the Merkle leaf only when its value is a single-line plain
+	// or *balanced* quoted scalar (design §7.5: "single-line, top-level
+	// plain/quoted scalars ... verifier rejects multi-line or nested forms").
+	// Dropping any other shape lets the unauthenticated line change how the
+	// authenticated ones parse: `signature: "` before a signed line and
+	// `content_hash: "` after it turn that line into the inside of a string, so
+	// `disable-model-invocation: true` or `allowed-tools:` vanishes from the
+	// manifest while the root, and so the signature, still verify.
+	reservedKey    = regexp.MustCompile(`(?i)^(content_hash|signature):`)
+	reservedScalar = regexp.MustCompile(`(?i)^(?:content_hash|signature):[ \t]*` +
+		`(?:"(?:[^"\\\r\n]|\\.)*"|'(?:[^'\r\n]|'')*'|[A-Za-z0-9+/=:._-]+)[ \t]*\r?\n?$`)
 )
 
 // NormalizeSkillMD strips the two USF reserved front-matter lines
@@ -119,13 +133,50 @@ func NormalizeSkillMD(content []byte) []byte {
 	body := content[m[4]:m[5]]
 	closeD := content[m[6]:m[7]]
 	rest := content[m[1]:]
-	cleaned := reservedLine.ReplaceAll(body, nil)
+	cleaned := stripSafeReserved(body)
 	var out []byte
 	out = append(out, open...)
 	out = append(out, cleaned...)
 	out = append(out, closeD...)
 	out = append(out, rest...)
 	return out
+}
+
+// stripSafeReserved drops the reserved lines that are safe to exclude from the
+// Merkle leaf and keeps every other byte. A reserved line stays in the leaf, so
+// any edit to it is a root mismatch, when:
+//   - its value is not a single-line plain or balanced quoted scalar (an open
+//     quote, a block scalar `|`/`>`, a flow `{`/`[`, an anchor, an empty value);
+//   - the next line is indented, which would make that line a continuation or a
+//     child of the reserved key rather than of the key it was signed under;
+//   - its key occurs more than once, since the extra copy is a duplicate key
+//     that changes how a YAML parser reads the whole block.
+//
+// The writer (WriteUSFFields) emits exactly one `%q`-quoted line per key, which
+// is always dropped, so a legitimately written manifest normalizes as before.
+func stripSafeReserved(body []byte) []byte {
+	lines := bytes.SplitAfter(body, []byte("\n"))
+	seen := map[string]int{}
+	for _, ln := range lines {
+		if m := reservedKey.FindSubmatch(ln); m != nil {
+			seen[strings.ToLower(string(m[1]))]++
+		}
+	}
+	out := make([]byte, 0, len(body))
+	for i, ln := range lines {
+		if m := reservedKey.FindSubmatch(ln); m != nil &&
+			seen[strings.ToLower(string(m[1]))] == 1 &&
+			reservedScalar.Match(ln) &&
+			(i+1 >= len(lines) || !startsIndented(lines[i+1])) {
+			continue
+		}
+		out = append(out, ln...)
+	}
+	return out
+}
+
+func startsIndented(ln []byte) bool {
+	return len(ln) > 0 && (ln[0] == ' ' || ln[0] == '\t')
 }
 
 // StripReservedLines removes content_hash/signature lines from a front-matter
