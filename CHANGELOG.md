@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.6.4](https://github.com/SVGreg/surfaceguard/compare/v0.6.3...v0.6.4) (2026-10-17)
+
+
+### Features
+
+* **evaluation:** de-duplicate rule reach by publisher in aggregate.py and sweep_diff.py ([#431](https://github.com/SVGreg/surfaceguard/issues/431)) ([2fea8d3](https://github.com/SVGreg/surfaceguard/commit/2fea8d3d9b1da22ff6b34c792738a8ffa7436679))
+* **maintain:** start ready issues on status and time instead of an owner Implement command ([#405](https://github.com/SVGreg/surfaceguard/issues/405)) ([4942875](https://github.com/SVGreg/surfaceguard/commit/49428757594665fa4207c924313ee42330ca7a36))
+* **release:** block a release on a drifted skill signature, not a PR ([#418](https://github.com/SVGreg/surfaceguard/issues/418)) ([50e6cff](https://github.com/SVGreg/surfaceguard/commit/50e6cff952fc3b27a479382ddbaba8b4af9eb767))
+* **rules:** add SG-AS-002 — payload run from a shared drop location the file does not write (AST01) ([#413](https://github.com/SVGreg/surfaceguard/issues/413)) ([73a6a93](https://github.com/SVGreg/surfaceguard/commit/73a6a932bf34be0e5102659163be620127df2b53)), closes [#382](https://github.com/SVGreg/surfaceguard/issues/382)
+
+
+### Bug Fixes
+
+* **attest:** a reserved front-matter line leaves the Merkle leaf only in its spec'd single-line form ([#432](https://github.com/SVGreg/surfaceguard/issues/432)) ([8dff2f8](https://github.com/SVGreg/surfaceguard/commit/8dff2f88f4c39cc62a15f0eb7055ace65f538c43))
+* **attest:** WriteUSFFields reads SKILL.md through readCapped (size cap + non-regular refusal) ([#425](https://github.com/SVGreg/surfaceguard/issues/425)) ([ac2602d](https://github.com/SVGreg/surfaceguard/commit/ac2602d7535086c6e25b54cb7ee84d7996793027))
+* **cmd:** a failed --out write exits 4 instead of leaving a truncated report and success ([#414](https://github.com/SVGreg/surfaceguard/issues/414)) ([20020f1](https://github.com/SVGreg/surfaceguard/commit/20020f11f8bd481f38f98adff0ae7ac24332db34))
+* **evaluation:** run_scans.sh signals completion with a .done sentinel and parses itself before running ([#430](https://github.com/SVGreg/surfaceguard/issues/430)) ([4df2909](https://github.com/SVGreg/surfaceguard/commit/4df29099f0de34632b6cd0a52c3f4d23b47192e9))
+* **hooks:** a project-level hook config may only tighten the gate (closes [#385](https://github.com/SVGreg/surfaceguard/issues/385)) ([#409](https://github.com/SVGreg/surfaceguard/issues/409)) ([d9fa933](https://github.com/SVGreg/surfaceguard/commit/d9fa933c126ea43b2365683a43316b20acf9a586))
+* **policy:** reject a policy file with more than one YAML document ([#419](https://github.com/SVGreg/surfaceguard/issues/419)) ([b45a54a](https://github.com/SVGreg/surfaceguard/commit/b45a54a92168ae2967bd2f8867872b676ff7bf40))
+* **rules:** narrow SG-MEM-001 — saving time in a future session is not a persistence directive (closes [#410](https://github.com/SVGreg/surfaceguard/issues/410)) ([#412](https://github.com/SVGreg/surfaceguard/issues/412)) ([cad0714](https://github.com/SVGreg/surfaceguard/commit/cad0714d4a4f8e93dd69d517072318b91edbdef6))
+* **rules:** SG-SEC-001 binds load_dotenv only to a path in its own argument list (closes [#339](https://github.com/SVGreg/surfaceguard/issues/339)) ([#408](https://github.com/SVGreg/surfaceguard/issues/408)) ([2c643d3](https://github.com/SVGreg/surfaceguard/commit/2c643d3a4ff8cef69279a7061a1b346c4632da5d))
+* **rules:** test a rule's suppress list against every line its match spans ([#417](https://github.com/SVGreg/surfaceguard/issues/417)) ([d4dbc0f](https://github.com/SVGreg/surfaceguard/commit/d4dbc0fa9e77d993cf0eb36baf0d2e2f09e66c1d))
+* **rules:** widen SG-DEP-008 — pip -i, pip config, uv, Yarn Berry, bun, exported GOPROXY; canonical carve-out no longer spares TestPyPI or a mixed line ([#424](https://github.com/SVGreg/surfaceguard/issues/424)) ([90577ce](https://github.com/SVGreg/surfaceguard/commit/90577ce3eb41861d84fd0a91393ecf0bc99d85ac))
+* **scan:** cap findings in vendored dependency trees instead of failing the skill on them (closes [#293](https://github.com/SVGreg/surfaceguard/issues/293)) ([#407](https://github.com/SVGreg/surfaceguard/issues/407)) ([55e7adf](https://github.com/SVGreg/surfaceguard/commit/55e7adf5b86e76c24ee102ffd90d7ee9be62cc39))
+* **skill:** identify a shebang's interpreter by name — pwsh is powershell, and extension-less deno/bun/lua scripts are scanned ([#426](https://github.com/SVGreg/surfaceguard/issues/426)) ([171b862](https://github.com/SVGreg/surfaceguard/commit/171b86296be5cf78dc9b9554bee6dcd797eeec76))
+
 ## [0.6.3](https://github.com/SVGreg/surfaceguard/compare/v0.6.2...v0.6.3) (2026-10-07)
 
 
