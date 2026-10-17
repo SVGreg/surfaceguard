@@ -32,6 +32,7 @@ type ruleDTO struct {
 	ID         string     `yaml:"id"`
 	Kind       string     `yaml:"kind"` // "" (a detection) | "context"
 	Scope      string     `yaml:"scope"`
+	Paths      []string   `yaml:"paths"`
 	Effect     *effectDTO `yaml:"effect"`
 	Title      string     `yaml:"title"`
 	AST        []string   `yaml:"ast"`
@@ -108,8 +109,8 @@ func LoadPack(data []byte) (*Pack, error) {
 			// to mark; failing loudly beats silently ignoring the field, because
 			// the author's intent was to reduce severity and the shipped rule
 			// would not.
-			if rd.Effect != nil || rd.Scope != "" {
-				return nil, fmt.Errorf("rule %s: effect/scope require kind: context", rd.ID)
+			if rd.Effect != nil || rd.Scope != "" || len(rd.Paths) > 0 {
+				return nil, fmt.Errorf("rule %s: effect/scope/paths require kind: context", rd.ID)
 			}
 			r, err := compileRule(rd)
 			if err != nil {
@@ -167,6 +168,21 @@ func compileContext(rd ruleDTO) (*ContextRule, error) {
 	if rd.Severity != "" || rd.Confidence != 0 || len(rd.Suppress) > 0 {
 		return nil, fmt.Errorf("severity/confidence/suppress are meaningless on a context rule")
 	}
+	paths := make([]*regexp.Regexp, 0, len(rd.Paths))
+	for _, src := range rd.Paths {
+		re, err := regexp.Compile(src)
+		if err != nil {
+			return nil, fmt.Errorf("paths regex %q: %w", src, err)
+		}
+		paths = append(paths, re)
+	}
+	// A rule with no match tree caps by location alone, which only means
+	// something for a whole file selected by `paths`. Anywhere else an empty
+	// tree would load and never fire.
+	pathOnly := isEmptyCond(rd.Match)
+	if pathOnly && (len(paths) == 0 || scope != "file") {
+		return nil, fmt.Errorf("missing match (only a scope: file rule with paths may omit it)")
+	}
 	cond, err := compileCond(rd.Match)
 	if err != nil {
 		return nil, err
@@ -179,6 +195,8 @@ func compileContext(rd ruleDTO) (*ContextRule, error) {
 		Layers:      rd.Effect.Layers,
 		Targets:     rd.Targets,
 		Rationale:   rd.Rationale,
+		paths:       paths,
+		pathOnly:    pathOnly,
 		matcher: &Rule{
 			ID:         rd.ID,
 			Confidence: 1,
@@ -262,6 +280,13 @@ func compileCond(cd condDTO) (Condition, error) {
 		c.Not = append(c.Not, cc)
 	}
 	return c, nil
+}
+
+// isEmptyCond reports whether a match tree declares nothing at all.
+func isEmptyCond(cd condDTO) bool {
+	return len(cd.Any) == 0 && len(cd.All) == 0 && len(cd.Not) == 0 && cd.Regex == "" &&
+		cd.Substring == "" && len(cd.UnicodeCategory) == 0 && !cd.BidiControl && !cd.TagBlock &&
+		!cd.EscapeSequence && len(cd.URLHost) == 0 && cd.HomoglyphRatio == nil
 }
 
 func orDefault(s, def string) string {

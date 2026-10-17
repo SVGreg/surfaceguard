@@ -47,6 +47,15 @@ type ContextRule struct {
 	Targets   []string
 	Rationale string
 
+	// paths restricts the rule to files whose bundle-relative path matches one
+	// of these regexes; empty means every file. pathOnly marks a rule with no
+	// match tree, which caps every file `paths` selects (scope file only). This
+	// is how CTX-VENDORED-DEPENDENCY caps pip's or httpx's own source under a
+	// vendored venv/: what makes the finding lower-risk is where the file
+	// sits, not any text in it (issue #293).
+	paths    []*regexp.Regexp
+	pathOnly bool
+
 	// matcher reuses the ordinary match-tree walker. A context rule never emits,
 	// so the confidence modifiers, the emit threshold and the suppress list are
 	// all bypassed: what is asked of the tree here is only "where does this
@@ -62,6 +71,20 @@ func (c *ContextRule) AppliesTo(target, language string) bool {
 	return c.matcher.AppliesTo(target, language)
 }
 
+// AppliesToPath reports whether file (bundle-relative, '/'-separated) is in
+// the rule's `paths`, or true when the rule declares none.
+func (c *ContextRule) AppliesToPath(file string) bool {
+	if len(c.paths) == 0 {
+		return true
+	}
+	for _, re := range c.paths {
+		if re.MatchString(file) {
+			return true
+		}
+	}
+	return false
+}
+
 // Spans reports where the context rule matches in a target text.
 //
 // For scope "line" the returned set holds every target-local line a match
@@ -74,6 +97,9 @@ func (c *ContextRule) Spans(target, text string) (lines map[int]bool, wholeFile 
 	if c.Scope == "section" && !isProseTarget(target) {
 		// A heading is a markdown concept; in a script `# Don'ts` is a comment.
 		return nil, false
+	}
+	if c.pathOnly {
+		return nil, true
 	}
 	ms := c.matcher.eval(c.matcher.Match, text)
 	if len(ms) == 0 {

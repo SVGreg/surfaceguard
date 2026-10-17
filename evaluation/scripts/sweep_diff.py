@@ -11,6 +11,12 @@ bundle can trip the same rule ten times — so the rule figures below are
 "findings per 100 bundles" and can exceed 100. Verdict and clean shares are
 genuine per-bundle percentages.
 
+Findings per bundle still over-weights a prolific author: one publisher's four
+sibling bundles can carry most of a rule's hits. When both stats files carry
+`rule_publishers` (aggregate.py writes it), a second table compares each rule's
+reach as a share of the corpus's *publishers*, which is the figure to trust when
+deciding whether a rule moved across the population or met one author.
+
 Usage:
     evaluation/scripts/sweep_diff.py OLD_STATS.json NEW_STATS.json
     evaluation/scripts/sweep_diff.py old.json new.json --min-delta 1.0
@@ -90,6 +96,39 @@ def main():
         shown += 1
     if not shown:
         print(f"  (nothing moved by >= {a.min_delta} findings per 100 bundles)")
+
+    publisher_reach(old, new, titles, a.min_delta)
+
+
+def publisher_reach(old, new, titles, min_delta):
+    """Each rule's reach as a share of publishers, de-duplicating sibling bundles."""
+    print("\nrule reach, share of publishers (sibling bundles from one author count once)")
+    if "rule_publishers" not in old or "rule_publishers" not in new:
+        missing = " and ".join(n for n, s in (("old", old), ("new", new))
+                               if "rule_publishers" not in s)
+        print(f"  (skipped: the {missing} stats file predates publisher counts; "
+              "re-run aggregate.py on its raw dir)")
+        return
+    p_old, p_new = old.get("publishers_total") or 0, new.get("publishers_total") or 0
+    print(f"  publishers: {p_old} -> {p_new}")
+    op, np_ = old["rule_publishers"], new["rule_publishers"]
+    tshare = new.get("rule_top_publisher_share", {})
+    rows = []
+    for rid in sorted(set(op) | set(np_)):
+        o, n = share(op.get(rid, 0), p_old), share(np_.get(rid, 0), p_new)
+        rows.append((n - o, rid, op.get(rid, 0), np_.get(rid, 0), o, n))
+    rows.sort(key=lambda r: -abs(r[0]))
+    shown = 0
+    for delta, rid, o_n, n_n, o, n in rows:
+        if abs(delta) < min_delta:
+            continue
+        top = tshare.get(rid)
+        conc = f"  top publisher {round(100 * top)}% of hits" if top is not None and n_n else ""
+        print(f"  {rid:<12} {o:>5.1f}% ({o_n:>3}) -> {n:>5.1f}% ({n_n:>3})  "
+              f"{delta:+6.1f}{conc}   {titles.get(rid, '')}")
+        shown += 1
+    if not shown:
+        print(f"  (no rule's publisher share moved by >= {min_delta} pts)")
 
 
 if __name__ == "__main__":

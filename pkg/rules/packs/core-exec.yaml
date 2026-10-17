@@ -1,6 +1,6 @@
 apiVersion: surfaceguard.svgreg.net/rulepack.v1
 name: core-exec
-version: 1.6.0
+version: 1.7.0
 description: Dangerous commands, code execution, privilege escalation, persistence (rule-verification.md §3).
 rules:
   - id: SG-EXE-001
@@ -857,3 +857,48 @@ rules:
       A skill must not weaken the host's security posture. If a step genuinely cannot run under the
       current policy, say so and let the user decide — document the specific control and why, rather
       than scripting its removal.
+
+  - id: SG-AS-002
+    title: Executes a payload from a shared drop location it does not write
+    ast: [AST01, AST03]
+    severity: medium
+    engine: static
+    layer: code
+    confidence: 0.7
+    targets: [body, scripts, configs]
+    match:
+      # The reader half of ColluSkill's artifact passing (arXiv:2608.09732,
+      # issue #382): skill A drops /tmp/.wf/stage2.sh, skill B runs it, and each
+      # bundle scans clean alone. An interpreter or `source` pointed at a file
+      # under a world-shared drop location — /tmp, /var/tmp, /dev/shm, ~/.cache,
+      # $TMPDIR — is the tripwire.
+      #
+      # The discriminator is "not produced by this bundle": a skill running a
+      # temp file it just wrote (a test harness, a repro script) is the common
+      # benign case. A rule sees one file at a time, so the `not:` below is
+      # file-scoped: any write into a drop location, or mktemp/tempfile, in the
+      # same file clears it. Known limits, both deliberate: a writer in a
+      # *different* file of the same bundle still fires (medium, so it warns
+      # rather than fails), and a file that writes drop path A while running
+      # drop path B is cleared. The cross-bundle pair is the `pkg/scan`
+      # correlation engine row, not this rule.
+      all:
+        - any:
+            - regex: '(?im)(^|[ \t;&|(`$"''])(bash|sh|zsh|dash|ksh|source|python[23]?|node|perl|ruby|pwsh|php|osascript)\s+(-\S+\s+){0,3}["'']?(/tmp/|/var/tmp/|/dev/shm/|~/\.cache/|\$HOME/\.cache/|\$\{?TMPDIR\}?/)[\w.-]'
+            # Dot-sourcing only in command position, so a sentence ending in a
+            # period before a path is not read as `. /tmp/x`.
+            - regex: '(?m)(^[ \t]*|[;&|][ \t]*)\.[ \t]+["'']?(/tmp/|/var/tmp/|/dev/shm/|~/\.cache/|\$HOME/\.cache/|\$\{?TMPDIR\}?/)[\w.-]'
+        - not:
+            - regex: '(?i)(>>?|\btee(\s+-a)?|\b(cp|mv|install|ln|unzip|tar)\b[^\n]{0,80}|\s-[oO]|--output(-document)?=?|-d)\s*["'']?(/tmp/|/var/tmp/|/dev/shm/|~/\.cache/|\$HOME/\.cache/|\$\{?TMPDIR\}?/)'
+            - regex: '(?i)\b(mktemp|tempfile|mkstemp|mkdtemp|NamedTemporaryFile|TemporaryDirectory|gettempdir|os\.tmpdir)\b'
+            - regex: '(?i)\b(open|write_?text|write_?bytes|writeFileSync|writeFile|fopen)\s*\(\s*f?["''](/tmp/|/var/tmp/|/dev/shm/)'
+            - regex: '(?i)["''](/tmp/|/var/tmp/|/dev/shm/)[^"''\n]*["'']\s*\)\s*\.write_(text|bytes)'
+    rationale: >-
+      Running a file out of a world-shared location the bundle never writes means executing code
+      nobody reviewed as part of this skill. That is how a payload is handed between two skills that
+      each look benign alone (ColluSkill artifact passing: 96% evasion of six skill scanners), and
+      it is also how a co-resident process plants code for the skill to run.
+    fix: >-
+      Ship the script inside the bundle and run it from there, or create the file in the same step
+      that runs it (mktemp, then write, then execute). Never execute a path under /tmp, /dev/shm or
+      a shared cache that this skill did not just create.
