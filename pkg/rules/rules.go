@@ -142,9 +142,9 @@ func (r *Rule) Evaluate(target, text string) []model.Finding {
 		if conf < EmitThreshold {
 			continue
 		}
-		// Suppression consults the whole raw line, not the capped copy locate
+		// Suppression consults whole raw lines, not the capped copy locate
 		// keeps, so a carve-out cannot be defeated by a pathologically long one.
-		if r.suppressed(lineText(text, m.start)) {
+		if r.suppressedSpan(text, m) {
 			continue
 		}
 		col, endCol, line := locate(text, m)
@@ -174,6 +174,37 @@ func (r *Rule) Evaluate(target, text string) []model.Finding {
 		out = append(out, f)
 	}
 	return out
+}
+
+// suppressedSpan reports whether any line the match touches carries a
+// carve-out. A leaf whose gap may cross a newline — `open\([^)]*…`,
+// `subprocess\.\w+\([^)]*shell=True` — matches a pretty-printed call starting
+// on its bare `name(` line, while the argument a carve-out is written for
+// (`path.join(tmpdir, …)`) sits on the next one. Checking only the start line
+// left every such carve-out blind to the multi-line form of the call it names.
+//
+// This widens no evasion surface: the author of a matched span controls its
+// start line as fully as its continuation lines, and a carve-out on the start
+// line already applied to the whole match. Each line is tested on its own, so
+// a pattern written for one line keeps its meaning (and its ^/$ anchors).
+func (r *Rule) suppressedSpan(text string, m match) bool {
+	if len(r.Suppress) == 0 {
+		return false
+	}
+	last := m.start
+	if m.end > m.start {
+		last = m.end - 1
+	}
+	for off := m.start; ; {
+		start, end := lineSpan(text, off)
+		if r.suppressed(text[start:end]) {
+			return true
+		}
+		if end >= last || end >= len(text) {
+			return false
+		}
+		off = end + 1
+	}
 }
 
 func (r *Rule) suppressed(line string) bool {
