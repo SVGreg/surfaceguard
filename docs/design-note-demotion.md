@@ -232,7 +232,7 @@ remain `fail_on: critical` in a local policy, and that should be documented alon
 `docs/planned-rules.md` is explicit: *"Never invent an `SG-` id for a non-rule item."* A
 context rule produces no finding, so it is not a detection and must not take an `SG-` id —
 an earlier draft of this note called it `SG-CTX-001`, which would have repeated exactly the
-namespace corruption the ID-reconciliation table records. A separate prefix (`CTX-`) or an
+namespace corruption issue #54 had to undo. A separate prefix (`CTX-`) or an
 unprefixed name in a dedicated pack are both acceptable; the decision belongs with the
 schema work.
 

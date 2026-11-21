@@ -153,7 +153,9 @@ exist — create them.
   ```
   `implement_streak` counts consecutive `sg-rule-implement` cycles held by the deep-backlog
   carry-over (§2); it is `0` on any cycle that ran something else. Treat a missing field as `0`.
-- `.claude/maintenance/log.md` — append-only human log (newest last).
+- `.claude/maintenance/log.md` — human log (newest last). Keep it to the **last 30 entries**: when
+  appending would exceed that, move the oldest entries to `log-archive.md` beside it (never read
+  by the loop).
 
 Read `state.json`. If absent, initialize it with the shape above.
 

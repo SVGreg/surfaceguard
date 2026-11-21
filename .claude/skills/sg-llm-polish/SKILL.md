@@ -67,4 +67,4 @@ When a real prompt file exists, polish it each cycle across three axes:
 
 Verify with the engine's test suite, keep everything RE2/static rules untouched, and open a PR the
 same way as the other activity skills (`feat(llm)`/`fix(llm)` scope, `automated`+`maintenance`
-labels). Move the relevant `SG-LLM-*` notes in `docs/planned-rules.md` to `implemented`.
+labels). Delete the `SG-LLM-*` notes in `docs/planned-rules.md` that the change shipped.

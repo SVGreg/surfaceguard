@@ -835,13 +835,11 @@ Packaging: GoReleaser (CLI + shared libs, linux/macos/windows × amd64/arm64), P
 
 ---
 
-## 14. Milestones (research LOE: medium — 4–8 weeks to strong v1)
+## 14. Milestones
 
-1. **M1 — Core scan (wk 1–2):** `skill` parser, rule loader + `static` engine (T0/T1 with confidence math §1.2 of `rule-verification.md`), SG-INJ/MEM/ANTI/STEER + NET + EXE/ROGUE + MTA/TRIG + SEC/AS + REF + DEP packs, text+json reports, CLI `scan`, TP/FP fixtures, verdict model (§10.3).
-2. **M2 — Provenance (wk 2–4):** SGMT-1 + vectors, DSSE sign/verify, USF fields (§7.5), `keygen`/`trust`, SG-PRV rules, exit-code 2 path, in-toto exporter.
-3. **M3 — Cards, secrets, SARIF, policy (wk 4–5):** `secret` engine (SG-SEC-002), AST-based SG-EXE-001 + SG-TAINT-\* correlation engine, skill-card (card/envelope split), risk score, SARIF + `report merge`, policy/waivers + per-rule FP-ceiling demotion, GitHub Action + pre-commit, `guard` CLI.
-4. **M4 — Embedding (wk 5–7):** C-ABI, Python + Node wrappers, daemon (UDS/gRPC/stdio), verdict cache, SDK staging-filter examples (Py + TS), audit JSONL.
-5. **M5 — Advanced + hardening (wk 7–8):** opt-in `dynamic`/`llm`/`SG-YARA-*` engines (T3 escalation §6 of `rule-verification.md`), KMS/Sigstore signers, SG-DEP-003 OSV/CVE pack, fuzzing, docs, Rust binding, release.
+The original M1–M5 ladder in this section is superseded. M1 (core scan) and M2 (provenance)
+shipped; everything after is planned in `docs/v1-dev-roadmap.md` (M3–M8) and tracked in
+`docs/v1-dev-plan.md`, whose milestone numbers are the ones in use.
 
 **Post-v1 pivots (tracked):** AAIF/OWASP official signing procedure ships → add `--format aaif` emitter (additive, §7.6). OWASP publishes `@owasp/ast10-scanner` or a normative rule catalog → map/merge rule IDs.
 

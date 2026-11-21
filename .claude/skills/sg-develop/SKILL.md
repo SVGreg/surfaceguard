@@ -61,7 +61,9 @@ State lives in `.claude/development/` (per-machine, git-ignored — create on fi
   ```json
   { "cycle": 0, "last_task": "", "consecutive_noops": 0 }
   ```
-- `.claude/development/log.md` — append-only human log, newest last.
+- `.claude/development/log.md` — human log, newest last. Keep it to the **last 30 entries**: when
+  appending would exceed that, move the oldest entries to `log-archive.md` beside it (never read
+  by the loop).
 
 The **plan file is the source of truth** for task status; `state.json` only records cadence.
 
@@ -133,7 +135,6 @@ In the same commit as the code:
 - Set the task's row to `in-progress` and (after the PR exists) fill its **PR** column — a short
   follow-up commit on the same branch, `docs(plan): link <TASK-ID> to #<n>`, is the normal way.
   The row flips to `done` at the *next* cycle's reconciliation, when the PR is actually merged.
-- Append one line to the plan's **Change log** if the card itself changed.
 - Append to `.claude/development/log.md`:
   ```
   ## cycle <N> — <ISO timestamp>

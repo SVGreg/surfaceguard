@@ -66,8 +66,9 @@ Standard preflight is `sg-maintain` §Ship it step 1. Beyond it, this cycle owes
 
 - Add the rule's detection notes to `docs/rule-verification.md` (Signals / carve-outs / fixtures).
 - Update the AST coverage note in `docs/owasp-ast-taxonomy.md` if this rule changes a row's status.
-- In `docs/planned-rules.md`, set the entry's status to `implemented` and add the PR link. **Do not
-  delete the row** — the history stays auditable.
+- In `docs/planned-rules.md`, **delete the row** in the same PR (or, if only part of its scope
+  shipped, cut its notes down to what is still open). The pack entry, the `rule-verification.md`
+  section and the PR are the record.
 
 ## 7. Open the PR
 

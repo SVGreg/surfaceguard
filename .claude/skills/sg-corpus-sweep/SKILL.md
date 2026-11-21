@@ -176,7 +176,7 @@ RAW_DIR="sweep-<date>-<source>" evaluation/scripts/sweep_gaps.py "$SWEEP/<source
 Bundles the scanner scored **clean** that still carry a risky primitive. Each line is a question,
 not a verdict. A recurring shape with no rule behind it is a candidate detection: add it to
 `docs/planned-rules.md` with an id allocated per `docs/rule-verification.md` — **never invent an id**
-and never reuse one from a backlog row (see that file's ID-reconciliation table for why).
+and never reuse one from a backlog row (issue #54 is why).
 
 **D. Drift.** `corpus_ledger.py record` prints every bundle whose `content_hash` differs from the
 one the ledger last saw, and marks the ones whose **verdict** changed with it. Read those first:

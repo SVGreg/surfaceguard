@@ -8,11 +8,9 @@
 
 **Repo:** `github.com/SVGreg/surfaceguard`
 **Language:** Go (1.26+)
-**Current state:** `scan`, `keygen`, `sign`, `verify` implemented. Rule packs
-(`core-injection`, `core-network`, `core-exec`, `core-secret`, `core-metadata`) mapped to
-OWASP Agentic Skills Top 10 (AST01–AST10). Own signing format (SGMT-1 / DSSE / Ed25519,
-detached `SKILL.md.skillsig`) with local trust roster. Outputs: text / JSON / skill-card.
-GoReleaser + release-please in place.
+**Current state:** M3–M5 and M9 shipped — `scan` (single bundle, folders, `--installed`),
+`guard`, `sign`/`verify` (SGMT-1 and OMS, keyless via `keyless/`), `locations`; outputs text /
+JSON / SARIF / skill-card; a GitHub Action and a load-time hook. Next is M6.
 
 ---
 
@@ -67,109 +65,12 @@ Distribution work (§3) runs **in parallel** starting at M3, not after M8.
 
 ---
 
-## M3 — SARIF output and CI surface
-**Priority:** highest. **Size:** weekend → small. **Blocks:** enterprise adoption.
+## M3–M5 — done
 
-### Why
-Without SARIF, findings cannot populate the GitHub Advanced Security code-scanning tab. This
-is table stakes for CI adoption and is the single cheapest unlock available.
-
-### Scope
-- `--format sarif` on `scan`, emitting SARIF 2.1.0.
-- Correct mapping of surfaceguard concepts onto SARIF: rules → `rules[]` with `id`,
-  `shortDescription`, `helpUri`; findings → `results[]` with `ruleId`, `level`,
-  `message`, `locations` (file + line/region where determinable), `partialFingerprints`
-  for stable dedup across runs.
-- Carry AST01–AST10 mapping into SARIF (`properties.tags` and/or `relationships`) so the
-  OWASP taxonomy survives the export.
-- Severity mapping: internal severity → SARIF `level` (`error` / `warning` / `note`) with the
-  raw score preserved in `properties`.
-- Respect existing policy config (`.surfaceguard.yaml` thresholds, waivers, allowlists) —
-  suppressed findings should be emitted as SARIF `suppressions`, not silently dropped.
-- Exit-code semantics documented and stable for CI gating.
-
-### Deliverables
-- SARIF emitter + golden-file tests validated against the SARIF 2.1.0 schema.
-- A published **GitHub Action** (`surfaceguard-action`) that runs a scan and uploads SARIF via
-  `github/codeql-action/upload-sarif`.
-- README/docs section: "Use in CI" with a copy-pasteable workflow.
-
-### Done when
-A public demo repo shows surfaceguard findings rendered in the GitHub Security tab, with AST
-references visible on each finding, and waivers correctly shown as suppressed.
-
----
-
-## M4 — OMS-compatible signing + Sigstore keyless verification
-**Priority:** highest strategic value. **Size:** small → medium. **This is the wedge.**
-
-### Why
-The market converged on **OpenSSF Model Signing (OMS)** — a Sigstore-bundle-derived, detached
-signature format covering a directory tree (`skill.oms.sig`) — as the de-facto skill signing
-format. Today a surfaceguard signature cannot be verified by OMS tooling and vice versa. That
-isolation is the project's biggest strategic risk. Meanwhile the prominent OMS implementation
-is anchored to a vendor root of trust; a **vendor-neutral** one is genuinely missing.
-
-### Scope
-1. **OMS-compatible signer/verifier**
-   - Emit `skill.oms.sig` alongside (not instead of) the existing SGMT-1 `.skillsig`.
-   - Cover the whole skill bundle directory tree, not just `SKILL.md`.
-   - Verify OMS signatures produced by other implementations; ensure signatures we produce
-     verify under standard OMS/Sigstore verification.
-2. **Sigstore keyless identity**
-   - Fulcio for short-lived certs from OIDC identity; Rekor for transparency-log inclusion.
-   - Support the standard CI identity path (GitHub Actions OIDC) so skills can be signed in a
-     workflow with no long-lived key material.
-   - Offline verification path: allow verifying against a pinned trust bundle / cached Rekor
-     proof so air-gapped verification still works (principle #1).
-3. **Trust model upgrade**
-   - Keep the local trust roster for teams that want it.
-   - Add identity-based trust policy: accept signatures from `repo:org/*` style OIDC
-     identities, configured in `.surfaceguard.yaml`.
-   - Multiple roots of trust configurable; **no hard-coded vendor root**.
-4. **Migration/compat**
-   - `verify` auto-detects signature type (SGMT-1 vs OMS) and reports which trust path was used.
-   - Document SGMT-1 as legacy; do not remove it in this milestone.
-
-### Hard parts / risks
-- Sigstore Go dependency surface is non-trivial; keep it behind a build-tag or isolated
-  package so the offline core stays lean.
-- Directory-tree canonicalization must be exactly compatible (file ordering, path
-  normalization, symlink and empty-dir handling) or cross-verification silently fails.
-- Rekor availability must never be a hard requirement for `scan`.
-
-### Done when
-- A skill signed by surfaceguard verifies with an independent OMS verifier, and an
-  OMS-signed skill verifies with `surfaceguard verify`.
-- A GitHub Actions workflow signs a skill keylessly with zero stored secrets.
-- Verification succeeds offline against a pinned trust bundle.
-
----
-
-## M5 — Load-time verification hook + skill cards
-**Priority:** high. **Size:** small → medium. **This is the differentiation vs. scanner-only rivals.**
-
-### Why
-Static pre-checks in CI are necessary but insufficient — the documented attacks are
-install-time and load-time. The unmet ecosystem need is *verify at the moment a skill is
-installed or loaded into an agent*, and a machine-readable trust artifact that downstream
-tools can consume. Almost no OSS tool covers this.
-
-### Scope
-- **`verify --at-load` / embeddable gate**: a small, fast, dependency-light API in `pkg/verify`
-  intended to be called from an agent loop or skill loader immediately before a skill enters
-  the model's context. Latency budget: single-digit milliseconds for the cached path.
-- **Install-time gate**: a mode suitable for wrapping skill installation (verify signature +
-  policy threshold + optional scan) with clear allow/deny/warn outcomes.
-- **Skill cards**: emit and verify machine-readable skill cards conforming to the
-  agentskills.io / NVIDIA-style schema — declared capabilities, `content_hash`, risk tier,
-  AST findings summary, signature status.
-- **Caching**: verification results keyed by content hash so repeated loads are cheap.
-- **Reference integration**: a worked example wiring the gate into a real skill loader.
-
-### Done when
-A reference integration demonstrates a malicious skill being blocked at load time, with a
-skill card emitted for an approved skill and consumed by the gate on the next run.
+SARIF + GitHub Action (M3), OMS-compatible signing + Sigstore keyless verification (M4, keyless
+signing in the separate `keyless/` module) and the load-time / install-time gate with skill cards
+(M5) have shipped. The only open M3 items are tracked in `docs/v1-dev-plan.md`. The multi-skill
+discovery milestone (M9) came from an owner request, not this roadmap, and is also complete.
 
 ---
 
@@ -267,8 +168,7 @@ Apply to every milestone:
   Every detection milestone reports measured detection rate and false-positive rate against them.
 - **Performance budget.** `scan` on a typical bundle stays well under a second; `verify`
   cached path stays in single-digit milliseconds.
-- **Docs ship with the feature**, not after it. README currently lags the repo — closing that
-  gap is part of the definition of done for each milestone.
+- **Docs ship with the feature**, not after it.
 
 ---
 
@@ -276,7 +176,7 @@ Apply to every milestone:
 
 Capability is ahead of visibility. These are roadmap items, not afterthoughts:
 
-1. **GitHub Action** published to the marketplace (lands with M3).
+1. **GitHub Action** published to the marketplace (built in M3; publishing is an owner step).
 2. **Install paths**: Homebrew tap, `go install`, prebuilt binaries via existing GoReleaser
    setup, container image.
 3. **Marketplace/registry listings** on skill marketplaces and awesome-lists in the
@@ -293,14 +193,8 @@ Capability is ahead of visibility. These are roadmap items, not afterthoughts:
 
 ## 4. Version targets
 
-| Version | Contents |
-|---|---|
-| **v0.2** | M3 complete. SARIF, GitHub Action, CI docs. |
-| **v0.3** | M4 complete. OMS-compatible signatures, Sigstore keyless, identity-based trust policy. |
-| **v0.4** | M5 complete. Load-time gate, install-time gate, skill cards, reference integration. |
-| **v0.5** | M6 complete. Taint analysis + trifecta detector, with measured detection/FP rates. |
-| **v0.6** | M7 complete. Opt-in LLM engine behind pluggable backends. |
-| **v1.0** | M8 items landed, output contracts frozen, docs complete, ≥1 external integration in the wild. |
+Release numbers are `release-please`'s call. **v1.0** = M8 items landed, output contracts frozen,
+docs complete, and at least one external integration in the wild.
 
 ---
 
@@ -320,16 +214,12 @@ Capability is ahead of visibility. These are roadmap items, not afterthoughts:
 
 When planning from this document:
 
-1. Start with **M3** — it is small, unblocks adoption, and its output format decisions
-   (severity mapping, fingerprints, AST tags) constrain later milestones. Get them right.
-2. Treat **M4** as the strategic centerpiece; if effort must be cut anywhere, cut M6/M7 scope,
-   never M4.
-3. Before implementing M4, **verify the current state of the OMS spec and Sigstore Go
-   libraries** — this roadmap's assumptions about format details should be re-checked against
-   primary sources at implementation time.
-4. For each milestone, produce: a task breakdown, a proposed package layout, test-fixture
+1. Signing interop (OMS / Sigstore) is the strategic centerpiece; if effort must be cut, cut
+   M6/M7 scope, never regress signing.
+2. Re-check external specs and libraries against primary sources at implementation time —
+   this roadmap's assumptions may be stale.
+3. For each milestone, produce: a task breakdown, a proposed package layout, test-fixture
    requirements, and the acceptance criteria restated as executable checks.
-5. Update README and docs as part of each milestone's work, and reconcile the README's
-   self-reported version with actual release tags.
-6. Where this roadmap and the repo disagree about current state, trust the repo and flag
+4. Update README and docs as part of each milestone's work.
+5. Where this roadmap and the repo disagree about current state, trust the repo and flag
    the discrepancy.

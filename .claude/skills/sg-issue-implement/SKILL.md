@@ -41,7 +41,7 @@ An open issue is **ready** when either path holds.
 | Graded for work | label `must-have` or `useful` (never `nice-to-have`, `out-of-scope`, `needs-info`) |
 | Cooling-off elapsed | since the triage comment's `createdAt`: **≥ 24 h** for `must-have`, **≥ 72 h** for `useful` |
 | Not on hold | no `hold` label; no owner comment starting with `Hold` newer than the last owner `Implement` |
-| Not blocked | its row in `docs/planned-rules.md` (if any) is not `blocked` / `implemented` |
+| Not blocked | its row in `docs/planned-rules.md` (if any) is not `blocked` |
 | Not in flight | no open or merged PR references it (`gh pr list --state all --search "<n> in:body"`), and no `<!-- sg-maintain:implement -->` comment pointing at an open PR |
 
 ```sh
