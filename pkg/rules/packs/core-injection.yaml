@@ -1,6 +1,6 @@
 apiVersion: surfaceguard.svgreg.net/rulepack.v1
 name: core-injection
-version: 1.8.1
+version: 1.8.2
 description: Prompt injection, jailbreak, and instruction-layer attacks (rule-verification.md §2).
 rules:
   - id: SG-INJ-001
@@ -131,6 +131,10 @@ rules:
         # 9938 corpus files the four that carry one produce ratios of 0.0006 to
         # 0.0048 — the densest real file is 31x below 0.15. See homoglyph.go for
         # the measurement and the carrier predicate's three FP clauses.
+        #
+        # A whole word that is the SI micro prefix on a unit (`μmol`, `μsec`) is
+        # not a carrier (#391): it is lab and latency notation, and it failed
+        # Lark's `lark-sheets` at critical. Lookalike-u words (`μpload`) still fire.
         - homoglyph_ratio: { min_count: 1 }
           confidence: 0.65
     suppress:

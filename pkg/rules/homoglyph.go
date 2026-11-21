@@ -42,6 +42,23 @@ func init() {
 	}
 }
 
+// microUnits are the μ-prefixed unit words that would otherwise pass the
+// three-Latin-letter bound. Shorter forms (`μs`, `μm`, `μg`, `μL`, `μA`,
+// `μHz`) never reach it. Only a whole word matches, so the list cannot hide a
+// disguised word that happens to start with a unit.
+var microUnits = map[string]bool{}
+
+func init() {
+	for _, u := range []string{
+		"mol", "mole", "moles", "mols", "molar",
+		"sec", "secs", "second", "seconds",
+		"gram", "grams", "meter", "meters", "metre", "metres",
+		"liter", "liters", "litre", "litres", "amp", "amps", "volt", "volts", "watt", "watts",
+	} {
+		microUnits["μ"+u] = true
+	}
+}
+
 func isLatinLetter(r rune) bool {
 	return (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= 0x00C0 && r <= 0x024F)
 }
@@ -61,7 +78,19 @@ func isLatinLetter(r rune) bool {
 //     non-English text is *wholly* non-Latin per word, and `报告β值与p值` mixes
 //     scripts but carries CJK, which disguises nothing. Without this clause the
 //     corpus produces 131 hits across 14 files; with it, 9.
+//
+// One exemption sits in front of the three clauses: the SI micro prefix
+// (#391). Greek μ (U+03BC) is what keyboards and IMEs produce for "micro", so
+// `109.10μmol/L` and `μsec` are standard lab and latency notation; before this
+// they were *critical* findings that failed Lark's `lark-sheets`. The exemption
+// is a closed list of whole words, μ followed by a unit spelling, because μ
+// is also a genuine lookalike for `u`: `μpload`, `μser` and `μrl` are disguised
+// words and keep firing. (U+00B5 MICRO SIGN was never a carrier: it is not in
+// latinConfusables.)
 func homoglyphCarrier(word string) bool {
+	if microUnits[word] {
+		return false
+	}
 	latin, foreign, confusable := 0, 0, 0
 	for _, r := range word {
 		switch {
