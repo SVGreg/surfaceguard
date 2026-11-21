@@ -169,6 +169,6 @@ the owner needs to clear.
 - A milestone is complete when every one of its rows is `done`, `dropped`, or `owner` — say so in
   the log and let the next cycle's `/sg-plan` expand the following milestone.
 - If a cycle errors out mid-way, log the failure and leave the branch un-PR'd; §0.2 resumes it.
-- Skill bundles under `.claude/skills/` are signed: editing one staleness its `.skillsig`, which
-  this machine cannot fix. List every touched bundle under a "needs re-signing" line in the PR body
-  (guardrail 5) — never keygen or re-sign with a substitute key.
+- Skill bundles under `.claude/skills/` are signed: editing one makes its `.skillsig` stale, and
+  re-signing is the owner's act, not the loop's. List every touched bundle under a "needs re-signing"
+  line in the PR body (guardrail 5) — never touch `keys/`, run the signing script, or keygen.
