@@ -85,11 +85,14 @@ enforces them.
    `scan testdata/benign`→0), and dogfood `scan` any skill you touched.
    **If you edited any file under `.claude/skills/`, that bundle's `.skillsig` is now stale** — an
    edited `SKILL.md` changes the Merkle root, so `surfaceguard verify` reports `MISMATCH` until the
-   bundle is re-signed. **You cannot fix this here.** Signing is done from a separate workstation
-   and the private key is deliberately absent from this machine. Never run `surfaceguard keygen`, and
-   never sign with a substitute key, to make `verify` pass — that would defeat the trust model this
-   project exists to enforce. Instead, **list every skill bundle you touched in the PR body under a
-   "needs re-signing" line**, so the owner re-signs out of band.
+   bundle is re-signed. **Signing is the owner's act, never the loop's.** The owner's keys may be
+   present on this machine (the git-ignored `keys/`), but a signature means *the owner vouched for
+   these instructions* — a loop that reads untrusted web and skill content must not sign its own
+   edits to its own instructions. So: never read, use or copy anything under `keys/`, never run
+   `scripts/sign-skills.sh` or `surfaceguard sign` on `.claude/skills/`, and never run
+   `surfaceguard keygen` or sign with a substitute key to make `verify` pass. Instead, **list every
+   skill bundle you touched in the PR body under a "needs re-signing" line**; the owner re-signs
+   with `scripts/sign-skills.sh` after the merge (or asks an interactive session to).
    **If the PR touches `pkg/rules/packs/*.yaml`, that pack's `version:` (line 3) must be bumped in
    the same commit** — **minor** when the pack can now produce more or higher-severity findings
    (new rule, new match branch, new target, raised severity/confidence), **patch** when it can only

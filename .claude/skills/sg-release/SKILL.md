@@ -46,9 +46,9 @@ Run from the repo root:
    `go run ./cmd/surfaceguard verify --policy .surfaceguard.yaml .claude/skills` exits **0**,
    with every bundle `verified`. A `merkle-mismatch` row means that bundle's `SKILL.md` was
    edited after its last signing. **Stop and ask the owner to re-sign** with
-   `scripts/sign-skills.sh` on the signing workstation, then pull and re-run this step.
-   Never run `surfaceguard keygen` or sign with a substitute key to clear it. The private
-   keys are deliberately not on this machine.
+   `scripts/sign-skills.sh`, then pull and re-run this step. Re-signing is the owner's act
+   (guardrail 5): do not sign on your own initiative even if `keys/` is present, and never run
+   `surfaceguard keygen` or sign with a substitute key to clear it.
    This check lives here and **not** in CI on purpose. Drift between a skill-editing PR and
    the next signing session is the expected steady state, so a PR gate would fail every
    legitimate edit. A release is the point where the shipped skills must match their
