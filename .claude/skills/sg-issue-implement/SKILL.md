@@ -23,7 +23,7 @@ start an issue that someone other than the owner filed.
   third party could queue code changes by filing an issue and waiting.
 - **The owner can always stop it.** A `hold` label, or an owner comment whose body starts with
   `Hold`, blocks auto-start indefinitely; removing the label (or a later owner `Implement`) releases it.
-- All `sg-maintain` global guardrails apply — including PRs-only (never merge) and preflight.
+- All `sg-maintain` global guardrails apply — including preflight and auto-merge once CI is green (guardrail 4).
 
 ## 1. Find a ready issue
 
@@ -90,15 +90,16 @@ Ship per **`sg-maintain` §Ship it**, with:
 Then comment on the issue so the trail is clear:
 
 ```sh
-gh issue comment <n> --body "<!-- sg-maintain:implement --> PR up: <pr-url>. Started automatically (<grade>, triaged <date>, cooling-off elapsed) — or: from your Implement command. Needs your review + merge."
+gh issue comment <n> --body "<!-- sg-maintain:implement --> PR up: <pr-url>. Started automatically (<grade>, triaged <date>, cooling-off elapsed) — or: from your Implement command. Merging once CI is green."
 ```
 
 ## 5. Confirm the issue actually closed
 
 `Closes #<n>` is a request to GitHub, not a guarantee: it silently does nothing when the keyword is
 edited out at merge time, when the PR merges into a non-default branch, or when the merge is a
-squash whose commit message drops the line. Since this skill opens the PR and the **owner** merges
-it later, the check belongs at the *start* of the next cycle that touches this issue:
+squash whose commit message drops the line. Run this check right after this skill merges the PR,
+and again at the *start* of the next cycle that touches this issue (in case the PR was left open
+with `needs-owner` and merged later):
 
 ```sh
 gh pr view <pr> --json state,mergedAt -q '.state'      # MERGED?
