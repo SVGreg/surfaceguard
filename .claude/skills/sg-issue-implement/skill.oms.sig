@@ -10,7 +10,7 @@
     "payloadType": "application/vnd.in-toto+json",
     "signatures": [
       {
-        "sig": "MEUCIGkmelt2muR7blpQ1onX0nPG5v0nq0H/yL/5MHA00640AiEAw2b8D1StdLIK65kfO+G0BLPF5DMmKNz11Hy1YaDCWW4="
+        "sig": "MEQCIEHayKgbGXNY4XnmyvhSCFsoFamgGang3i0qMfhPVLKfAiBhn+k0oV6G8PjkzRfious1rAN9OAHogM93LhaOgh35+w=="
       }
     ]
   }
