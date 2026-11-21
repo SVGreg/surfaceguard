@@ -3879,6 +3879,13 @@ func TestHomoglyphCarrierPredicate(t *testing.T) {
 		{"Δy", false},
 		{"λt", false},
 		{"μs", false},       // mu IS confusable with u, but only 1 Latin letter
+		{"μmol", false},     // SI micro prefix on a 3-letter unit (#391)
+		{"μsec", false},     // ditto: microseconds
+		{"μgrams", false},   // ditto
+		{"μpload", true},    // mu as a lookalike u: a disguised "upload" keeps firing
+		{"μser", true},      // ... and "user"
+		{"μmolx", true},     // only the whole unit word is exempt
+		{"Μmol", true},      // capital Greek Mu is not the micro prefix
 		{"报告β值与p值", false},  // mixed script, but CJK disguises nothing
 		{"ratio而非β", false}, // 5 Latin + confusable β, but CJK present
 
