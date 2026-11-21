@@ -9,6 +9,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/asn1"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
 	"math/big"
@@ -91,6 +92,29 @@ func signedLogEntry(t *testing.T, body []byte, at time.Time) (entry json.RawMess
 	return raw, base64.StdEncoding.EncodeToString(der), base64.StdEncoding.EncodeToString(id[:])
 }
 
+// dsseBody is the canonicalized body Rekor stores for a dsse 0.0.1 entry: the
+// payload hash plus each signature with its verifier (base64 PEM).
+func dsseBody(t *testing.T, payload, sig, certDER []byte) []byte {
+	t.Helper()
+	ph := sha256.Sum256(payload)
+	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDER})
+	body, err := json.Marshal(map[string]any{
+		"apiVersion": "0.0.1",
+		"kind":       "dsse",
+		"spec": map[string]any{
+			"payloadHash": map[string]any{"algorithm": "sha256", "value": hex.EncodeToString(ph[:])},
+			"signatures": []any{map[string]any{
+				"signature": base64.StdEncoding.EncodeToString(sig),
+				"verifier":  base64.StdEncoding.EncodeToString(certPEM),
+			}},
+		},
+	})
+	if err != nil {
+		t.Fatalf("marshal dsse body: %v", err)
+	}
+	return body
+}
+
 func newKeylessFixture(t *testing.T, identity, issuer string, signedAt time.Time) keylessFixture {
 	t.Helper()
 
@@ -169,8 +193,9 @@ func newKeylessFixture(t *testing.T, identity, issuer string, signedAt time.Time
 	}
 
 	// The log entry commits to the signature that was just made, as Rekor's
-	// does — so tampering with either is detectable.
-	tlog, logKeyPKIX, logKeyID := signedLogEntry(t, sig, signedAt)
+	// does — a real dsse 0.0.1 body recording the payload hash, the signature
+	// and the leaf certificate — so tampering with either is detectable.
+	tlog, logKeyPKIX, logKeyID := signedLogEntry(t, dsseBody(t, payload, sig, leafDER), signedAt)
 	bundle := &oms.Bundle{
 		MediaType: oms.BundleMediaType,
 		VerificationMaterial: &oms.VerificationMaterial{
@@ -508,5 +533,90 @@ func TestKeylessIgnoresTimestampsFromUnprovenEntries(t *testing.T) {
 	}
 	if !res.SignedAt.Equal(f.signedAt.Add(24 * time.Hour).Truncate(time.Second)) {
 		t.Errorf("SignedAt = %v, want the proven entry's time", res.SignedAt)
+	}
+}
+
+// TestKeylessRequiresLogEntryBoundToBundle (#333, step 2): an inclusion proof
+// shows that some entry is in the log, not that it is about this signature.
+// Each case below carries a genuine, proven, checkpointed entry whose body
+// records something other than this bundle — before the fix every one of them
+// verified, because canonicalizedBody was hashed into the proof and never read.
+func TestKeylessRequiresLogEntryBoundToBundle(t *testing.T) {
+	f := newKeylessFixture(t, testIdentity, testIssuer, time.Now())
+	other := newKeylessFixture(t, testIdentity, testIssuer, time.Now())
+	roster := policy.Trust{Roots: []policy.Root{{Name: "test-fulcio", PEM: f.rootPEM}}}
+
+	b, err := oms.ParseBundle(f.bundle)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	payload, _ := base64.StdEncoding.DecodeString(b.DSSEEnvelope.Payload)
+	sig, _ := base64.StdEncoding.DecodeString(b.DSSEEnvelope.Signatures[0].Sig)
+	leaf, _, err := oms.Certificates(b)
+	if err != nil {
+		t.Fatalf("certificates: %v", err)
+	}
+	ob, _ := oms.ParseBundle(other.bundle)
+	otherLeaf, _, _ := oms.Certificates(ob)
+	otherSig, _ := base64.StdEncoding.DecodeString(ob.DSSEEnvelope.Signatures[0].Sig)
+
+	certPEM := base64.StdEncoding.EncodeToString(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: leaf.Raw}))
+	ph := sha256.Sum256(payload)
+	intoto := func(sigField string) []byte {
+		body, _ := json.Marshal(map[string]any{
+			"apiVersion": "0.0.2", "kind": "intoto",
+			"spec": map[string]any{"content": map[string]any{
+				"payloadHash": map[string]any{"algorithm": "sha256", "value": hex.EncodeToString(ph[:])},
+				"envelope": map[string]any{"signatures": []any{map[string]any{
+					"sig": sigField, "publicKey": certPEM,
+				}}},
+			}},
+		})
+		return body
+	}
+	hashedrekord, _ := json.Marshal(map[string]any{
+		"apiVersion": "0.0.1", "kind": "hashedrekord",
+		"spec": map[string]any{"signature": map[string]any{"content": base64.StdEncoding.EncodeToString(sig)}},
+	})
+
+	cases := []struct {
+		name  string
+		body  []byte
+		trust bool
+	}{
+		{"own dsse body", dsseBody(t, payload, sig, leaf.Raw), true},
+		// intoto 0.0.2 stores the envelope's base64 sig base64-encoded again.
+		{"own intoto body", intoto(base64.StdEncoding.EncodeToString([]byte(base64.StdEncoding.EncodeToString(sig)))), true},
+		{"another bundle's entry", dsseBody(t, []byte(`{"other":true}`), otherSig, otherLeaf.Raw), false},
+		{"other payload", dsseBody(t, []byte(`{"other":true}`), sig, leaf.Raw), false},
+		{"other signature", dsseBody(t, payload, otherSig, leaf.Raw), false},
+		{"other certificate", dsseBody(t, payload, sig, otherLeaf.Raw), false},
+		{"intoto with other signature", intoto(base64.StdEncoding.EncodeToString(otherSig)), false},
+		{"unsupported kind", hashedrekord, false},
+		{"not json", sig, false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			entry, _, _ := signedLogEntry(t, c.body, f.signedAt)
+			var raw map[string]any
+			if err := json.Unmarshal(f.bundle, &raw); err != nil {
+				t.Fatalf("unmarshal: %v", err)
+			}
+			var e any
+			_ = json.Unmarshal(entry, &e)
+			raw["verificationMaterial"].(map[string]any)["tlogEntries"] = []any{e}
+			data, _ := json.Marshal(raw)
+
+			res := VerifyOMS(f.skill, data, roster)
+			if res.Trusted != c.trust {
+				t.Fatalf("Trusted = %v, want %v (%s)", res.Trusted, c.trust, res.CertError)
+			}
+			if res.LogInclusionVerified != c.trust {
+				t.Errorf("LogInclusionVerified = %v, want %v", res.LogInclusionVerified, c.trust)
+			}
+			if !c.trust && res.CertError == "" {
+				t.Error("no explanation for the unbound log entry")
+			}
+		})
 	}
 }

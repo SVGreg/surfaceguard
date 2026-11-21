@@ -257,11 +257,16 @@ func verifyCertBound(res *Result, bundle *oms.Bundle, pae []byte, sigs [][]byte,
 	// entry plus one proof-less entry with a backdated time would anchor the
 	// validity window on the backdated one (#333, step 1).
 	//
-	// Still open (#333): integratedTime is not covered by the inclusion proof —
-	// a Rekor leaf is the canonicalized body only — so even a proven entry's
-	// time is unauthenticated until the SignedEntryTimestamp is verified, and
-	// the entry is not yet bound to this bundle's signature.
-	proven, err := verifyTransparency(res, bundle, roster)
+	// An entry also counts only when its body is bound to this bundle — the
+	// payload hash, a signature and the leaf certificate all match (#333,
+	// step 2). Without that, any genuine entry copied from the public log
+	// would "prove" an unrelated signature.
+	//
+	// Still open (#333, step 3): integratedTime is not covered by the
+	// inclusion proof — a Rekor leaf is the canonicalized body only — so even
+	// a proven, bound entry's time is unauthenticated until the
+	// SignedEntryTimestamp is verified.
+	proven, err := verifyTransparency(res, bundle, leaf, roster)
 	if err != nil {
 		res.CertError = err.Error()
 		return
@@ -337,14 +342,18 @@ func verifyCertBound(res *Result, bundle *oms.Bundle, pae []byte, sigs [][]byte,
 // nothing to check a signature against, and inventing a default log would be
 // the same mistake as shipping a default CA.
 //
+// An entry passes only when its canonicalized body is bound to this bundle
+// (oms.TlogEntry.BindsTo): a proven entry about some other signature is
+// skipped, never counted as inclusion of this one.
+//
 // It returns the earliest integratedTime among the entries that passed — the
 // only log time the caller may anchor a certificate on.
-func verifyTransparency(res *Result, bundle *oms.Bundle, roster policy.Trust) (time.Time, error) {
+func verifyTransparency(res *Result, bundle *oms.Bundle, leaf *x509.Certificate, roster policy.Trust) (time.Time, error) {
 	entries, err := oms.TlogEntries(bundle)
 	if err != nil {
 		return time.Time{}, err
 	}
-	var lastErr error
+	var lastErr, unbound error
 	var proven time.Time
 	accept := func(e oms.TlogEntry) {
 		if e.IntegratedTime <= 0 {
@@ -363,6 +372,10 @@ func verifyTransparency(res *Result, bundle *oms.Bundle, roster policy.Trust) (t
 			// A broken proof is evidence, not an absence of it: report the
 			// first one rather than letting a later good entry mask it.
 			return time.Time{}, err
+		}
+		if err := e.BindsTo(bundle, leaf); err != nil {
+			unbound = err
+			continue
 		}
 		res.LogInclusionVerified = true
 
@@ -387,6 +400,9 @@ func verifyTransparency(res *Result, bundle *oms.Bundle, roster policy.Trust) (t
 	}
 
 	if !res.LogInclusionVerified {
+		if unbound != nil {
+			return time.Time{}, fmt.Errorf("no proven transparency-log entry records this bundle's signature: %w", unbound)
+		}
 		return time.Time{}, oms.ErrNoInclusionProof
 	}
 	if len(roster.LogKeys) > 0 && !res.LogCheckpointVerified {

@@ -194,3 +194,32 @@ func TestCheckpointMustMatchTheProof(t *testing.T) {
 		t.Errorf("root mismatch accepted: %v", err)
 	}
 }
+
+// TestBindsToVendoredSigstoreEntry: the real Rekor dsse 0.0.1 entry in the
+// vendored OMS vector records exactly that bundle's payload, signature and
+// Fulcio certificate — and stops matching once the payload changes.
+func TestBindsToVendoredSigstoreEntry(t *testing.T) {
+	b, err := ParseBundle(read(t, "valid/sigstore.bundle.json"))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	entries, err := TlogEntries(b)
+	if err != nil {
+		t.Fatalf("entries: %v", err)
+	}
+	leaf, _, err := Certificates(b)
+	if err != nil {
+		t.Fatalf("certificates: %v", err)
+	}
+	if err := entries[0].BindsTo(b, leaf); err != nil {
+		t.Fatalf("genuine entry not bound to its own bundle: %v", err)
+	}
+
+	tampered := *b
+	env := *b.DSSEEnvelope
+	env.Payload = base64.StdEncoding.EncodeToString([]byte(`{"_type":"forged"}`))
+	tampered.DSSEEnvelope = &env
+	if err := entries[0].BindsTo(&tampered, leaf); !errors.Is(err, ErrEntryUnbound) {
+		t.Errorf("entry bound to a different payload: err = %v", err)
+	}
+}
