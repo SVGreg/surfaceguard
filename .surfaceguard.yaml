@@ -14,4 +14,12 @@ trust:
     - keyid: sg-7ea971cb4c9a
       algorithm: ecdsa-p256
       public_key: MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAET0+EHun1XPU/uvt4aFtLS8rpkF3Jp6rwKJWlD/lcrnFb1NzEqZeq3GgnDYSCGt5GkRmtUyRDIPrQUNQaXhyXLg==
+    # Second signing pair (2026-11-21), generated on the development workstation;
+    # signs both formats in two passes exactly like the pair above.
+    - keyid: sg-3aac4f8361f5
+      algorithm: ed25519
+      public_key: eV8eo6yIn02y0+506kc9Hqi9VzLvyLdkuj88SHr3OtY=
+    - keyid: sg-b5b663756cd0
+      algorithm: ecdsa-p256
+      public_key: MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEJRe+qEm2c0zhlnzRqb2/SDmRqwtwAsfGcatNM+MKQt5e1onBVuvezx6hKv0+fjZQVe2+dhSltobVMGXoGrZTFA==
   revoked: []
