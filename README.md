@@ -1355,10 +1355,9 @@ Fixtures live in [`testdata/`](testdata/): `benign/` (a clean skill) and
 `malicious/` (an injection + exfiltration corpus — **do not run** its
 `setup.sh`, it exists only as scanner test input).
 
-See [`PROGRESS.md`](PROGRESS.md) for implementation status and
-[`docs/v1-dev-plan.md`](docs/v1-dev-plan.md) for the tracked roadmap to v1
-(OMS/Sigstore signing, load-time verification, taint analysis, LLM/dynamic
-engines, language bindings, keyfile encryption).
+See [`docs/v1-dev-plan.md`](docs/v1-dev-plan.md) for the tracked roadmap to v1
+(taint analysis, the opt-in LLM engine, hardening, and deferred items such as
+language bindings and keyfile encryption).
 
 ---
 

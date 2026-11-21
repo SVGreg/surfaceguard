@@ -50,8 +50,8 @@ Those three are cheap but shallow — work that landed without citing the issue 
 trace in any of them. **The decisive evidence is the implicated code itself:** open the function,
 rule, or doc section the issue names and check whether it now does what was asked. For a rule
 request that is the pack entry plus its test; for an engine/CLI issue it is the function body
-(`awk '/^func <Name>/,/^}/' <file>`), and a row in `docs/planned-rules.md` flipped to `implemented`
-is a strong pointer to the PR that did it.
+(`awk '/^func <Name>/,/^}/' <file>`). Shipped rows are deleted from `docs/planned-rules.md`, so
+`git log -S '<SG-ID>' -- docs/planned-rules.md` finds the PR that removed one.
 
 Close **only** when you can name where it landed — a rule ID present in a pack, a merged PR number,
 a commit, or the changed function. Then:

@@ -40,7 +40,7 @@ var SupportedAlgorithms = []string{AlgEd25519, AlgECDSAP256}
 // keyFile is the on-disk private key format (the self-contained ".key"). It
 // carries both halves, so signing needs only this one file. NOTE: stored
 // unencrypted at mode 0600 for first drop; encryption-at-rest (age vs secretbox)
-// is a tracked M2 decision (PROGRESS.md). Do not commit keys.
+// is a deferred item (docs/v1-dev-plan.md). Do not commit keys.
 type keyFile struct {
 	KeyID      string `json:"keyid"`
 	Algorithm  string `json:"algorithm"`

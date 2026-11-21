@@ -132,7 +132,7 @@ const maxFileSize = 16 << 20 // 16 MiB per-file cap (DoS guard)
 var maxBundleSize int64 = 256 << 20
 
 // LoadBundle loads a bundle from a directory or a single SKILL.md file.
-// git-URL / tar / zip sources are deferred (see PROGRESS.md).
+// git-URL / tar / zip sources are deferred (see docs/v1-dev-plan.md).
 func LoadBundle(src string) (*Bundle, error) {
 	// Lstat, not Stat: Stat resolves the link, so the ModeSymlink check below
 	// could never fire and single-file mode silently followed symlinks (§7.1).

@@ -98,8 +98,9 @@ PR; a PR that both widens and narrows takes the higher one. Full table in
 **`docs/rule-verification.md` (with `docs/surfaceguard-design.md §5`) is the authority for what an
 `SG-` id means.** Allocate a new id by taking the next free number in its family *and* adding a
 section there — never by picking a number in a backlog row or an issue. `docs/planned-rules.md`
-tracks status/priority for ids defined in the authority docs; it once invented its own meanings for
-thirteen ids, which silently blocked its two highest-priority rows (see its ID-reconciliation table).
+tracks only **open** work for ids defined in the authority docs — a row is deleted when it ships. It
+once invented its own meanings for thirteen ids, which silently blocked its highest-priority rows
+(issue #54).
 
 ### Scan targets (and why `refs` is special)
 
@@ -249,4 +250,5 @@ confirmed intent**. A `pass` is not a safety guarantee; a `fail` is an invitatio
 
 - `docs/surfaceguard-design.md` — full design + roadmap; source code comments cite its sections (`design §X`).
 - `docs/rule-verification.md` — the detection approach and confidence math behind each rule.
-- `PROGRESS.md` — implementation status/handoff; M1 (scan) + M2 (sign/verify) are done.
+- `docs/v1-dev-roadmap.md` / `docs/v1-dev-plan.md` — what is next (open work only); `docs/planned-rules.md`
+  — open detection and engine backlog.

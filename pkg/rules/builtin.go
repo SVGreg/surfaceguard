@@ -25,8 +25,8 @@ var (
 
 // Builtin returns the compiled embedded rule-packs. These are compiled into the
 // binary (go:embed), so tampering with them is binary tampering; explicit
-// signature verification of packs is a hardening item (design §8.2,
-// PROGRESS.md).
+// signature verification of packs is a deferred hardening item (design §8.2,
+// docs/v1-dev-plan.md).
 //
 // Compilation happens once per process. The returned *slice* is a fresh copy —
 // callers append external --rulepack packs to it (cmd/surfaceguard.loadRuleset),
