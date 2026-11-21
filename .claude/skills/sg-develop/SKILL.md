@@ -20,7 +20,7 @@ Invocation forms: `/sg-develop` (next ready task) · `/sg-develop M3-04` (that t
 ## Guardrails
 
 All `sg-maintain` global guardrails apply — one activity per cycle, one PR per cycle, never
-self-merge a code PR, never execute scanned or generated attack content, preflight before every PR,
+merge a PR before its CI is green, never execute scanned or generated attack content, preflight before every PR,
 start from fresh `main`. Plus:
 
 - **One task per cycle.** A deep plan is answered with more cycles, never a bigger cycle. If the
@@ -156,9 +156,9 @@ Ship per **`sg-maintain` §Ship it**, with:
   command and its output**, the cross-cutting checklist, and any card amendment or follow-up row.
   `Closes #<n>` when the task has a tracking issue.
 
-A task PR touches `pkg/`/`cmd/`/`testdata/`, so it is a **code PR** — leave it open for the owner
-(guardrail 4). A docs-only task (a spike like `M4-01`, a docs task, a reconciliation-only cycle) is
-merged right away once CI is green.
+Every task PR — code or docs-only — is **merged once CI is green** (guardrail 4, §Ship it step 4).
+The row still flips to `done` at the next cycle's §1 reconciliation, which also surfaces any PR
+left open with `needs-owner`.
 
 Then report: the task, the PR link, what the next cycle will pick, and any `blocked`/`owner` rows
 the owner needs to clear.

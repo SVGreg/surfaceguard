@@ -13,8 +13,8 @@ activity** and opens **at most one PR**, then records what it did. Wire it up wi
 ```
 
 The interval is tunable. Because `main` is branch-protected (see `sg-release` skill), everything
-this loop produces lands as a **pull request the owner reviews and merges** — the loop never
-merges or pushes to `main` itself.
+this loop produces lands as a **pull request**, which the loop merges itself once CI is green
+(guardrail 4). It never pushes to `main` directly.
 
 ## Global guardrails (apply to every activity skill)
 
@@ -32,17 +32,25 @@ enforces them.
    remainder to `docs/planned-rules.md` or a GitHub issue. When the backlog is deep the answer is
    the **deep-backlog carry-over** in §2 — the *next* cycle repeats the activity — never a bigger
    cycle.
-4. **Code changes → owner-reviewed PR; non-code changes → merge right away.** Always branch (off
-   fresh `main`, guardrail 7), commit with conventional-commit messages, push, and open a PR noting
-   bot authorship. Then:
+4. **Every PR → auto-merge once CI is green.** Always branch (off fresh `main`, guardrail 7),
+   commit with conventional-commit messages, push, and open a PR noting bot authorship. Then:
    - **Label every PR informatively** (guardrail 4a below).
-   - A **code PR** — anything touching `pkg/`, `cmd/`, `testdata/`, a rule pack
-     (`pkg/rules/packs/*.yaml`), or a signed skill under `.claude/skills/` — is **left for the owner
-     to review and merge**. Never self-merge a code PR.
-   - A **non-code PR** — changes confined to documentation and the backlog (`docs/**`, `README.md`,
-     `PROGRESS.md`; no `pkg/`/`cmd/`/`testdata/`/rule-pack/skill edits) — the loop **merges right away**
-     once CI is green (`gh pr merge --squash`). This is the normal ending for `sg-threat-research`
-     and `sg-issue-triage` backlog PRs, so planned-rule research and triage land without waiting.
+   - **Merge it as soon as it is implemented and CI passes** — code and non-code alike (`pkg/`,
+     `cmd/`, `testdata/`, rule packs, skills under `.claude/skills/`, docs, backlog). Wait for the
+     checks, then squash-merge and sync `main`:
+     ```sh
+     gh pr checks <pr> --watch --fail-fast && gh pr merge <pr> --squash --delete-branch
+     git checkout main && git pull --ff-only
+     ```
+   - **Green CI is the gate, not a formality.** Merge only after local preflight (guardrail 5)
+     passed *and* every required check on the PR is green. If a check fails, fix it on the same
+     branch and re-wait; if it can't be fixed within the cycle, leave the PR open, label it
+     `needs-owner`, and log why. Never merge a red or pending PR.
+   - **Never bypass protection.** If `gh pr merge` is refused (a required review, a merge conflict,
+     a protection rule), do not retry with `--admin` or push to `main`; rebase on fresh `main` for a
+     conflict, otherwise leave it open with `needs-owner` and note it in the log.
+   - A PR that edits a skill under `.claude/skills/` still merges, but keeps its **needs re-signing**
+     line (guardrail 5) so the owner re-signs out of band after the merge.
    - Triage comments and issue filings are not PRs and post directly, as before.
    - **Close the issue a PR implements.** When the work resolves a GitHub issue — a rule filed by
      `sg-threat-research`, a ready or fast-tracked issue, a `sg-code-review`/triage finding — put
@@ -209,9 +217,9 @@ never wasted. Do this at most once per cycle to avoid churning.
 Invoke the chosen skill (e.g. `/sg-rule-polish`). Let it do its full runbook, including opening its
 own PR / posting its own comment. Do **not** open a second PR from the dispatcher.
 
-When the activity's PR is **non-code** (guardrail 4), wait for its CI check to pass, then merge it
-right away (`gh pr merge --squash`) and sync `main` before recording. Leave **code** PRs open for the
-owner.
+When the activity has opened its PR, wait for its CI checks to pass, then merge it (guardrail 4:
+`gh pr merge --squash`) and sync `main` before recording — code and non-code PRs alike. A PR that
+could not go green or was refused by branch protection stays open with `needs-owner`; record that.
 
 ## 4. Record the cycle
 
@@ -257,16 +265,21 @@ git push -u origin HEAD
 ```sh
 gh pr create --label automated --label <type-label> \
   --title "<commit subject>" \
-  --body "<evidence> Bot-generated; needs review."
+  --body "<evidence> Bot-generated; auto-merged once CI is green."
 ```
 
 - **`Closes #<n>`** in the body whenever the work resolves an issue — mandatory, see guardrail 4.
 - Add `--label research` as a *second* type label when the work came from `sg-threat-research`.
 - If you edited anything under `.claude/skills/`, add the **needs re-signing** line (guardrail 5).
 
-**4. Then** — a **non-code** PR (confined to `docs/**`, `README.md`, `PROGRESS.md`): wait for CI,
-then `gh pr merge --squash`. A **code** PR (touches `pkg/`, `cmd/`, `testdata/`, a rule pack, or a
-skill): leave it for the owner. Guardrail 4.
+**4. Merge** — every PR, code or not: wait for CI, then merge and sync (guardrail 4):
+
+```sh
+gh pr checks <pr> --watch --fail-fast && gh pr merge <pr> --squash --delete-branch
+git checkout main && git pull --ff-only
+```
+
+Red CI → fix on the branch and re-wait, or leave it open with `needs-owner`. Never `--admin`.
 
 ## Notes
 
