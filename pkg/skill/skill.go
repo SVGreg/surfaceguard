@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -131,6 +132,30 @@ const maxFileSize = 16 << 20 // 16 MiB per-file cap (DoS guard)
 // gigabyte to exercise the guard would be a slow test, not a better one.
 var maxBundleSize int64 = 256 << 20
 
+// ErrRejected marks a load failure that is a judgment about the bundle rather
+// than about the caller's input: a symlink or other non-regular file inside it,
+// or a file or total size over the cap. These are the structures the loader
+// refuses *because* they are hostile (design §7.1), so a gate must deny them —
+// not treat them like a mistyped path. Before this sentinel `guard` exited 3
+// (usage) on all of them and the load-gate hook's default on_error=allow let
+// the skill load unscanned: one symlink got any skill past the gate (#396).
+//
+// A top-level path that is itself a symlink is deliberately not marked: a
+// skills directory linking to a checkout elsewhere is an ordinary dev setup,
+// and whether the gate should deny it or follow it is a separate decision.
+var ErrRejected = errors.New("bundle rejected")
+
+type rejection struct{ msg string }
+
+func (r *rejection) Error() string        { return r.msg }
+func (r *rejection) Is(target error) bool { return target == ErrRejected }
+
+// rejectf builds an ErrRejected error while keeping the loader's existing
+// message text, which `scan` reports and tests match on.
+func rejectf(format string, a ...any) error {
+	return &rejection{fmt.Sprintf(format, a...)}
+}
+
 // LoadBundle loads a bundle from a directory or a single SKILL.md file.
 // git-URL / tar / zip sources are deferred (see docs/v1-dev-plan.md).
 func LoadBundle(src string) (*Bundle, error) {
@@ -147,12 +172,12 @@ func LoadBundle(src string) (*Bundle, error) {
 		// Only a regular file can be read to completion: a named pipe blocks
 		// os.ReadFile forever and a device never ends (see loadDir).
 		if !info.Mode().IsRegular() {
-			return nil, fmt.Errorf("load bundle: %s is not a regular file (%s, rejected)", src, info.Mode().Type())
+			return nil, rejectf("load bundle: %s is not a regular file (%s, rejected)", src, info.Mode().Type())
 		}
 		// The directory walk caps every file it reads; single-file mode must
 		// apply the same DoS guard rather than reading an arbitrary blob.
 		if info.Size() > maxFileSize {
-			return nil, fmt.Errorf("file %s exceeds size cap", src)
+			return nil, rejectf("file %s exceeds size cap", src)
 		}
 		return loadSingleFile(src)
 	}
@@ -191,7 +216,7 @@ func loadDir(root string) (*Bundle, error) {
 		}
 		// Reject symlinks rather than follow them (design §7.1).
 		if d.Type()&os.ModeSymlink != 0 {
-			return fmt.Errorf("bundle contains symlink %s (rejected)", p)
+			return rejectf("bundle contains symlink %s (rejected)", p)
 		}
 		// Reject every other non-regular entry too. A named pipe (mkfifo needs
 		// no privilege, and tar preserves one on extract) made os.ReadFile block
@@ -201,7 +226,7 @@ func loadDir(root string) (*Bundle, error) {
 		// signature skip on purpose: a FIFO named skill.oms.sig would otherwise
 		// pass the walk and hang the verifier that opens it later.
 		if !d.Type().IsRegular() {
-			return fmt.Errorf("bundle contains non-regular file %s (%s, rejected)", p, d.Type())
+			return rejectf("bundle contains non-regular file %s (%s, rejected)", p, d.Type())
 		}
 		// Detached signatures are excluded from the bundle model, and so from
 		// every hash computed over it. A signature that covered another
@@ -216,13 +241,13 @@ func loadDir(root string) (*Bundle, error) {
 			return err
 		}
 		if info.Size() > maxFileSize {
-			return fmt.Errorf("file %s exceeds size cap", p)
+			return rejectf("file %s exceeds size cap", p)
 		}
 		// Check the running total *before* reading, so the cap bounds what is
 		// actually allocated rather than being noticed one file too late.
 		total += info.Size()
 		if total > maxBundleSize {
-			return fmt.Errorf("bundle %s exceeds total size cap of %d MiB", root, maxBundleSize>>20)
+			return rejectf("bundle %s exceeds total size cap of %d MiB", root, maxBundleSize>>20)
 		}
 		content, err := os.ReadFile(p)
 		if err != nil {

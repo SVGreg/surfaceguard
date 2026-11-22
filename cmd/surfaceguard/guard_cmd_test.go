@@ -103,3 +103,28 @@ func TestDecisionJSONIsComplete(t *testing.T) {
 		t.Errorf("outcome did not survive the round trip: %s", back.Outcome)
 	}
 }
+
+// TestGuardCmdRejectedBundleExitsDeny (#396): the exit-code contract for a
+// bundle the loader refuses — deny (1), which the hook already blocks on —
+// while a path that does not exist stays a usage error (3).
+func TestGuardCmdRejectedBundleExitsDeny(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(dir+"/SKILL.md", []byte("---\nname: x\ndescription: y\n---\nbody\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("/etc/hostname", dir+"/link"); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+	for _, c := range []struct {
+		path string
+		code int
+	}{{dir, 1}, {dir + "/missing", 3}} {
+		cmd := guardCmd()
+		cmd.SetArgs([]string{"--format", "json", c.path})
+		cmd.SetOut(io.Discard)
+		var ee exitErr
+		if err := cmd.Execute(); !errors.As(err, &ee) || ee.code != c.code {
+			t.Errorf("guard %s: error = %v, want exitErr code %d", c.path, err, c.code)
+		}
+	}
+}

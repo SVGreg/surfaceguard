@@ -64,7 +64,7 @@ act on:
 |-----------------|------------------|:-----:|:---------------:|:---------:|
 | **allow** | valid trusted signature (or a policy that does not ask for one), clean scan | allow | allow | allow |
 | **warn** | unsigned or unverified publisher under a policy that warns; a `warn` scan verdict | allow | allow | **deny** |
-| **deny** | tampered content (`SG-PRV-003`), invalid signature (`SG-PRV-002`), revoked key or expired attestation (`SG-PRV-004`) — **or a failing scan verdict** | allow | **deny** | **deny** |
+| **deny** | tampered content (`SG-PRV-003`), invalid signature (`SG-PRV-002`), revoked key or expired attestation (`SG-PRV-004`) — **or a failing scan verdict**, or a bundle the loader refuses to read (a symlink or FIFO inside it, a size-cap breach) | allow | **deny** | **deny** |
 
 - **`log`** — audit only. Never blocks; every decision is written to the log file.
   Start here to see what *would* be blocked before you turn on enforcement.

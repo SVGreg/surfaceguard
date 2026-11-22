@@ -1081,7 +1081,7 @@ log, so the anchors are still ones you chose. What changes is that you pin an
 | Code | Meaning |
 |------|---------|
 | `0` | ok — scan passed/warned, verify succeeded, or `guard` said **allow**/**warn** |
-| `1` | scan **verdict: fail** (a finding met the fail threshold), or `guard` said **deny** |
+| `1` | scan **verdict: fail** (a finding met the fail threshold), or `guard` said **deny** — including for a bundle the loader refuses as hostile (a symlink or FIFO/device inside it, or a size-cap breach), which is denied unscanned rather than reported as a usage error |
 | `2` | **verification failed** — invalid signature, tampered/drifted content, a **revoked** signing key, an attestation that is **expired** (or carries an expiry that cannot be read), or a skill card that does not describe the bundle (`verify --card`) |
 | `3` | usage error (bad arguments, missing file, invalid flag value) |
 | `4` | internal error |
