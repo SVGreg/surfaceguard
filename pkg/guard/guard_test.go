@@ -3,6 +3,7 @@ package guard
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/SVGreg/surfaceguard/pkg/policy"
@@ -333,5 +334,33 @@ func rank(o Outcome) int {
 		return 1
 	default:
 		return 0
+	}
+}
+
+// TestGuardDeniesRejectedBundle (#396): a bundle the loader refuses as hostile
+// is a deny decision, not an error. As an error it exited 3 and the load-gate
+// hook's default on_error=allow loaded the skill unscanned, so one symlink got
+// any skill past the gate. A missing path is still an error.
+func TestGuardDeniesRejectedBundle(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte("---\nname: x\ndescription: y\n---\nbody\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("/etc/hostname", filepath.Join(dir, "link")); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+	d, err := Guard(dir, Options{})
+	if err != nil {
+		t.Fatalf("Guard returned an error for a rejected bundle: %v", err)
+	}
+	if d.Outcome != Deny || d.Scanned {
+		t.Fatalf("outcome = %s scanned = %v, want deny, unscanned", d.Outcome, d.Scanned)
+	}
+	if !strings.Contains(d.Reason, "bundle rejected") || !strings.Contains(d.Reason, "symlink") {
+		t.Errorf("reason %q does not name the rejection", d.Reason)
+	}
+
+	if _, err := Guard(filepath.Join(dir, "missing"), Options{}); err == nil {
+		t.Error("a missing path produced a decision; want an error")
 	}
 }

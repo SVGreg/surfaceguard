@@ -168,6 +168,20 @@ func Guard(path string, opt Options) (*Decision, error) {
 	// without reading them. Loading is the cheap part — parsing and hashing a
 	// few files — and scanning is what the cache actually saves.
 	b, err := skill.LoadBundle(path)
+	if errors.Is(err, skill.ErrRejected) {
+		// The loader refused the bundle's *structure* — a symlink, a FIFO, a
+		// size-cap breach — because that structure is hostile (design §7.1).
+		// That is a judgment about the skill, so it is a deny, not an error a
+		// caller might map to allow: returned as an error it exited 3 and the
+		// load-gate hook's default on_error=allow loaded the skill unscanned
+		// (#396). Nothing was read, so nothing is cached or hashed.
+		return &Decision{
+			Outcome: Deny,
+			Reason:  "bundle rejected: " + err.Error(),
+			Path:    path,
+			Mode:    mode(opt),
+		}, nil
+	}
 	if err != nil {
 		return nil, fmt.Errorf("guard: cannot read skill at %q: %w", path, err)
 	}
