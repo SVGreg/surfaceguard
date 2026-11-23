@@ -1,6 +1,6 @@
 apiVersion: surfaceguard.svgreg.net/rulepack.v1
 name: core-injection
-version: 1.8.2
+version: 1.9.0
 description: Prompt injection, jailbreak, and instruction-layer attacks (rule-verification.md §2).
 rules:
   - id: SG-INJ-001
@@ -234,7 +234,16 @@ rules:
         # Redirect narrowed to append `>>` plus explicit write sinks. The old
         # single `>` also matched arrow functions (`=> c.includes`) and Markdown
         # blockquotes (`> note`), which are not file writes.
-        - regex: '(?i)(>>|tee\s|write_text|writeFile|Set-Content|Out-File|open\([^)]*[''"]a?w[''"])\s*[^\n]{0,40}(~?/?\.?(claude|codex|gemini|cursor)/|SOUL\.md|MEMORY\.md|AGENTS\.md|CLAUDE\.md|GEMINI\.md)'
+        #
+        # The filename list is every file an agent re-reads into its instruction
+        # layer at session start, not only Claude's and OpenClaw's original five
+        # (#415): OpenClaw also injects IDENTITY/BOOTSTRAP/HEARTBEAT.md — and
+        # HEARTBEAT.md is re-run on a timer, so a write there is scheduled-task
+        # persistence — and every other agent has its own always-loaded rule
+        # file (`.cursorrules`, `.github/copilot-instructions.md`,
+        # `*.instructions.md`, `.windsurfrules`/`.windsurf/rules/`,
+        # `.clinerules`, `.kiro/steering/`). Each was a clean pass before.
+        - regex: '(?i)(>>|tee\s|write_text|writeFile|Set-Content|Out-File|open\([^)]*[''"]a?w[''"])\s*[^\n]{0,40}(~?/?\.?(claude|codex|gemini|cursor)/|SOUL\.md|MEMORY\.md|AGENTS\.md|CLAUDE\.md|GEMINI\.md|IDENTITY\.md|BOOTSTRAP\.md|HEARTBEAT\.md|copilot-instructions\.md|\.instructions\.md|\.cursorrules|\.windsurfrules|\.clinerules|\.windsurf/rules/|\.kiro/steering/)'
           confidence: 0.9
         - regex: '(?i)(add|append|update|write)\b[^.\n]{0,40}\b(your |the )?(MEMORY\.md|CLAUDE\.md|AGENTS\.md|memory)\b[^.\n]{0,30}\b(permanent|persist|every session|remember)'
           confidence: 0.8
@@ -251,8 +260,14 @@ rules:
         # (variable indirection defeats every verb-anchored leaf), and
         # `cat > "$WORKSPACE/SOUL.md" << EOF`.
         # Corpus prevalence of this exact shape: 1 bundle / 777.
-        - regex: '(?i)\s>\s*[''"]?[^''"`\s|<>*]*(SOUL|MEMORY|AGENTS|CLAUDE|GEMINI)\.md'
+        - regex: '(?i)\s>\s*[''"]?[^''"`\s|<>*]*((SOUL|MEMORY|AGENTS|CLAUDE|GEMINI|IDENTITY|BOOTSTRAP|HEARTBEAT)\.md|copilot-instructions\.md|\.instructions\.md|\.cursorrules|\.windsurfrules|\.clinerules|\.windsurf/rules/|\.kiro/steering/)'
           confidence: 0.9
+        # OpenClaw's USER.md and TOOLS.md are bootstrap files too (#415), but the
+        # names are generic outside OpenClaw — a project's own user guide or tool
+        # list — so they get their own leaf at lower confidence rather than the
+        # 0.9 the specific names earn. Same sinks as the two leaves above.
+        - regex: '(?i)((>>|tee\s|write_text|writeFile|Set-Content|Out-File|open\([^)]*[''"]a?w[''"])\s*[^\n]{0,40}|\s>\s*[''"]?[^''"`\s|<>*]*)\b(USER|TOOLS)\.md'
+          confidence: 0.6
     suppress:
       - '(?i)/path/to/'
       # NOTE — a `if [ ! -f "$WORKSPACE/SOUL.md" ]` guard carve-out was tried and
