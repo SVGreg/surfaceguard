@@ -105,13 +105,15 @@ ESC is `U+001B` (category `Cc`), which SG-INJ-002 does not see; the reviewer rea
 - **Fixtures:** TP `echo aGVsbCB… | base64 -d | bash`. FP `data:image/png;base64,…`, JWT in an example block, embedded favicon.
 
 ### SG-INJ-004 — Writes to agent identity/config files  (AST01/AST03, critical) — **implemented** (`core-injection`)
-- **Signals:** `SOUL.md, MEMORY.md, AGENTS.md, CLAUDE.md, GEMINI.md, .cursorrules, .clinerules` and `.claude/ .codex/ .gemini/ .cursor/` in a **write context**: `>>`, `tee`, `open(…,'w'|'a')`, `fs.writeFile`, `Path.write_*`, `cat > file <<EOF`, a truncating redirect, or an instruction to "add/append/update your MEMORY.md".
+- **Signals:** `SOUL.md, MEMORY.md, AGENTS.md, CLAUDE.md, GEMINI.md`, OpenClaw's other bootstrap files `IDENTITY.md, BOOTSTRAP.md, HEARTBEAT.md` (HEARTBEAT re-runs on a timer: scheduled-task persistence), every other agent's always-loaded rule file `.cursorrules, .github/copilot-instructions.md, *.instructions.md, .windsurfrules, .windsurf/rules/, .clinerules, .kiro/steering/` (#415), and `.claude/ .codex/ .gemini/ .cursor/` in a **write context**: `>>`, `tee`, `open(…,'w'|'a')`, `fs.writeFile`, `Path.write_*`, `cat > file <<EOF`, a truncating redirect, or an instruction to "add/append/update your MEMORY.md".
+  - **Generic bootstrap names** `USER.md`, `TOOLS.md` (also OpenClaw bootstrap files, but ordinary project file names elsewhere): same sinks, own leaf at **0.6**.
+  - **Known gap:** a sink written *after* the filename (`Path("CLAUDE.md").write_text(…)`, `open("CLAUDE.md", "w")`) is not matched; tracked in `planned-rules.md`.
   - **Truncating redirect** (`>`): must be **preceded by whitespace** and **followed immediately by the path** (`\s>\s*['"]?[^'"\s|<>]*`, shape shared with SG-ROGUE-001). That keeps JS `=>` and markdown blockquotes out; overwrite is more serious than append, so it belongs here.
 - **FP carve-outs:** read-only access (SG-AS-001's concern); a skill writing its own bundled files; temp-dir paths (each branch bounded separately — a trailing `\b` after `os\.tmpdir\(\)` never matched, §8.1); placeholder paths −0.5.
 - **Rejected:** a guard-aware carve-out (`[ ! -f …`) — `suppress` only sees the lines the hit spans, and the guard sits lines away, so it could never fire.
 - **Escalation:** T3 for the instruction form only ("append the following to your memory so you remember across sessions").
 - **Confidence:** write to global identity file 0.95 · self-persist instruction 0.8 (T3 0.85) · ambiguous 0.6.
-- **Fixtures:** `TestAgentConfigOverwriteCoversShellRedirect`; `TestMaliciousFixtureTriggersAgentConfigOverwrite` (`wget -qO- … > "$HOME/.claude/CLAUDE.md"` in `setup.sh`).
+- **Fixtures:** `TestAgentConfigOverwriteCoversShellRedirect`; `TestAgentConfigWriteCoversOtherBootstrapFiles`; `TestMaliciousFixtureTriggersAgentConfigOverwrite` (`wget -qO- … > "$HOME/.claude/CLAUDE.md"` in `setup.sh`).
 
 ### SG-INJ-005 — Description↔behavior mismatch  (AST04, medium) — **T2/T3 by nature**
 - **Signals (T2):** a capability set from the manifest (`name`, `description`, `allowed-tools`) vs one from code/body (network, fs-write, exec, credential read). Flag a **material** gap — a high-impact capability entirely unhinted by the description.
