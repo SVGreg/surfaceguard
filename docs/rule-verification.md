@@ -530,9 +530,10 @@ ESC is `U+001B` (category `Cc`), which SG-INJ-002 does not see; the reviewer rea
 
 ### SG-AS-001 — Agent-config / cross-skill snooping  (AST03, high) — **implemented** (`core-secret`)
 - **Signals:** (a) **config read** (0.8) — `cat|less|head|tail|grep|rg|jq|strings|xxd|open|read*|Get-Content` within the §8.2 window of `mcp.json`, `claude_desktop_config.json`, `.claude.json`, or `.claude/ .codex/ .gemini/ .cursor/ .windsurf/ .config/{claude,codex,gemini,cursor}` (`/` or `\`); (b) **peer enumeration** (0.7) — `ls|dir|find|glob|cat|less|head|grep|rg|open|read|cp|copy` against `.claude/skills`, `../<peer>/SKILL.md` or `skills/*`. SG-INJ-004 is the write form.
-- **FP carve-outs:** a skill reading its own directory; `/path/to/` placeholders; install instructions in prose (#272) and command form (#294); command boundaries and redirects are excluded from the verb→path gap; documentary −0.4 drops leaf (b) in prose.
+- **FP carve-outs:** a skill reading its own directory; `/path/to/` placeholders; install instructions in prose (#272) and command form (#294); a whole-line user setup step that opens an *unqualified* `mcp.json` and then checks/adds/pastes, with no `/`, `\` or `~` anywhere else on the line (#420 — `open ~/.cursor/mcp.json` keeps firing); command boundaries and redirects are excluded from the verb→path gap; documentary −0.4 drops leaf (b) in prose.
 - **Known FP, left:** `\.claude[/\\]` matches any path under the agent home, so reading an artifact the skill installed itself (`~/.claude/chrome/…`) fires. Narrowing risks real coverage (`.claude/agents/`, settings variants) — open backlog row.
-- **Fixtures:** `TestAgentConfigSnoopingCoversReadVariants` (incl. the macOS `Application Support` path).
+- **Known FP, left:** the verb→path gap can cross a clause boundary, so a passive *"when the config is read, so no secret is written into `.mcp.json`"* still fires — open backlog row.
+- **Fixtures:** `TestAgentConfigSnoopingCoversReadVariants` (incl. the macOS `Application Support` path); `TestSnoopingSparesUserSetupSteps` (#420).
 
 ### SG-AS-002 — Cross-skill payload handoff  (AST01/AST03, medium) — **implemented** (`core-exec`)
 - **Threat:** the reader half of ColluSkill artifact passing (arXiv:2608.09732, 2608.16246) — skill A drops `/tmp/.wf/stage2.sh`, skill B runs it, each scans clean alone. Issue #382.
