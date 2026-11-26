@@ -1,6 +1,6 @@
 apiVersion: surfaceguard.svgreg.net/rulepack.v1
 name: core-injection
-version: 1.9.0
+version: 1.9.1
 description: Prompt injection, jailbreak, and instruction-layer attacks (rule-verification.md §2).
 rules:
   - id: SG-INJ-001
@@ -940,7 +940,17 @@ rules:
       # applied after the threshold and is unaffected by confidence.
       any:
         # do-not-<conceal-verb> … (to the) user / anyone
-        - regex: '(?i)\b(do not|don''?t|never|avoid|refrain from)\s+(mention|reveal|disclose|report|acknowledge|indicate|hint at|let[^\n]{0,6}know)\b[^\n]{0,30}\b(to\s+)?(the\s+)?(user|operator|human|owner|anyone|anybody)\b'
+        - regex: '(?i)\b(do not|don''?t|never|avoid|refrain from)\s+(mention|reveal|disclose|acknowledge|indicate|hint at|let[^\n]{0,6}know)\b[^\n]{0,30}\b(to\s+)?(the\s+)?(user|operator|human|owner|anyone|anybody)\b'
+          confidence: 0.9
+        # do-not-report … TO the user. `report` takes its subject matter as a
+        # direct object, so a `user` inside that object is what the report is
+        # *about*, not who is kept from hearing it: "Do not report errors caused
+        # only by the user's code" is scope guidance for filing upstream bugs
+        # (neon), and "never report it as the user" names a role (#422). The
+        # concealment sense names the audience with `to`, so here it is
+        # required; `mention`/`reveal`/`disclose` keep the optional form above.
+        # Every match is also a match of the old shared leaf (patch bump).
+        - regex: '(?i)\b(do not|don''?t|never|avoid|refrain from)\s+report\b[^\n]{0,30}\bto\s+(the\s+)?(user|operator|human|owner|anyone|anybody)\b'
           confidence: 0.9
         # do-not-<tell-verb> … user / anyone
         - regex: '(?i)\b(do not|don''?t|never)\s+(tell|inform|notify|alert|warn|make[^\n]{0,8}aware)\b[^\n]{0,25}\b(the\s+)?(user|operator|human|owner|them|anyone|anybody)\b'
