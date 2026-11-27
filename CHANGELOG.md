@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.6.5](https://github.com/SVGreg/surfaceguard/compare/v0.6.4...v0.6.5) (2026-11-27)
+
+
+### Features
+
+* **rules:** SG-INJ-001 catches an instruction override written in Chinese, Japanese, Spanish, French, German, Russian or Portuguese (closes [#427](https://github.com/SVGreg/surfaceguard/issues/427)) ([#447](https://github.com/SVGreg/surfaceguard/issues/447)) ([da04840](https://github.com/SVGreg/surfaceguard/commit/da0484043994646e1555c18826cad57b6b0e3457))
+* **rules:** SG-INJ-004 covers OpenClaw's other bootstrap files and every agent's rule file (closes [#415](https://github.com/SVGreg/surfaceguard/issues/415)) ([#443](https://github.com/SVGreg/surfaceguard/issues/443)) ([315c034](https://github.com/SVGreg/surfaceguard/commit/315c0349c2b3cec7a965e70970b0794b731824f2))
+
+
+### Bug Fixes
+
+* **guard:** a bundle the loader rejects as hostile is a deny, not a usage error (closes [#396](https://github.com/SVGreg/surfaceguard/issues/396)) ([#442](https://github.com/SVGreg/surfaceguard/issues/442)) ([0a0b009](https://github.com/SVGreg/surfaceguard/commit/0a0b0095cf6cd478497131116491571e6da24836))
+* **rules:** SG-AS-001 spares a user setup step that opens the skill's own mcp.json (closes [#420](https://github.com/SVGreg/surfaceguard/issues/420)) ([#444](https://github.com/SVGreg/surfaceguard/issues/444)) ([881fc24](https://github.com/SVGreg/surfaceguard/commit/881fc240679f23198d9b0a601d310b5f9df7dc03))
+* **rules:** SG-INJ-002 no longer reads the SI micro prefix (μmol, μsec) as a homoglyph (closes [#391](https://github.com/SVGreg/surfaceguard/issues/391)) ([#441](https://github.com/SVGreg/surfaceguard/issues/441)) ([01f1447](https://github.com/SVGreg/surfaceguard/commit/01f1447affb277267aee841bebf94954eef43b15))
+* **rules:** SG-INJ-010 counts "do not report" as concealment only when the user is the recipient (closes [#422](https://github.com/SVGreg/surfaceguard/issues/422)) ([#446](https://github.com/SVGreg/surfaceguard/issues/446)) ([e333666](https://github.com/SVGreg/surfaceguard/commit/e33366684e13ef8b382db52e95a6b7a1e146960a))
+* **rules:** SG-SEC-001 no longer reads a descriptive code comment as a credential read (closes [#421](https://github.com/SVGreg/surfaceguard/issues/421)) ([#445](https://github.com/SVGreg/surfaceguard/issues/445)) ([cbd9e08](https://github.com/SVGreg/surfaceguard/commit/cbd9e08a93f146eb16e821d90942ee372ad5bbcd))
+* **verify:** a keyless log entry counts only when its body is bound to the bundle (refs [#333](https://github.com/SVGreg/surfaceguard/issues/333)) ([#439](https://github.com/SVGreg/surfaceguard/issues/439)) ([64db9b2](https://github.com/SVGreg/surfaceguard/commit/64db9b271e304a3da4e0a2bb6f725771d0c71c65))
+
 ## [0.6.4](https://github.com/SVGreg/surfaceguard/compare/v0.6.3...v0.6.4) (2026-10-17)
 
 
